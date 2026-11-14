@@ -17,6 +17,7 @@ const (
 	shuffleSalt = 1 << 20
 	optionCount = 5
 	maxTerm     = 2000 // every term, shown or asked, stays within [1, maxTerm]
+	maxPrime    = 200  // prime series stay small, as in a real exam
 )
 
 // Misconception labels attached to wrong options.
@@ -25,6 +26,8 @@ const (
 	MisRasioJadiBeda       = "rasio-jadi-beda"
 	MisAbaikanSelangSeling = "abaikan-selang-seling"
 	MisSalahHitungDekat    = "salah-hitung-dekat"
+	MisSatuOperasi         = "satu-operasi"
+	MisBukanPrima          = "bukan-prima"
 )
 
 // kind selects the rule behind the series.
@@ -39,17 +42,20 @@ const (
 	kindCube                 // (s+k)^3 + c
 	kindFib                  // each term is the sum of the two before it
 	kindDiffGeom             // differences d, d*r, d*r^2, ...
-	kindOrder3               // differences of differences step by a growing amount
+	kindGeomDown             // constant ratio 1/r: each term is divided by r
+	kindAltOps               // two operations (add/subtract d, multiply by r) applied in turn
+	kindPrime                // consecutive prime numbers
 )
 
 // params are the numbers behind one question. n terms are shown and the
 // (n+1)th is asked. The meaning of the other fields depends on kind:
 // a is the first term (fib and alt: the first odd term), b the first even
 // term (alt) or second term (fib), d the first difference (alt: the odd
-// subsequence step), d2 the even subsequence step, r the ratio, e the
-// increment of the differences (order3: of the second differences), s the
-// base of the powers and c the constant added to a power (order3: the first
-// second difference).
+// subsequence step; altops: the amount added or subtracted), d2 the even
+// subsequence step, r the ratio (geomdown: the divisor; altops: the
+// multiplier), e the increment of the differences (altops: the variant, see
+// altOp), s the base of the powers and c the constant added to a power.
+// For prime, a is the first prime of the series.
 type params struct {
 	kind                    kind
 	n                       int
@@ -72,6 +78,8 @@ func (Family) Misconceptions() map[string]string {
 		MisRasioJadiBeda:       "Tertukar antara menambah dan mengalikan: rasio dipakai sebagai beda, atau beda dipakai sebagai rasio",
 		MisAbaikanSelangSeling: "Menganggap semua suku mengikuti satu aturan, padahal suku ganjil dan suku genap punya aturan sendiri",
 		MisSalahHitungDekat:    "Salah hitung kecil: hasil mendekati jawaban benar",
+		MisSatuOperasi:         "Hanya satu dari dua operasi yang diulang, padahal kedua operasi dipakai bergantian",
+		MisBukanPrima:          "Memilih bilangan berikutnya yang bukan prima, padahal harus bilangan prima setelah suku terakhir",
 	}
 }
 
@@ -88,7 +96,7 @@ func valid(p params) bool {
 		if p.d == 0 {
 			return false
 		}
-	case kindGeom:
+	case kindGeom, kindGeomDown:
 		if p.r < 2 || p.r > 3 {
 			return false
 		}
@@ -101,13 +109,59 @@ func valid(p params) bool {
 		if p.d == 0 || p.d2 == 0 || p.d == p.d2 {
 			return false
 		}
-	case kindStepped, kindOrder3:
+	case kindStepped:
 		if p.e < 1 {
 			return false
 		}
+	case kindAltOps:
+		if p.d < 1 || p.r < 2 || p.r > 3 || p.e < 0 || p.e > 3 {
+			return false
+		}
 	}
-	_, ok := seq(p)
-	return ok
+	t, ok := seq(p)
+	if !ok {
+		return false
+	}
+	switch p.kind {
+	case kindAltOps:
+		// a series that repeats itself every two terms is not a two-operation rule
+		return t[0] != t[2]
+	case kindPrime:
+		return !fitsSimpleRule(t[:p.n])
+	}
+	return true
+}
+
+// fitsSimpleRule reports whether the shown terms also fit a constant
+// difference of order 1-3 or two arithmetic subsequences, which would make
+// a prime series ambiguous.
+func fitsSimpleRule(shown []int) bool {
+	level := shown
+	for k := 1; k <= 3; k++ {
+		level = diffs(level)
+		if constant(level) {
+			return true
+		}
+	}
+	var odd, even []int
+	for i, v := range shown {
+		if i%2 == 0 {
+			odd = append(odd, v)
+		} else {
+			even = append(even, v)
+		}
+	}
+	return constant(diffs(odd)) && constant(diffs(even))
+}
+
+// constant reports whether xs has at least two entries, all equal.
+func constant(xs []int) bool {
+	for _, x := range xs {
+		if x != xs[0] {
+			return false
+		}
+	}
+	return len(xs) >= 2
 }
 
 func generate(seed int64, band gen.Band, attempts int, accept func(params) bool) (gen.Draft, error) {
@@ -144,40 +198,126 @@ func signedNonZero(rng *rand.Rand, max int) int {
 func pickParams(rng *rand.Rand, band gen.Band) params {
 	switch band {
 	case gen.Band1:
-		if rng.Intn(2) == 0 {
+		switch rng.Intn(4) {
+		case 0, 1:
 			n := rng.Intn(3) + 5
-			d := signedNonZero(rng, 8)
+			d := signedNonZero(rng, 14)
 			if d > 0 {
 				d++
 			} else {
 				d--
 			}
-			a := rng.Intn(30) + 1
+			a := rng.Intn(60) + 1
 			if d < 0 {
-				a = -d*n + rng.Intn(10) + 1 // keep the asked term positive
+				a = -d*n + rng.Intn(20) + 1 // keep the asked term positive
 			}
 			return params{kind: kindArith, n: n, a: a, d: d}
+		case 2:
+			return params{kind: kindGeom, n: rng.Intn(2) + 5, a: rng.Intn(12) + 1, r: rng.Intn(2) + 2}
+		default:
+			n := rng.Intn(2) + 5
+			r := rng.Intn(2) + 2
+			pow := 1
+			for i := 0; i < n; i++ {
+				pow *= r
+			}
+			// the first term is a multiple of r^n so every term, the asked one included, is whole
+			return params{kind: kindGeomDown, n: n, a: (rng.Intn(maxTerm/pow) + 1) * pow, r: r}
 		}
-		return params{kind: kindGeom, n: rng.Intn(2) + 5, a: rng.Intn(6) + 1, r: rng.Intn(2) + 2}
 	case gen.Band2:
-		if rng.Intn(2) == 0 {
+		switch rng.Intn(4) {
+		case 0:
 			return params{kind: kindStepped, n: rng.Intn(3) + 5, a: rng.Intn(20) + 1, d: rng.Intn(8) + 1, e: rng.Intn(4) + 1}
+		case 1:
+			return params{kind: kindAlt, n: rng.Intn(2) + 6, a: rng.Intn(30) + 1, d: signedNonZero(rng, 9), b: rng.Intn(30) + 1, d2: signedNonZero(rng, 9)}
+		case 2:
+			return params{kind: kindAltOps, n: rng.Intn(2) + 6, a: rng.Intn(20) + 1, d: rng.Intn(9) + 1, r: rng.Intn(2) + 2, e: rng.Intn(4)}
+		default:
+			return pickPrime(rng)
 		}
-		return params{kind: kindAlt, n: rng.Intn(2) + 6, a: rng.Intn(30) + 1, d: signedNonZero(rng, 9), b: rng.Intn(30) + 1, d2: signedNonZero(rng, 9)}
 	default:
 		switch rng.Intn(5) {
 		case 0:
-			return params{kind: kindSquare, n: rng.Intn(3) + 5, s: rng.Intn(8) + 1, c: rng.Intn(17) - 4}
+			return params{kind: kindSquare, n: rng.Intn(3) + 5, s: rng.Intn(30) + 1, c: rng.Intn(51) - 10}
 		case 1:
-			return params{kind: kindCube, n: rng.Intn(2) + 5, s: rng.Intn(7) + 1, c: rng.Intn(21) - 10}
+			return params{kind: kindCube, n: rng.Intn(2) + 5, s: rng.Intn(8) + 1, c: rng.Intn(41) - 20}
 		case 2:
-			return params{kind: kindFib, n: rng.Intn(2) + 6, a: rng.Intn(9) + 1, b: rng.Intn(9) + 1}
+			return params{kind: kindFib, n: rng.Intn(2) + 6, a: rng.Intn(30) + 1, b: rng.Intn(30) + 1}
 		case 3:
-			return params{kind: kindDiffGeom, n: rng.Intn(2) + 5, a: rng.Intn(10) + 1, d: rng.Intn(4) + 1, r: rng.Intn(2) + 2}
+			return params{kind: kindDiffGeom, n: rng.Intn(2) + 5, a: rng.Intn(15) + 1, d: rng.Intn(9) + 1, r: rng.Intn(2) + 2}
 		default:
-			return params{kind: kindOrder3, n: rng.Intn(2) + 6, a: rng.Intn(20) + 1, d: rng.Intn(6) + 1, c: rng.Intn(4), e: rng.Intn(3) + 1}
+			return pickPrime(rng)
 		}
 	}
+}
+
+// primes lists every prime in [2, maxPrime].
+var primes = func() []int {
+	var out []int
+	for v := 2; v <= maxPrime; v++ {
+		if isPrime(v) {
+			out = append(out, v)
+		}
+	}
+	return out
+}()
+
+func pickPrime(rng *rand.Rand) params {
+	n := rng.Intn(3) + 5
+	return params{kind: kindPrime, n: n, a: primes[rng.Intn(len(primes)-n)]}
+}
+
+func isPrime(v int) bool {
+	if v < 2 {
+		return false
+	}
+	for d := 2; d*d <= v; d++ {
+		if v%d == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func nextPrime(v int) int {
+	for v++; !isPrime(v); v++ {
+	}
+	return v
+}
+
+// altOp returns the operation that turns term k into term k+1 for altops:
+// when mul is set amt is the multiplier, otherwise it is added to the term.
+// Variant p.e is 0: +d then x r; 1: x r then +d; 2: x r then -d; 3: -d then x r.
+func altOp(p params, k int) (mul bool, amt int) {
+	first := k%2 == 0
+	switch p.e {
+	case 0:
+		if first {
+			return false, p.d
+		}
+	case 1:
+		if first {
+			return true, p.r
+		}
+		return false, p.d
+	case 2:
+		if first {
+			return true, p.r
+		}
+		return false, -p.d
+	default:
+		if first {
+			return false, -p.d
+		}
+	}
+	return true, p.r
+}
+
+func applyOp(v int, mul bool, amt int) int {
+	if mul {
+		return v * amt
+	}
+	return v + amt
 }
 
 // seq returns the n+1 terms of the series (the last one is the key); ok is
@@ -234,13 +374,34 @@ func seq(p params) ([]int, bool) {
 			v += x
 			x *= p.r
 		}
-	case kindOrder3:
-		v, x, y := p.a, p.d, p.c
+	case kindGeomDown:
+		v := p.a
 		for k := range t {
 			t[k] = v
-			v += x
-			x += y
-			y += p.e
+			if k == len(t)-1 {
+				break
+			}
+			if v%p.r != 0 {
+				return nil, false
+			}
+			v /= p.r
+		}
+	case kindAltOps:
+		t[0] = p.a
+		for k := 1; k < len(t); k++ {
+			mul, amt := altOp(p, k-1)
+			t[k] = applyOp(t[k-1], mul, amt)
+		}
+	case kindPrime:
+		if !isPrime(p.a) {
+			return nil, false
+		}
+		t[0] = p.a
+		for k := 1; k < len(t); k++ {
+			t[k] = nextPrime(t[k-1])
+			if t[k] > maxPrime {
+				return nil, false
+			}
 		}
 	default:
 		return nil, false
@@ -353,18 +514,66 @@ func steps(p params, t []int) []string {
 			fmt.Sprintf("Selisih berikutnya = %d x %d = %d.", ds[len(ds)-1], p.r, next),
 			fmt.Sprintf("Suku berikutnya = %s.", plus(last, next)),
 		}
-	default: // kindOrder3
-		ds := diffs(t[:n])
-		ss := diffs(ds)
-		ns := ss[len(ss)-1] + p.e
-		nd := ds[len(ds)-1] + ns
+	case kindGeomDown:
 		return []string{
-			fmt.Sprintf("Selisih antarsuku: %s.", joined(ds)),
-			fmt.Sprintf("Selisih dari selisih itu: %s, bertambah %d setiap langkah.", joined(ss), p.e),
-			fmt.Sprintf("Selisih berikutnya = %s.", plus(ds[len(ds)-1], ns)),
-			fmt.Sprintf("Suku berikutnya = %s.", plus(last, nd)),
+			fmt.Sprintf("Setiap suku dibagi %d untuk mendapat suku berikutnya.", p.r),
+			fmt.Sprintf("Suku berikutnya = %d : %d = %d.", last, p.r, key),
+		}
+	case kindAltOps:
+		m0, a0 := altOp(p, 0)
+		m1, a1 := altOp(p, 1)
+		mn, an := altOp(p, n-1)
+		return []string{
+			fmt.Sprintf("Dua operasi dipakai bergantian: %s, lalu %s, dan seterusnya.", opName(m0, a0), opName(m1, a1)),
+			fmt.Sprintf("Contoh dari suku pertama: %s, lalu %s.", opEq(t[0], m0, a0), opEq(t[1], m1, a1)),
+			fmt.Sprintf("Operasi berikutnya adalah %s, jadi suku berikutnya = %s.", opName(mn, an), opEq(last, mn, an)),
+		}
+	default: // kindPrime
+		var between []string
+		for v := last + 1; v < key; v++ {
+			between = append(between, fmt.Sprintf("%d (habis dibagi %d)", v, smallestDivisor(v)))
+		}
+		gap := fmt.Sprintf("Bilangan setelah %d langsung prima.", last)
+		if len(between) > 0 {
+			gap = fmt.Sprintf("Bilangan di antara %d dan %d bukan prima: %s.", last, key, strings.Join(between, ", "))
+		}
+		return []string{
+			fmt.Sprintf("Semua suku adalah bilangan prima berurutan: %s.", joined(t[:n])),
+			gap,
+			fmt.Sprintf("Suku berikutnya adalah bilangan prima setelah %d, yaitu %d.", last, key),
 		}
 	}
+}
+
+// smallestDivisor returns the smallest divisor of v greater than 1.
+func smallestDivisor(v int) int {
+	d := 2
+	for d*d <= v && v%d != 0 {
+		d++
+	}
+	if d*d > v {
+		return v
+	}
+	return d
+}
+
+// opName renders an altops operation: "tambah 3", "kurang 3" or "kali 2".
+func opName(mul bool, amt int) string {
+	switch {
+	case mul:
+		return fmt.Sprintf("kali %d", amt)
+	case amt < 0:
+		return fmt.Sprintf("kurang %d", -amt)
+	}
+	return fmt.Sprintf("tambah %d", amt)
+}
+
+// opEq renders applying an altops operation to v as an equation.
+func opEq(v int, mul bool, amt int) string {
+	if mul {
+		return fmt.Sprintf("%d x %d = %d", v, amt, v*amt)
+	}
+	return plus(v, amt)
 }
 
 func build(p params, seed int64) gen.Draft {
@@ -394,6 +603,21 @@ func build(p params, seed int64) gen.Draft {
 		cands = append(cands, cand{last + lastDiff, MisAbaikanSelangSeling}, cand{last + own, MisAbaikanSelangSeling})
 	case kindDiffGeom:
 		cands = append(cands, cand{last + lastDiff, MisBedaTerakhir}, cand{last + lastDiff + p.r, MisRasioJadiBeda})
+	case kindGeomDown:
+		cands = append(cands, cand{last - p.r, MisRasioJadiBeda}, cand{last + lastDiff, MisBedaTerakhir})
+	case kindAltOps:
+		// repeating the previous operation uses only one of the two operations
+		mul, amt := altOp(p, n-2)
+		cands = append(cands, cand{applyOp(last, mul, amt), MisSatuOperasi}, cand{last + lastDiff, MisBedaTerakhir})
+	case kindPrime:
+		// the nearest odd numbers above the last term that are not prime
+		for v, found := last+1, 0; found < 2; v++ {
+			if v%2 == 1 && !isPrime(v) {
+				cands = append(cands, cand{v, MisBukanPrima})
+				found++
+			}
+		}
+		cands = append(cands, cand{last + lastDiff, MisBedaTerakhir})
 	default:
 		cands = append(cands, cand{last + lastDiff, MisBedaTerakhir})
 	}

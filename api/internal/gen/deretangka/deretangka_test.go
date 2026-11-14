@@ -102,7 +102,11 @@ func hypotheses(ts []int64) []prediction {
 		out = append(out, prediction{[]string{"", "arith", "order2", "order3"}[k], rat(v)})
 	}
 	if isGeometric(ts) {
-		out = append(out, prediction{"geom", nextGeometric(ts)})
+		rule := "geom"
+		if ts[1] < ts[0] {
+			rule = "geomdown"
+		}
+		out = append(out, prediction{rule, nextGeometric(ts)})
 	}
 	// odd/even subsequences both arithmetic
 	var odd, even []int64
@@ -135,13 +139,85 @@ func hypotheses(ts []int64) []prediction {
 	if ds := diffsOf(ts); len(ds) >= 3 && isGeometric(ds) {
 		out = append(out, prediction{"diffgeom", new(big.Rat).Add(rat(ts[n-1]), nextGeometric(ds))})
 	}
+	out = append(out, altOpsPredictions(ts)...)
+	if next, ok := consecutivePrimes(ts); ok {
+		out = append(out, prediction{"prime", rat(next)})
+	}
 	return out
 }
 
+// altOpsPredictions tries every pairing of "add or subtract d" with
+// "multiply by 2 or 3", in either order, deriving d from the first additive
+// step, and returns the continuation of each pairing that fits all shown terms.
+func altOpsPredictions(ts []int64) []prediction {
+	var out []prediction
+	for variant := 0; variant < 4; variant++ {
+		firstMul := variant == 1 || variant == 2
+		addAt := 0
+		if firstMul {
+			addAt = 1
+		}
+		delta := ts[addAt+1] - ts[addAt]
+		if (variant <= 1) != (delta > 0) {
+			continue // variants 0 and 1 add, 2 and 3 subtract
+		}
+		for r := int64(2); r <= 3; r++ {
+			step := func(k int, v int64) int64 {
+				if (k%2 == 0) == firstMul {
+					return v * r
+				}
+				return v + delta
+			}
+			fits := true
+			for k := 0; k+1 < len(ts); k++ {
+				if step(k, ts[k]) != ts[k+1] {
+					fits = false
+					break
+				}
+			}
+			if fits {
+				out = append(out, prediction{"altops", rat(step(len(ts)-1, ts[len(ts)-1]))})
+			}
+		}
+	}
+	return out
+}
+
+func isPrimeNumber(v int64) bool {
+	if v < 2 {
+		return false
+	}
+	for d := int64(2); d*d <= v; d++ {
+		if v%d == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// consecutivePrimes reports whether every shown term is the prime right after
+// the one before it, and returns the prime that follows the last term.
+func consecutivePrimes(ts []int64) (int64, bool) {
+	next := func(v int64) int64 {
+		for v++; !isPrimeNumber(v); v++ {
+		}
+		return v
+	}
+	if !isPrimeNumber(ts[0]) {
+		return 0, false
+	}
+	for i := 1; i < len(ts); i++ {
+		if ts[i] != next(ts[i-1]) {
+			return 0, false
+		}
+	}
+	return next(ts[len(ts)-1]), true
+}
+
 // primary names the rule of a series: the first fitting hypothesis, using the
-// priority arith, geom, alt, order2, fib, diffgeom, order3.
+// priority arith, geom, geomdown, alt, order2, fib, diffgeom, order3, altops, prime.
 func primary(hs []prediction) string {
-	for _, want := range []string{"arith", "geom", "alt", "order2", "fib", "diffgeom", "order3"} {
+	for _, want := range []string{"arith", "geom", "geomdown", "alt", "order2", "fib", "diffgeom", "order3", "altops", "prime"} {
 		for _, h := range hs {
 			if h.rule == want {
 				return want
@@ -223,9 +299,9 @@ func TestPropertyKeyMatchesIndependentRules(t *testing.T) {
 
 func TestBandsEmitExpectedRules(t *testing.T) {
 	want := map[gen.Band][]string{
-		gen.Band1: {"arith", "geom"},
-		gen.Band2: {"order2", "alt"},
-		gen.Band3: {"order2", "order3", "fib", "diffgeom"},
+		gen.Band1: {"arith", "geom", "geomdown"},
+		gen.Band2: {"order2", "alt", "altops", "prime"},
+		gen.Band3: {"order2", "order3", "fib", "diffgeom", "prime"},
 	}
 	for band, rules := range want {
 		seen := map[string]int{}
@@ -407,15 +483,48 @@ func TestFixtures(t *testing.T) {
 			stepPart: "Suku berikutnya = 42 + 81 = 123.",
 		},
 		{
-			name: "band3 selisih tingkat dua",
-			p:    params{kind: kindOrder3, n: 6, a: 1, d: 1, c: 0, e: 1},
-			stem: "Perhatikan deret angka berikut: 1, 2, 3, 5, 9, 16, ... Angka berikutnya dalam deret itu adalah ...",
-			key:  "27",
+			name: "band1 geometri turun",
+			p:    params{kind: kindGeomDown, n: 5, a: 160, r: 2},
+			stem: "Perhatikan deret angka berikut: 160, 80, 40, 20, 10, ... Angka berikutnya dalam deret itu adalah ...",
+			key:  "5",
 			wantMis: map[string][]string{
-				MisBedaTerakhir:     {"23"},
-				MisSalahHitungDekat: {"26", "28", "29"},
+				MisRasioJadiBeda:    {"8"},
+				MisSalahHitungDekat: {"4", "6", "7"},
 			},
-			stepPart: "Suku berikutnya = 16 + 11 = 27.",
+			stepPart: "Suku berikutnya = 10 : 2 = 5.",
+		},
+		{
+			name: "band2 operasi bergantian tambah lalu kali",
+			p:    params{kind: kindAltOps, n: 6, a: 3, d: 2, r: 2, e: 0},
+			stem: "Perhatikan deret angka berikut: 3, 5, 10, 12, 24, 26, ... Angka berikutnya dalam deret itu adalah ...",
+			key:  "52",
+			wantMis: map[string][]string{
+				MisSatuOperasi:      {"28"},
+				MisSalahHitungDekat: {"51", "53", "54"},
+			},
+			stepPart: "Operasi berikutnya adalah kali 2, jadi suku berikutnya = 26 x 2 = 52.",
+		},
+		{
+			name: "band2 operasi bergantian kali lalu kurang",
+			p:    params{kind: kindAltOps, n: 7, a: 10, d: 3, r: 2, e: 2},
+			stem: "Perhatikan deret angka berikut: 10, 20, 17, 34, 31, 62, 59, ... Angka berikutnya dalam deret itu adalah ...",
+			key:  "118",
+			wantMis: map[string][]string{
+				MisSatuOperasi:      {"56"},
+				MisSalahHitungDekat: {"117", "119", "120"},
+			},
+			stepPart: "Dua operasi dipakai bergantian: kali 2, lalu kurang 3, dan seterusnya.",
+		},
+		{
+			name: "band2 prima berurutan",
+			p:    params{kind: kindPrime, n: 6, a: 13},
+			stem: "Perhatikan deret angka berikut: 13, 17, 19, 23, 29, 31, ... Angka berikutnya dalam deret itu adalah ...",
+			key:  "37",
+			wantMis: map[string][]string{
+				MisBukanPrima:       {"33", "35"},
+				MisSalahHitungDekat: {"36", "38"},
+			},
+			stepPart: "Bilangan di antara 31 dan 37 bukan prima: 32 (habis dibagi 2), 33 (habis dibagi 3), 34 (habis dibagi 2), 35 (habis dibagi 5), 36 (habis dibagi 2).",
 		},
 	}
 	for _, c := range cases {
@@ -480,15 +589,38 @@ func TestGenerateErrorsWithoutValidParams(t *testing.T) {
 
 func TestValidRejectsOutOfRangeTerms(t *testing.T) {
 	bad := []params{
-		{kind: kindArith, n: 5, a: 3, d: -2},           // goes below 1
-		{kind: kindGeom, n: 6, a: 6, r: 3},             // exceeds maxTerm
-		{kind: kindAlt, n: 6, a: 5, d: 3, b: 5, d2: 3}, // identical rules
-		{kind: kindStepped, n: 5, a: 1, d: 2, e: 0},    // not stepped
-		{kind: kindCube, n: 6, s: 7, c: 0},             // 13^3 > maxTerm
+		{kind: kindArith, n: 5, a: 3, d: -2},             // goes below 1
+		{kind: kindGeom, n: 6, a: 6, r: 3},               // exceeds maxTerm
+		{kind: kindAlt, n: 6, a: 5, d: 3, b: 5, d2: 3},   // identical rules
+		{kind: kindStepped, n: 5, a: 1, d: 2, e: 0},      // not stepped
+		{kind: kindCube, n: 6, s: 7, c: 0},               // 13^3 > maxTerm
+		{kind: kindGeomDown, n: 5, a: 100, r: 2},         // 100 / 2^3 is not whole
+		{kind: kindAltOps, n: 6, a: 4, d: 4, r: 2, e: 2}, // 4, 8, 4, 8, ...
+		{kind: kindPrime, n: 5, a: 181},                  // 181, 191, 193, 197, 199, then 211 > maxPrime
+		{kind: kindPrime, n: 5, a: 4},                    // first term is not prime
+		{kind: kindPrime, n: 6, a: 7},                    // 7, 11, 13, ... also fits two arithmetic subsequences
 	}
 	for _, p := range bad {
 		if valid(p) {
 			t.Errorf("valid(%+v) = true", p)
+		}
+	}
+}
+
+func TestDistinctStemsPer20000(t *testing.T) {
+	min := map[gen.Band]int{gen.Band1: 2000, gen.Band3: 5000}
+	for band := gen.Band1; band <= gen.Band3; band++ {
+		stems := map[string]bool{}
+		for seed := int64(1); seed <= 20000; seed++ {
+			d, err := Family{}.Generate(seed, band)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stems[d.Stem] = true
+		}
+		t.Logf("band %d: %d distinct stems in 20000 seeds", band, len(stems))
+		if len(stems) < min[band] {
+			t.Errorf("band %d: only %d distinct stems in 20000 seeds, want >= %d", band, len(stems), min[band])
 		}
 	}
 }
