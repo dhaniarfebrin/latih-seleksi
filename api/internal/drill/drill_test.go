@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"latihseleksi/api/internal/gen/kecepatan"
+	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/kerjasama"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/store"
@@ -59,9 +59,29 @@ func TestPatternsListAllFamiliesWithLabels(t *testing.T) {
 			}
 		}
 	}
-	want := []string{persentase.PatternID, kerjasama.PatternID, kecepatan.PatternID}
+	var want []string
+	for _, f := range catalog.All() {
+		want = append(want, f.ID())
+	}
 	if strings.Join(ids, ",") != strings.Join(want, ",") {
 		t.Fatalf("pattern ids = %v, want %v", ids, want)
+	}
+}
+
+// kerja-sama band 1 has only a few hundred distinct stems, so 20 random items
+// would repeat one about half the time without the de-duplication in Create.
+func TestCreateAvoidsRepeatedStems(t *testing.T) {
+	svc, _ := newService(t)
+	v, err := svc.Create(context.Background(), kerjasama.PatternID, 20, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, it := range v.Items {
+		if seen[it.Stem] {
+			t.Errorf("repeated stem at pos %d: %s", it.Pos, it.Stem)
+		}
+		seen[it.Stem] = true
 	}
 }
 

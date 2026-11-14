@@ -147,21 +147,32 @@ func (s *Service) Create(ctx context.Context, patternID string, n, band int) (At
 	}
 
 	items := make([]store.Item, 0, n)
+	seen := make(map[string]bool, n)
 	for pos := 1; pos <= n; pos++ {
+		// Retry on a generation error or a stem already in this attempt; if
+		// every retry repeats a stem, keep the last repeat rather than fail.
 		var draft gen.Draft
 		var err error
+		got := false
 		for try := 0; try < seedRetries; try++ {
 			var seed int64
 			if seed, err = randomSeed(); err != nil {
 				return AttemptView{}, err
 			}
-			if draft, err = fam.Generate(seed, gen.Band(band)); err == nil {
+			d, genErr := fam.Generate(seed, gen.Band(band))
+			if genErr != nil {
+				err = genErr
+				continue
+			}
+			draft, got, err = d, true, nil
+			if !seen[d.Stem] {
 				break
 			}
 		}
-		if err != nil {
+		if !got {
 			return AttemptView{}, fmt.Errorf("generate item %d: %w", pos, err)
 		}
+		seen[draft.Stem] = true
 		raw, err := json.Marshal(toSnapshot(draft))
 		if err != nil {
 			return AttemptView{}, err

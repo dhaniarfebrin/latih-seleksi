@@ -11,8 +11,7 @@ import (
 	"testing"
 
 	"latihseleksi/api/internal/drill"
-	"latihseleksi/api/internal/gen/kecepatan"
-	"latihseleksi/api/internal/gen/kerjasama"
+	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/store"
 )
@@ -96,7 +95,8 @@ func TestHealthAndPatterns(t *testing.T) {
 	for _, p := range body.Patterns {
 		have[p.ID] = len(p.Misconceptions)
 	}
-	for _, id := range []string{persentase.PatternID, kerjasama.PatternID, kecepatan.PatternID} {
+	for _, f := range catalog.All() {
+		id := f.ID()
 		if have[id] == 0 {
 			t.Errorf("pattern %s missing or without misconceptions in %s", id, out)
 		}
