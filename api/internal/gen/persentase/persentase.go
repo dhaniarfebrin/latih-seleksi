@@ -50,6 +50,13 @@ var contexts = []contextTemplate{
 	{"Harga suatu barang", "harga akhir", "harga"},
 	{"Nilai investasi seorang pegawai", "nilai akhir", "nilai"},
 	{"Harga sebuah tiket pesawat", "harga akhir", "harga"},
+	{"Gaji pokok seorang karyawan", "gaji akhir", "gaji"},
+	{"Tarif parkir sebuah pusat perbelanjaan", "tarif akhir", "tarif"},
+	{"Harga sebuah buku pelajaran", "harga akhir", "harga"},
+	{"Upah harian seorang pekerja", "upah akhir", "upah"},
+	{"Iuran bulanan sebuah perumahan", "iuran akhir", "iuran"},
+	{"Biaya pendaftaran sebuah kursus", "biaya akhir", "biaya"},
+	{"Target penjualan sebuah toko", "target akhir", "target"},
 }
 
 // Family implements gen.Family for chained percentages.
@@ -112,11 +119,14 @@ func pickParams(rng *rand.Rand, band gen.Band) params {
 	}
 	changes := make([]int, n)
 	for i := range changes {
-		if band != gen.Band2 {
+		switch band {
+		case gen.Band1:
+			changes[i] = (rng.Intn(12) + 1) * 5
+		case gen.Band2:
+			changes[i] = rng.Intn(50) + 1
+		default:
 			// multiples of 5 keep the 3-step key at one decimal often enough
 			changes[i] = (rng.Intn(10) + 1) * 5
-		} else {
-			changes[i] = rng.Intn(50) + 1
 		}
 	}
 	signs := make([]bool, n) // true = increase

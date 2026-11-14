@@ -47,6 +47,15 @@ var contexts = []contextTemplate{
 	{"mengecat sebuah pagar"},
 	{"membersihkan sebuah gudang"},
 	{"menyusun sebuah laporan"},
+	{"menggali sebuah saluran air"},
+	{"memasang keramik sebuah ruangan"},
+	{"memanen sebidang ladang jagung"},
+	{"menjahit seragam sekolah satu kelas"},
+	{"mencetak setumpuk brosur"},
+	{"merapikan arsip sebuah kantor"},
+	{"membersihkan sebuah kolam"},
+	{"memperbaiki sebuah jalan desa"},
+	{"mengecat sebuah ruang kelas"},
 }
 
 var names = []string{"A", "B", "C"}
@@ -115,8 +124,18 @@ func pickParams(rng *rand.Rand, band gen.Band) params {
 	ctx := rng.Intn(len(contexts))
 	switch band {
 	case gen.Band1:
-		// a = k*u*(u+v), b = k*v*(u+v) gives ab/(a+b) = k*u*v, a whole number
-		u, v, k := rng.Intn(6)+1, rng.Intn(6)+1, rng.Intn(3)+1
+		// a = k*u*(u+v), b = k*v*(u+v) gives ab/(a+b) = k*u*v, a whole number;
+		// k is capped so both times stay within maxTime
+		u, v := rng.Intn(9)+1, rng.Intn(9)+1
+		hi := u
+		if v > hi {
+			hi = v
+		}
+		kMax := maxTime / (hi * (u + v))
+		if kMax < 1 {
+			return params{context: ctx} // rejected by solve
+		}
+		k := rng.Intn(kMax) + 1
 		return params{times: []int{k * u * (u + v), k * v * (u + v)}, context: ctx}
 	case gen.Band2:
 		// times n/x, n/y, n/z with n a multiple of lcm(x,y,z,x+y+z) make the

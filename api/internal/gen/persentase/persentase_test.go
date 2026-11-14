@@ -187,3 +187,21 @@ func TestMisconceptionLabelsCoverEmittedIds(t *testing.T) {
 		}
 	}
 }
+
+func TestDistinctStemsPer20000(t *testing.T) {
+	min := map[gen.Band]int{gen.Band1: 1500, gen.Band2: 4000, gen.Band3: 7000}
+	for band := gen.Band1; band <= gen.Band3; band++ {
+		stems := map[string]bool{}
+		for seed := int64(1); seed <= 20000; seed++ {
+			d, err := Family{}.Generate(seed, band)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stems[d.Stem] = true
+		}
+		t.Logf("band %d: %d distinct stems in 20000 seeds", band, len(stems))
+		if len(stems) < min[band] {
+			t.Errorf("band %d: only %d distinct stems in 20000 seeds, want >= %d", band, len(stems), min[band])
+		}
+	}
+}
