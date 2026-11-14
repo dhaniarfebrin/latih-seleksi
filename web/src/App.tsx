@@ -81,7 +81,7 @@ function Start(props: {
       <h1 className="d">
         Latih <mark>Seleksi</mark>
       </h1>
-      <p className="muted">{pattern ? pattern.label : 'Memuat pola soal...'} (TIU numerik). Jawab, lalu lihat langkah dan jenis salah hitungnya.</p>
+      <p className="muted">{pattern ? pattern.label : 'Memuat pola soal...'} (TIU). Jawab, lalu lihat langkah dan jenis salah hitungnya.</p>
       <fieldset className="field">
         <legend>Pola soal</legend>
         <div className="seg">

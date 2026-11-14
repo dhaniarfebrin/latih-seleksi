@@ -9,9 +9,10 @@ import (
 	"latihseleksi/api/internal/gen/perbandingan"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/gen/ratarata"
+	"latihseleksi/api/internal/gen/silogisme"
 )
 
 // All returns the families in display order.
 func All() []gen.Family {
-	return []gen.Family{persentase.Family{}, kerjasama.Family{}, kecepatan.Family{}, ratarata.Family{}, deretangka.Family{}, perbandingan.Family{}}
+	return []gen.Family{persentase.Family{}, kerjasama.Family{}, kecepatan.Family{}, ratarata.Family{}, deretangka.Family{}, perbandingan.Family{}, silogisme.Family{}}
 }
