@@ -91,10 +91,11 @@ latih-seleksi/
       drill/            layanan sesi drill (pembuatan sesi, jawaban, submit)
       store/            akses Postgres (pgx) dan penjalan migrasi
       httpx/            router net/http, request id, access log, CORS
-      spec/             (rencana) exam_spec: parsing, validasi, versi aktif
+      spec/             spesifikasi ujian: tipe, parsing ketat, Validate, registri
+        data/           skd-2024.json, skd-sekolah-kedinasan-2026.json (go:embed)
       content/          (rencana) item, status, state machine, kutipan
       exam/             (rencana) sesi simulasi, timer server
-      scoring/          (rencana) skor per subtes, ambang, status gugur
+      scoring/          skor per subtes dan per jalur, ambang, status lulus
       mastery/          (rencana) akurasi per pola, klasifikasi sebab, FSRS
       report/           (rencana) laporan soal dan riwayat koreksi
       account/          (rencana) profil, ekspor, hapus
@@ -102,7 +103,6 @@ latih-seleksi/
       migrations/       SQL, di-embed ke biner (db.go)
   web/                  SPA Vite + React + TS (Dockerfile + nginx.conf untuk lokal)
     src/                App.tsx, api.ts, session.ts (+ uji)
-  specs/                (rencana) exam spec berversi sebagai data (skd-2024.json, ...)
   .github/workflows/    (rencana)
 ```
 
@@ -112,29 +112,34 @@ Aturan ketergantungan (berlaku untuk paket target): `exam` boleh memakai `spec`,
 
 ## 5. Spesifikasi ujian sebagai data
 
-`specs/skd-2024.json` dimuat ke tabel `exam_spec`. Angka berikut berasal dari KepmenPANRB 321/2024 (`docs/research/notes/spesifikasi_resmi.md` §1):
+Spesifikasi berupa berkas JSON di `api/internal/spec/data/`, di-embed ke biner (`go:embed` tidak bisa keluar dari modul `api/`). `spec.Load` mem-parse ketat (field tak dikenal ditolak) dan memvalidasi semuanya saat start; tabel `exam_spec` (langkah berikutnya) hanya menyimpan salinan untuk riwayat hasil. Ada dua berkas karena TKP-nya berbeda: `skd-2024` (KepmenPANRB 321/2024, scope `cpns`) dan `skd-sekolah-kedinasan-2026` (KepmenPANRB 406/2026, scope `sekolah-kedinasan`). Angka berasal dari `docs/research/notes/spesifikasi_resmi.md` §1:
 
 ```json
 {
   "id": "skd-2024",
-  "label": "SKD 2024",
+  "label": "SKD CPNS 2024",
   "source": "KepmenPANRB 321/2024",
+  "source_url": "https://data-jdih.menpan.go.id/dokumen/2024kepmenpanrb321.pdf",
+  "enacted_on": "2024-07-29",
+  "scope": "cpns",
   "duration_min": 100,
   "sections": [
-    { "id": "TWK", "items": 30, "scoring": { "correct": 5, "wrong": 0, "blank": 0 }, "aspects": ["nasionalisme","integritas","bela-negara","pilar-negara","bahasa-negara"] },
-    { "id": "TIU", "items": 35, "scoring": { "correct": 5, "wrong": 0, "blank": 0 } },
-    { "id": "TKP", "items": 45, "scoring": { "weights": [1,5], "blank": 0 }, "aspects": ["pelayanan-publik","jejaring-kerja","sosial-budaya","tik","profesionalisme","anti-radikalisme"] }
+    { "id": "TWK", "label": "Tes Wawasan Kebangsaan", "items": 30, "scoring": { "kind": "right-wrong", "correct": 5 }, "aspects": ["nasionalisme","integritas","bela-negara","pilar-negara","bahasa-negara"] },
+    { "id": "TIU", "label": "Tes Intelegensia Umum", "items": 35, "scoring": { "kind": "right-wrong", "correct": 5 } },
+    { "id": "TKP", "label": "Tes Karakteristik Pribadi", "items": 45, "scoring": { "kind": "weighted", "min": 1, "max": 5 }, "aspects": ["pelayanan-publik","jejaring-kerja","sosial-budaya","tik","profesionalisme","anti-radikalisme"] }
   ],
-  "tracks": {
-    "umum":      { "thresholds": { "TWK": 65, "TIU": 80, "TKP": 166 } },
-    "cumlaude":  { "total_min": 311, "thresholds": { "TIU": 85 } },
-    "afirmasi":  { "total_min": 286, "thresholds": { "TIU": 60 } }
-  },
+  "tracks": [
+    { "id": "umum",     "label": "Kebutuhan umum", "thresholds": { "TWK": 65, "TIU": 80, "TKP": 166 } },
+    { "id": "cumlaude", "label": "Cumlaude dan diaspora", "total_min": 311, "thresholds": { "TIU": 85 } },
+    { "id": "afirmasi", "label": "Penyandang disabilitas, putra/putri Papua, daerah tertinggal", "total_min": 286, "thresholds": { "TIU": 60 } }
+  ],
   "max_total": 550
 }
 ```
 
-- Validator `spec.Validate` memeriksa konsistensi: jumlah soal × bobot = skor maksimum, `max_total` sama dengan jumlah skor maksimum subtes. Ini menangkap salah ketik angka sebelum dipakai.
+`tracks` berupa array supaya urutan tampilan stabil. Sebuah jalur lulus bila semua `thresholds` terpenuhi dan `total_min` (bila ada) terpenuhi; subtes tanpa ambang di jalur itu tidak bisa gugur. Skor `blank` dan `wrong` bernilai 0 bila tidak ditulis.
+
+- Validator `spec.Validate` memeriksa konsistensi: skor maksimum subtes = jumlah soal × bobot tertinggi, `max_total` sama dengan jumlah skor maksimum subtes, ambang tidak melebihi skor maksimum subtes, id unik. Ini menangkap salah ketik angka sebelum dipakai. `scoring.Score` hanya menghitung dari titik per butir (`Response`) terhadap spec dan jalur; ia tidak tahu soal.
 - Versi baru ditambahkan sebagai berkas baru, tidak mengubah yang lama, supaya riwayat hasil tetap bisa dinilai ulang dengan spesifikasi yang berlaku saat itu.
 - Per 14 Nov 2026 Kepmen ambang CPNS 2026 belum ditemukan. Ambang 2024 tampil dengan label tahun di UI (FR-02). Jalur lain yang tidak memiliki ambang per subtes (total saja) ditangani oleh bentuk `tracks` di atas.
 

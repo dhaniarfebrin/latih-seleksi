@@ -1,0 +1,45 @@
+{
+  "id": "skd-sekolah-kedinasan-2026",
+  "label": "SKD sekolah kedinasan 2026",
+  "source": "KepmenPANRB 406/2026",
+  "source_url": "https://data-jdih.menpan.go.id/dokumen/2026kepmenpanrb406.pdf",
+  "enacted_on": "2026-07-27",
+  "scope": "sekolah-kedinasan",
+  "duration_min": 100,
+  "sections": [
+    {
+      "id": "TWK",
+      "label": "Tes Wawasan Kebangsaan",
+      "items": 30,
+      "scoring": { "kind": "right-wrong", "correct": 5 },
+      "aspects": ["nasionalisme", "integritas", "bela-negara", "pilar-negara", "bahasa-negara"]
+    },
+    {
+      "id": "TIU",
+      "label": "Tes Intelegensia Umum",
+      "items": 35,
+      "scoring": { "kind": "right-wrong", "correct": 5 }
+    },
+    {
+      "id": "TKP",
+      "label": "Tes Karakteristik Pribadi",
+      "items": 45,
+      "scoring": { "kind": "weighted", "min": 1, "max": 5 },
+      "aspects": ["pelayanan-publik", "jejaring-kerja", "sosial-budaya", "tik", "profesionalisme", "anti-radikalisme"]
+    }
+  ],
+  "tracks": [
+    {
+      "id": "umum",
+      "label": "Kebutuhan umum",
+      "thresholds": { "TWK": 65, "TIU": 80, "TKP": 156 }
+    },
+    {
+      "id": "afirmasi",
+      "label": "Afirmasi daerah tertentu",
+      "total_min": 281,
+      "thresholds": { "TIU": 55 }
+    }
+  ],
+  "max_total": 550
+}
