@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-latih}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-latih}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-latih}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-latih}?sslmode=disable
+      PORT: "8080"
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # nginx serves the SPA and proxies /v1 to api:8080; this is the only service
+  # published to the LAN.
+  web:
+    build: ./web
+    ports:
+      - "${WEB_PORT:-8081}:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

@@ -1,0 +1,29 @@
+# Secrets and local config (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# Local agent files
+.ai/
+.claude/
+
+# Go
+api/bin/
+api/*.test
+api/*.out
+
+# Node / web
+node_modules/
+web/dist/
+web/coverage/
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+.vitest/
+.playwright-mcp/
+
+# Personal study material (not for the public repo)
+docs/seed/

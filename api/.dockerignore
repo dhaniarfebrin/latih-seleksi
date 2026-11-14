@@ -1,0 +1,9 @@
+.git
+.ai
+Dockerfile
+.dockerignore
+*.md
+*.test
+*.out
+.env
+.env.*
