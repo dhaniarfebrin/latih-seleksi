@@ -6,11 +6,12 @@ import (
 	"latihseleksi/api/internal/gen/deretangka"
 	"latihseleksi/api/internal/gen/kecepatan"
 	"latihseleksi/api/internal/gen/kerjasama"
+	"latihseleksi/api/internal/gen/perbandingan"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/gen/ratarata"
 )
 
 // All returns the families in display order.
 func All() []gen.Family {
-	return []gen.Family{persentase.Family{}, kerjasama.Family{}, kecepatan.Family{}, ratarata.Family{}, deretangka.Family{}}
+	return []gen.Family{persentase.Family{}, kerjasama.Family{}, kecepatan.Family{}, ratarata.Family{}, deretangka.Family{}, perbandingan.Family{}}
 }
