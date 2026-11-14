@@ -27,24 +27,13 @@ type Draft struct {
 	Seed      int64
 }
 
-// Params are the numbers behind one question. For chained percentages,
-// Changes holds the signed percent of each step (positive = increase) and
-// Context selects the sentence template.
-type Params struct {
-	Changes []int
-	Context int
-}
-
-// Answer is the exact result of Solve: the net change in percent is Num/Den.
-type Answer struct {
-	Num  int64
-	Den  int64
-	Text string
-}
-
-// Family generates questions of one pattern and solves them independently.
+// Family generates questions of one pattern.
 type Family interface {
 	ID() string
+	// Label is the user-facing name of the pattern.
+	Label() string
+	// Misconceptions maps each misconception id the family can emit to its
+	// user-facing label. Ids are unique per pattern, not globally.
+	Misconceptions() map[string]string
 	Generate(seed int64, band Band) (Draft, error)
-	Solve(p Params) (Answer, []string)
 }

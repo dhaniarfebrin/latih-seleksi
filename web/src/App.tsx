@@ -6,22 +6,44 @@ const N = 8
 
 export function App() {
   const [s, dispatch] = useReducer(reduce, initialSession)
+  const [patterns, setPatterns] = useState<Pattern[]>([])
+  const [patternsError, setPatternsError] = useState('')
+
+  useEffect(() => {
+    listPatterns()
+      .then(setPatterns)
+      .catch((e: Error) => setPatternsError(e.message))
+  }, [])
+
+  const labelsOf = (patternId: string) => patterns.find((p) => p.id === patternId)?.misconceptions ?? {}
   return (
     <div className="app">
       <main className="screen">
-        {s.screen === 'start' && <Start onStarted={(attempt) => dispatch({ type: 'started', attempt })} />}
+        {s.screen === 'start' && (
+          <Start
+            patterns={patterns}
+            loadError={patternsError}
+            onStarted={(attempt) => dispatch({ type: 'started', attempt })}
+          />
+        )}
         {s.screen === 'question' && s.attempt && (
           <Question
             key={s.index}
             attemptId={s.attempt.id}
             item={s.attempt.items[s.index]}
             total={s.attempt.items.length}
+            labels={labelsOf(s.attempt.pattern_id)}
             onAnswered={(pos, response) => dispatch({ type: 'answered', pos, response })}
             onNext={() => dispatch({ type: 'next' })}
           />
         )}
         {s.screen === 'summary' && s.attempt && (
-          <Summary attemptId={s.attempt.id} items={s.attempt.items} onAgain={() => dispatch({ type: 'reset' })} />
+          <Summary
+            attemptId={s.attempt.id}
+            items={s.attempt.items}
+            labels={labelsOf(s.attempt.pattern_id)}
+            onAgain={() => dispatch({ type: 'reset' })}
+          />
         )}
       </main>
       <Footer />
@@ -29,19 +51,18 @@ export function App() {
   )
 }
 
-function Start({ onStarted }: { onStarted: (a: Awaited<ReturnType<typeof createAttempt>>) => void }) {
-  const [patterns, setPatterns] = useState<Pattern[]>([])
+function Start(props: {
+  patterns: Pattern[]
+  loadError: string
+  onStarted: (a: Awaited<ReturnType<typeof createAttempt>>) => void
+}) {
+  const { patterns, loadError, onStarted } = props
+  const [patternId, setPatternId] = useState('')
   const [band, setBand] = useState(2)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    listPatterns()
-      .then(setPatterns)
-      .catch((e: Error) => setError(e.message))
-  }, [])
-
-  const pattern = patterns[0]
+  const pattern = patterns.find((p) => p.id === patternId) ?? patterns[0]
   const start = async () => {
     if (!pattern) return
     setBusy(true)
@@ -62,6 +83,22 @@ function Start({ onStarted }: { onStarted: (a: Awaited<ReturnType<typeof createA
       </h1>
       <p className="muted">{pattern ? pattern.label : 'Memuat pola soal...'} (TIU numerik). Jawab, lalu lihat langkah dan jenis salah hitungnya.</p>
       <fieldset className="field">
+        <legend>Pola soal</legend>
+        <div className="seg">
+          {patterns.map((p) => (
+            <label key={p.id} className={pattern?.id === p.id ? 'on' : ''}>
+              <input
+                type="radio"
+                name="pattern"
+                checked={pattern?.id === p.id}
+                onChange={() => setPatternId(p.id)}
+              />
+              {p.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="field">
         <legend>Tingkat kesulitan</legend>
         <div className="seg">
           {[
@@ -76,9 +113,9 @@ function Start({ onStarted }: { onStarted: (a: Awaited<ReturnType<typeof createA
           ))}
         </div>
       </fieldset>
-      {error && (
+      {(loadError || error) && (
         <p role="alert" className="err">
-          {error}
+          {error || loadError}
         </p>
       )}
       <button className="btn hi" disabled={!pattern || busy} onClick={start}>
@@ -92,10 +129,11 @@ function Question(props: {
   attemptId: string
   item: Item
   total: number
+  labels: Record<string, string>
   onAnswered: (pos: number, r: NonNullable<Item['response']>) => void
   onNext: () => void
 }) {
-  const { attemptId, item, total, onAnswered, onNext } = props
+  const { attemptId, item, total, labels, onAnswered, onNext } = props
   const startedAt = useRef(performance.now())
   const [elapsed, setElapsed] = useState(0)
   const [sending, setSending] = useState(false)
@@ -169,7 +207,7 @@ function Question(props: {
       {r && (
         <section className="panel" aria-live="polite">
           <p className={`verdict ${r.correct ? 'ok' : 'bad'}`}>{r.correct ? 'Benar' : `Salah. Kunci: ${r.answer_key}`}</p>
-          {r.misconception_id && <p className="chip warn">{misconceptionLabel(r.misconception_id)}</p>}
+          {r.misconception_id && <p className="chip warn">{misconceptionLabel(labels, r.misconception_id)}</p>}
           <h2 className="sub">Langkah</h2>
           <ol className="steps">
             {r.steps.map((st, i) => (
@@ -185,7 +223,8 @@ function Question(props: {
   )
 }
 
-function Summary({ attemptId, items, onAgain }: { attemptId: string; items: Item[]; onAgain: () => void }) {
+function Summary(props: { attemptId: string; items: Item[]; labels: Record<string, string>; onAgain: () => void }) {
+  const { attemptId, items, labels, onAgain } = props
   const sum = summarize(items)
   const [submitError, setSubmitError] = useState('')
   const sent = useRef(false)
@@ -219,7 +258,7 @@ function Summary({ attemptId, items, onAgain }: { attemptId: string; items: Item
           <ul className="tally" role="list">
             {tally.map(([id, c]) => (
               <li key={id}>
-                <span>{misconceptionLabel(id)}</span>
+                <span>{misconceptionLabel(labels, id)}</span>
                 <span className="num">{c}x</span>
               </li>
             ))}

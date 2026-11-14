@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"latihseleksi/api/internal/drill"
+	"latihseleksi/api/internal/gen/kecepatan"
+	"latihseleksi/api/internal/gen/kerjasama"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/store"
 )
@@ -78,8 +80,26 @@ func TestHealthAndPatterns(t *testing.T) {
 		t.Errorf("healthz code=%d request-id=%q", code, hdr.Get("X-Request-Id"))
 	}
 	code, out, _ := do(t, "GET", srv.URL+"/v1/patterns", "")
-	if code != 200 || !strings.Contains(out, persentase.PatternID) {
-		t.Errorf("patterns code=%d body=%s", code, out)
+	if code != 200 {
+		t.Fatalf("patterns code=%d body=%s", code, out)
+	}
+	var body struct {
+		Patterns []struct {
+			ID             string            `json:"id"`
+			Misconceptions map[string]string `json:"misconceptions"`
+		} `json:"patterns"`
+	}
+	if err := json.Unmarshal([]byte(out), &body); err != nil {
+		t.Fatal(err)
+	}
+	have := map[string]int{}
+	for _, p := range body.Patterns {
+		have[p.ID] = len(p.Misconceptions)
+	}
+	for _, id := range []string{persentase.PatternID, kerjasama.PatternID, kecepatan.PatternID} {
+		if have[id] == 0 {
+			t.Errorf("pattern %s missing or without misconceptions in %s", id, out)
+		}
 	}
 }
 

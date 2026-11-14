@@ -8,11 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"latihseleksi/api/internal/gen"
-	"latihseleksi/api/internal/gen/persentase"
+	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/store"
 )
 
@@ -38,8 +37,9 @@ func invalid(format string, a ...any) error {
 
 // Pattern describes an available question family.
 type Pattern struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
+	ID             string            `json:"id"`
+	Label          string            `json:"label"`
+	Misconceptions map[string]string `json:"misconceptions"`
 }
 
 // snapshot is the frozen question stored in attempt_item.item_snapshot.
@@ -103,25 +103,25 @@ type Result struct {
 
 type Service struct {
 	store    *store.Store
+	ordered  []gen.Family // catalog order, for listing
 	families map[string]gen.Family
-	labels   map[string]string
 }
 
 func New(s *store.Store) *Service {
-	return &Service{
-		store:    s,
-		families: map[string]gen.Family{persentase.PatternID: persentase.Family{}},
-		labels:   map[string]string{persentase.PatternID: "Persentase berantai"},
+	ordered := catalog.All()
+	families := make(map[string]gen.Family, len(ordered))
+	for _, f := range ordered {
+		families[f.ID()] = f
 	}
+	return &Service{store: s, ordered: ordered, families: families}
 }
 
-// Patterns lists the registered families sorted by id.
+// Patterns lists the registered families in catalog order.
 func (s *Service) Patterns() []Pattern {
-	out := make([]Pattern, 0, len(s.families))
-	for id := range s.families {
-		out = append(out, Pattern{ID: id, Label: s.labels[id]})
+	out := make([]Pattern, 0, len(s.ordered))
+	for _, f := range s.ordered {
+		out = append(out, Pattern{ID: f.ID(), Label: f.Label(), Misconceptions: f.Misconceptions()})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
 }
 

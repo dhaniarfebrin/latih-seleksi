@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Attempt, ResponseView } from './api'
-import { initialSession, reduce, summarize } from './session'
+import { initialSession, misconceptionLabel, reduce, summarize } from './session'
 
 const resp = (correct: boolean, time_ms: number, mis?: string): ResponseView => ({
   answer: correct ? 'A' : 'B',
@@ -65,5 +65,18 @@ describe('summarize', () => {
 
   it('has zero average with no answers', () => {
     expect(summarize(attempt(2).items).avgMs).toBe(0)
+  })
+})
+
+describe('misconceptionLabel', () => {
+  const labels = { 'tanda-terbalik': 'Tanda tertukar' }
+
+  it('returns the label of the pattern', () => {
+    expect(misconceptionLabel(labels, 'tanda-terbalik')).toBe('Tanda tertukar')
+  })
+
+  it('falls back to the id when the pattern has no label for it', () => {
+    expect(misconceptionLabel(labels, 'tak-dikenal')).toBe('tak-dikenal')
+    expect(misconceptionLabel({}, 'tanda-terbalik')).toBe('tanda-terbalik')
   })
 })

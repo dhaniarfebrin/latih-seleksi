@@ -62,12 +62,6 @@ export function summarize(items: Item[]): Summary {
   return { n: items.length, answered, score, avgMs: answered ? Math.round(totalMs / answered) : 0, misconceptions }
 }
 
-// Labels for the misconception ids emitted by api/internal/gen/persentase.
-export const MISCONCEPTION_LABELS: Record<string, string> = {
-  'jumlah-langsung': 'Menjumlahkan persentase langsung, padahal tiap perubahan berlaku pada nilai terbaru',
-  'langkah-terakhir-saja': 'Hanya menghitung perubahan terakhir terhadap nilai awal',
-  'tanda-terbalik': 'Tanda kenaikan dan penurunan tertukar',
-  'salah-hitung-dekat': 'Salah hitung kecil: hasil mendekati jawaban benar',
-}
-
-export const misconceptionLabel = (id: string) => MISCONCEPTION_LABELS[id] ?? id
+// labels is Pattern.misconceptions of the attempt's pattern; ids are only
+// unique per pattern. Unknown ids fall back to the id itself.
+export const misconceptionLabel = (labels: Record<string, string>, id: string) => labels[id] ?? id

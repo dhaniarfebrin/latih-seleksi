@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"latihseleksi/api/internal/gen/kecepatan"
+	"latihseleksi/api/internal/gen/kerjasama"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/store"
 )
@@ -41,6 +43,39 @@ func frozenSnapshot(t *testing.T, st *store.Store, id string, pos int) snapshot 
 		t.Fatal(err)
 	}
 	return sn
+}
+
+func TestPatternsListAllFamiliesWithLabels(t *testing.T) {
+	got := New(nil).Patterns() // Patterns does not touch the store
+	var ids []string
+	for _, p := range got {
+		ids = append(ids, p.ID)
+		if p.Label == "" || len(p.Misconceptions) == 0 {
+			t.Errorf("pattern %s: label %q, %d misconceptions", p.ID, p.Label, len(p.Misconceptions))
+		}
+		for id, text := range p.Misconceptions {
+			if text == "" {
+				t.Errorf("pattern %s: empty label for %q", p.ID, id)
+			}
+		}
+	}
+	want := []string{persentase.PatternID, kerjasama.PatternID, kecepatan.PatternID}
+	if strings.Join(ids, ",") != strings.Join(want, ",") {
+		t.Fatalf("pattern ids = %v, want %v", ids, want)
+	}
+}
+
+func TestCreateWorksForEveryPattern(t *testing.T) {
+	svc, _ := newService(t)
+	for _, p := range svc.Patterns() {
+		v, err := svc.Create(context.Background(), p.ID, 3, 3)
+		if err != nil {
+			t.Fatalf("Create(%s): %v", p.ID, err)
+		}
+		if v.PatternID != p.ID || len(v.Items) != 3 {
+			t.Errorf("Create(%s) = pattern %s, %d items", p.ID, v.PatternID, len(v.Items))
+		}
+	}
 }
 
 func TestCreateHidesKey(t *testing.T) {

@@ -4,6 +4,7 @@ const BASE = import.meta.env.VITE_API_URL ?? ''
 export interface Pattern {
   id: string
   label: string
+  misconceptions: Record<string, string>
 }
 
 export interface Option {

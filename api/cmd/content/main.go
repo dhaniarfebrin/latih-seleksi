@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"latihseleksi/api/internal/gen"
+	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
 )
 
@@ -15,9 +17,21 @@ func main() {
 	seed := flag.Int64("seed", 1, "base seed; question i uses seed+i")
 	band := flag.Int("band", 2, "difficulty band (1-3)")
 	key := flag.Bool("key", false, "print answer key, steps and misconception labels")
+	pattern := flag.String("pattern", persentase.PatternID, "pattern id")
 	flag.Parse()
 
-	fam := persentase.Family{}
+	var fam gen.Family
+	var ids []string
+	for _, f := range catalog.All() {
+		ids = append(ids, f.ID())
+		if f.ID() == *pattern {
+			fam = f
+		}
+	}
+	if fam == nil {
+		fmt.Fprintf(os.Stderr, "error: unknown pattern %q; valid: %s\n", *pattern, strings.Join(ids, ", "))
+		os.Exit(1)
+	}
 	for i := 0; i < *n; i++ {
 		d, err := fam.Generate(*seed+int64(i), gen.Band(*band))
 		if err != nil {

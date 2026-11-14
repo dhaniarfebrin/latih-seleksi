@@ -26,6 +26,20 @@ const (
 	MisSalahHitungDekat = "salah-hitung-dekat"
 )
 
+// params are the numbers behind one question: changes holds the signed percent
+// of each step (positive = increase) and context selects the sentence template.
+type params struct {
+	changes []int
+	context int
+}
+
+// answer is the exact result of solve: the net change in percent is num/den.
+type answer struct {
+	num  int64
+	den  int64
+	text string
+}
+
 type contextTemplate struct {
 	subject string // opening noun phrase
 	final   string // label of the end value
@@ -45,6 +59,18 @@ var _ gen.Family = Family{}
 
 func (Family) ID() string { return PatternID }
 
+func (Family) Label() string { return "Persentase berantai" }
+
+// Misconceptions returns the labels of the ids in the Mis* constants.
+func (Family) Misconceptions() map[string]string {
+	return map[string]string{
+		MisJumlahLangsung:   "Menjumlahkan persentase langsung, padahal tiap perubahan berlaku pada nilai terbaru",
+		MisLangkahTerakhir:  "Hanya menghitung perubahan terakhir terhadap nilai awal",
+		MisTandaTerbalik:    "Tanda kenaikan dan penurunan tertukar",
+		MisSalahHitungDekat: "Salah hitung kecil: hasil mendekati jawaban benar",
+	}
+}
+
 // Generate returns the question for seed and band. Parameters whose net
 // change has more than one decimal are rejected; attempt k uses a seed
 // derived from (seed, k), and after maxAttempts it returns an error.
@@ -52,15 +78,12 @@ func (Family) Generate(seed int64, band gen.Band) (gen.Draft, error) {
 	return generate(seed, band, maxAttempts, oneDecimal)
 }
 
-// Solve computes the exact net change and the worked steps from the params.
-func (Family) Solve(p gen.Params) (gen.Answer, []string) { return solve(p) }
-
-func oneDecimal(p gen.Params) bool {
+func oneDecimal(p params) bool {
 	a, _ := solve(p)
-	return a.Num*10%a.Den == 0
+	return a.num*10%a.den == 0
 }
 
-func generate(seed int64, band gen.Band, attempts int, accept func(gen.Params) bool) (gen.Draft, error) {
+func generate(seed int64, band gen.Band, attempts int, accept func(params) bool) (gen.Draft, error) {
 	if band < gen.Band1 || band > gen.Band3 {
 		return gen.Draft{}, fmt.Errorf("persentase: band %d tidak dikenal", band)
 	}
@@ -82,7 +105,7 @@ func derive(seed int64, k int) int64 {
 	return int64(z ^ z>>31)
 }
 
-func pickParams(rng *rand.Rand, band gen.Band) gen.Params {
+func pickParams(rng *rand.Rand, band gen.Band) params {
 	n := 2
 	if band == gen.Band3 {
 		n = 3
@@ -110,13 +133,13 @@ func pickParams(rng *rand.Rand, band gen.Band) gen.Params {
 			changes[i] = -changes[i]
 		}
 	}
-	return gen.Params{Changes: changes, Context: rng.Intn(len(contexts))}
+	return params{changes: changes, context: rng.Intn(len(contexts))}
 }
 
-func solve(p gen.Params) (gen.Answer, []string) {
+func solve(p params) (answer, []string) {
 	steps := []string{"Misalkan nilai awal = 100."}
 	num, digits := int64(100), 0 // current value = num / 10^digits
-	for i, c := range p.Changes {
+	for i, c := range p.changes {
 		num *= int64(100 + c)
 		digits += 2
 		steps = append(steps, fmt.Sprintf("Langkah %d: %s %d%%, nilai x %s = %s.",
@@ -124,22 +147,22 @@ func solve(p gen.Params) (gen.Answer, []string) {
 	}
 	den := pow10(digits)
 	net := num - 100*den
-	ans := gen.Answer{Num: net, Den: den, Text: percentText(net, digits)}
+	ans := answer{num: net, den: den, text: percentText(net, digits)}
 	steps = append(steps, fmt.Sprintf("Perubahan bersih = %s - 100 = %s, yaitu %s.",
-		fmtFrac(num, digits, true), signedFrac(net, digits), ans.Text))
+		fmtFrac(num, digits, true), signedFrac(net, digits), ans.text))
 	return ans, steps
 }
 
-func build(p gen.Params, seed int64) gen.Draft {
+func build(p params, seed int64) gen.Draft {
 	ans, steps := solve(p)
-	keyTenths := int(ans.Num * 10 / ans.Den)
+	keyTenths := int(ans.num * 10 / ans.den)
 
 	type cand struct {
 		tenths int
 		mis    string
 	}
-	sum, last := 0, p.Changes[len(p.Changes)-1]
-	for _, c := range p.Changes {
+	sum, last := 0, p.changes[len(p.changes)-1]
+	for _, c := range p.changes {
 		sum += c
 	}
 	cands := []cand{
@@ -152,8 +175,8 @@ func build(p gen.Params, seed int64) gen.Draft {
 	}
 
 	type opt struct{ text, mis string }
-	opts := []opt{{ans.Text, ""}}
-	seen := map[string]bool{ans.Text: true}
+	opts := []opt{{ans.text, ""}}
+	seen := map[string]bool{ans.text: true}
 	for _, c := range cands {
 		if len(opts) == optionCount {
 			break
@@ -187,11 +210,11 @@ func build(p gen.Params, seed int64) gen.Draft {
 	}
 }
 
-func stem(p gen.Params) string {
-	t := contexts[p.Context%len(contexts)]
+func stem(p params) string {
+	t := contexts[p.context%len(contexts)]
 	var b strings.Builder
 	b.WriteString(t.subject)
-	for i, c := range p.Changes {
+	for i, c := range p.changes {
 		switch i {
 		case 0:
 			b.WriteString(" ")
@@ -207,7 +230,7 @@ func stem(p gen.Params) string {
 		}
 		if i > 0 {
 			prev := "kenaikan"
-			if p.Changes[i-1] < 0 {
+			if p.changes[i-1] < 0 {
 				prev = "penurunan"
 			}
 			fmt.Fprintf(&b, " dari %s setelah %s", t.ref, prev)

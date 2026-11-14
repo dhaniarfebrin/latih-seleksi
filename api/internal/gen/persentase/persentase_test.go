@@ -121,11 +121,11 @@ func TestDeterminismAndVariation(t *testing.T) {
 }
 
 func TestFixtureTIU08(t *testing.T) {
-	p := gen.Params{Changes: []int{20, -25}, Context: 0}
+	p := params{changes: []int{20, -25}, context: 0}
 	d := build(p, 7)
-	ans, steps := Family{}.Solve(p)
-	if ans.Text != "turun 10%" {
-		t.Fatalf("answer = %q", ans.Text)
+	ans, steps := solve(p)
+	if ans.text != "turun 10%" {
+		t.Fatalf("answer = %q", ans.text)
 	}
 	if len(steps) == 0 {
 		t.Fatal("no steps")
@@ -155,11 +155,35 @@ func TestFixtureTIU08(t *testing.T) {
 }
 
 func TestGenerateErrorsWithoutValidParams(t *testing.T) {
-	_, err := generate(1, gen.Band2, maxAttempts, func(gen.Params) bool { return false })
+	_, err := generate(1, gen.Band2, maxAttempts, func(params) bool { return false })
 	if err == nil {
 		t.Fatal("expected error when no params are accepted")
 	}
 	if _, err := (Family{}).Generate(1, gen.Band(9)); err == nil {
 		t.Fatal("expected error for unknown band")
+	}
+}
+
+func TestMisconceptionLabelsCoverEmittedIds(t *testing.T) {
+	fam := Family{}
+	labels := fam.Misconceptions()
+	for _, id := range []string{MisJumlahLangsung, MisLangkahTerakhir, MisTandaTerbalik, MisSalahHitungDekat} {
+		if labels[id] == "" {
+			t.Errorf("no label for %q", id)
+		}
+	}
+	if fam.Label() != "Persentase berantai" {
+		t.Errorf("label = %q", fam.Label())
+	}
+	for seed := int64(1); seed <= 200; seed++ {
+		d, err := fam.Generate(seed, gen.Band2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, o := range d.Options {
+			if o.MisconceptionID != "" && labels[o.MisconceptionID] == "" {
+				t.Fatalf("seed %d: emitted id %q has no label", seed, o.MisconceptionID)
+			}
+		}
 	}
 }
