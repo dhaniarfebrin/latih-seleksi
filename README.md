@@ -59,11 +59,11 @@ Catatan: pada beberapa Mac dengan Go 1.22.x, `go test` bisa berhenti dengan gala
 | `api/` | API Go: generator soal (`internal/gen`), layanan drill, penyimpanan Postgres, Dockerfile |
 | `web/` | Aplikasi web Vite + React + TypeScript |
 | `docs/prd.md` | Kebutuhan produk dan aturan konten yang tidak boleh dilanggar |
-| `docs/architecture.md` | Rancangan arsitektur (sebagian mulai usang, lihat catatan di bawah) |
+| `docs/architecture.md` | Rancangan arsitektur (stack: SPA Vite, API Go, Postgres) |
 | `docs/research/` | Riset kompetitor, keluhan pengguna, dan spesifikasi resmi beserta sumbernya |
 | `docs/mockup/` | Mockup tampilan |
 
-Catatan: `docs/architecture.md` masih menyebut Next.js dan VPS. Rencana terbarunya adalah SPA Vite statis di Cloudflare, API Go dalam container di Cloud Run, dan Postgres di Neon. Dokumen itu akan diperbarui.
+Catatan: `docs/prd.md` §10 masih menyebut Next.js; untuk stack, `docs/architecture.md` yang berlaku (SPA Vite statis di Cloudflare, API Go di Cloud Run, Postgres di Neon).
 
 ## Disclaimer
 

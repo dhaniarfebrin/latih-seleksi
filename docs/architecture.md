@@ -1,8 +1,10 @@
 # Arsitektur: Latih Seleksi
 
-Status: draf v0.1. Turunan dari `docs/prd.md` (§6 kebutuhan, §7 invarian, §9 model data, §10 stack, §11 non-fungsional). UI mengacu ke `docs/mockup/latih-seleksi.html`.
+Status: draf v0.2. Turunan dari `docs/prd.md` (§6 kebutuhan, §7 invarian, §9 model data, §10 stack, §11 non-fungsional). UI mengacu ke `docs/mockup/latih-seleksi.html`. Bila PRD §10 berbeda dengan dokumen ini (PRD masih menyebut Next.js), dokumen ini yang berlaku untuk stack.
 
-Penanda: **[Putusan]** = diambil di dokumen ini dan perlu persetujuan, **Asumsi (belum pasti)** = belum diverifikasi, **[Terbuka]** = keputusan milik pemilik proyek (PRD §13).
+Penanda: **[Putusan]** = diambil di dokumen ini dan perlu persetujuan, **[Dikonfirmasi]** = sudah disetujui pemilik proyek, **Asumsi (belum pasti)** = belum diverifikasi, **[Terbuka]** = keputusan milik pemilik proyek (PRD §13), **(rencana)** = dirancang tetapi belum ada di repositori.
+
+Yang sudah dibangun (slice 1): API Go + Postgres + SPA Vite untuk mode drill pola persentase berantai, tanpa auth. Bagian lain adalah rancangan target.
 
 ## 1. Prinsip desain
 
@@ -22,15 +24,15 @@ Setiap prinsip dipetakan ke invarian PRD §7 supaya tidak bisa dilanggar tanpa s
 
 ```mermaid
 flowchart LR
-  subgraph Client["Klien (PWA mobile-first)"]
-    UI["Next.js + TS"]
-    Q["Antrean jawaban lokal (IndexedDB)"]
+  subgraph Client["Klien: SPA statis di Cloudflare (PWA mobile-first)"]
+    UI["Vite + React + TS"]
+    Q["Antrean jawaban lokal (IndexedDB, rencana)"]
     UI --- Q
   end
 
   subgraph Runtime["Runtime"]
-    API["API Go (REST, modular monolith)"]
-    PG[("PostgreSQL")]
+    API["API Go di Cloud Run (REST, modular monolith)"]
+    PG[("PostgreSQL di Neon")]
     API --- PG
   end
 
@@ -52,47 +54,61 @@ flowchart LR
 
 Batas kepercayaan: klien tidak dipercaya untuk waktu, skor, maupun kunci. Pipeline konten tidak dipercaya untuk status `published` (hanya `reviewer` yang bisa mengubahnya).
 
+Produksi tidak punya server aplikasi untuk frontend: hasil `vite build` adalah berkas statis. Satu-satunya proses yang berjalan adalah API Go. Lokal, `docker-compose.yml` menjalankan tiga layanan: `postgres`, `api`, dan `web` (nginx yang menyajikan SPA dan meneruskan `/v1` ke `api`).
+
 ## 3. Putusan teknologi
 
 | Area | Pilihan | Alasan | Catatan |
 |---|---|---|---|
-| Backend | Go, `net/http` + `chi`, `pgx`, `sqlc`, `goose` | Satu binary kecil, cocok untuk container (PRD §10). SQL eksplisit cocok untuk data respons. | **[Terbuka]** Go vs Laravel (PRD §13.1). Dokumen ini mengasumsikan Go sesuai `NOTES.md`. |
+| Backend | Go, `net/http` (ServeMux Go 1.22) + `pgx`. Migrasi SQL di-embed dan dijalankan API saat start (`api/db/migrations`, `store.Migrate`). | Satu binary kecil, cocok untuk container (PRD §10). SQL eksplisit cocok untuk data respons. | **[Dikonfirmasi]** Go. `chi`, `sqlc`, dan `goose` dari draf awal belum dipakai (`api/go.mod` hanya memuat `pgx`); tambahkan hanya bila kebutuhan nyata muncul. |
 | Database | PostgreSQL 16 | `jsonb` untuk opsi/parameter, transaksi untuk skoring, partial index untuk antrean drill. | Satu instance cukup untuk MVP. |
-| Frontend | Next.js (App Router) + TypeScript, TanStack Query, Dexie (IndexedDB), Serwist (service worker) | PWA mobile-first, sesuai PRD §10. Pengembang berlatar React. | **Asumsi (belum pasti):** versi pustaka belum diverifikasi, cek sebelum dikunci. |
+| Frontend | **[Putusan]** SPA statis: Vite + React + TypeScript. Rencana: `vite-plugin-pwa` (service worker), Dexie (IndexedDB) untuk antrean jawaban, TanStack Query bila perlu. | Tanpa runtime server di produksi, jadi permukaan serangan lebih kecil dan hosting statis gratis. Next.js dibuang atas preferensi pemilik proyek (banyak CVE, tidak mau bergantung pada Vercel). PWA mobile-first tetap tercapai. | Terpasang saat ini: React, Vite, Vitest (`web/package.json`). Pustaka PWA/Dexie/TanStack **belum** dipasang, jadi versinya belum dikunci. Server dev Vite hanya untuk `localhost` (`web/vite.config.ts`); jangan diekspos (catatan proyek menyebut ada CVE pada dev server Vite; **Asumsi (belum pasti):** belum diperiksa ulang). |
 | Auth | OIDC. **[Putusan]** MVP memakai penyedia terkelola, backend hanya memvalidasi JWT lewat JWKS. | Riset menunjukkan masalah login adalah keluhan terbesar (26,5%, PRD §2). Mengoperasikan Keycloak sendiri menambah beban operasional pengembang tunggal. | **[Terbuka]** Keycloak self-host (PRD §13.1) bisa menggantikan karena backend hanya bergantung pada standar OIDC, bukan pada vendor. |
 | Penjadwal ulang | FSRS dengan parameter bawaan | PRD FR-11. | **Asumsi (belum pasti):** ketersediaan dan kualitas pustaka Go untuk FSRS belum diperiksa. Fallback: implementasi sendiri, rumusnya publik dan kecil. |
 | LLM | Batch API, model murah, hanya di pipeline | Biaya pra-generasi 5.000 soal sekitar USD 4–340 menurut hitungan riset (asumsi token, belum diukur). | Model dan harga dicek ulang saat anggaran ditetapkan. |
-| Hosting | **[Putusan]** satu VPS kecil: Docker Compose (API, Next.js, Postgres), reverse proxy dengan TLS otomatis, cadangan DB harian ke penyimpanan objek. | Murah dan sederhana untuk tahap pribadi hingga beta. | **[Terbuka]** Anggaran hosting belum ditetapkan (PRD §13.2). Jalur ke layanan terkelola tetap terbuka karena semuanya dikontainerisasi. |
+| Hosting | **[Dikonfirmasi]** Cloudflare (SPA statis) + Cloud Run (container API Go) + Neon (PostgreSQL). Lokal: Docker Compose. Tidak ada VPS. | Pemilik proyek ingin hosting gratis tanpa Vercel. Cloudflare Free melayani aset statis, tetapi Workers dibatasi (CPU 10 ms) dan Go hanya lewat WASM, jadi API tidak ditaruh di sana. `api/Dockerfile` sudah memakai `PORT` dari Cloud Run. | **Asumsi (belum pasti):** angka kuota gratis Cloud Run, Neon, dan Cloudflare belum diverifikasi; cek halaman harga resmi sebelum deploy. Cloud Run membutuhkan akun penagihan Google (kartu). Neon memerlukan `sslmode=require` (`.env.example`). Belum pernah di-deploy. |
 | CI | GitHub Actions atau setara: lint, tipe, uji unit, uji migrasi, E2E alur simulasi | Lihat §12. | Bukan full-suite pada setiap edit lokal. |
 
 ## 4. Struktur repositori
 
+Satu monorepo (`github.com/dhaniarfebrin/latih-seleksi`). Baris tanpa tanda sudah ada; **(rencana)** belum ada.
+
 ```
 latih-seleksi/
   docs/                 PRD, riset, mockup, dokumen ini
-  api/                  Go
+  docker-compose.yml    postgres + api + web (nginx) untuk lokal
+  api/                  Go (Dockerfile untuk Cloud Run)
     cmd/
       api/              server HTTP
-      content/          CLI pipeline konten (generate|verify|explain|check|review|publish)
+      content/          CLI: saat ini mencetak soal + kunci dari generator;
+                        (rencana) pipeline generate|verify|explain|check|review|publish
     internal/
-      spec/             exam_spec: parsing, validasi, versi aktif
-      content/          item, status, state machine, kutipan
-      gen/              generator templat + solver (satu paket per keluarga)
-      exam/             sesi simulasi/drill, timer server, penyimpanan jawaban
-      scoring/          skor per subtes, ambang, status gugur
-      mastery/          akurasi per pola, klasifikasi sebab, pemilih drill, FSRS
-      report/           laporan soal dan riwayat koreksi
-      account/          profil, ekspor, hapus
-      httpx/            router, middleware (auth, request id, rate limit)
+      gen/              antarmuka keluarga + generator templat + solver
+        persentase/     keluarga persentase berantai (+ uji)
+        kerjasama/      keluarga kerja sama (+ uji)
+        kecepatan/      keluarga kecepatan relatif (+ uji)
+        catalog/        daftar berurutan semua keluarga (dipakai drill dan cmd/content)
+      drill/            layanan sesi drill (pembuatan sesi, jawaban, submit)
+      store/            akses Postgres (pgx) dan penjalan migrasi
+      httpx/            router net/http, request id, access log, CORS
+      spec/             (rencana) exam_spec: parsing, validasi, versi aktif
+      content/          (rencana) item, status, state machine, kutipan
+      exam/             (rencana) sesi simulasi, timer server
+      scoring/          (rencana) skor per subtes, ambang, status gugur
+      mastery/          (rencana) akurasi per pola, klasifikasi sebab, FSRS
+      report/           (rencana) laporan soal dan riwayat koreksi
+      account/          (rencana) profil, ekspor, hapus
     db/
-      migrations/
-      queries/          SQL untuk sqlc
-  web/                  Next.js PWA
-  specs/                exam spec berversi sebagai data (skd-2024.json, ...)
-  .github/workflows/
+      migrations/       SQL, di-embed ke biner (db.go)
+  web/                  SPA Vite + React + TS (Dockerfile + nginx.conf untuk lokal)
+    src/                App.tsx, api.ts, session.ts (+ uji)
+  specs/                (rencana) exam spec berversi sebagai data (skd-2024.json, ...)
+  .github/workflows/    (rencana)
 ```
 
-Aturan ketergantungan: `exam` boleh memakai `spec`, `scoring`, `content`. `mastery` boleh membaca respons. `gen` tidak boleh mengimpor `exam` maupun `account`. Aturan ini dijaga dengan uji impor atau `go-arch-lint` (**Asumsi (belum pasti):** alat belum dipilih).
+Paket `drill` dan `store` lahir di slice 1 untuk mode drill saja. **[Putusan]** Saat `exam`, `scoring`, dan `mastery` dibangun, `drill` menyusut menjadi pemilih soal di atasnya; jangan menambah logika skor atau sesi ke `drill`.
+
+Aturan ketergantungan (berlaku untuk paket target): `exam` boleh memakai `spec`, `scoring`, `content`. `mastery` boleh membaca respons. `gen` tidak boleh mengimpor `exam`, `drill`, `store`, maupun `account`. Aturan ini dijaga dengan uji impor atau `go-arch-lint` (**Asumsi (belum pasti):** alat belum dipilih).
 
 ## 5. Spesifikasi ujian sebagai data
 
@@ -206,17 +222,18 @@ Target: simulasi tahan reload dan sinyal putus (PRD §11).
 
 ### 9.1 Generator templat (TIU numerik dan silogisme)
 
-Satu paket Go per keluarga (`gen/persentase_berantai`, `gen/kerja_sama`, dst.) dengan antarmuka yang sama:
+Satu paket Go per keluarga (`gen/persentase`, `gen/kerjasama`, `gen/kecepatan`, dst.) dengan antarmuka yang sama; `gen/catalog` mendaftarkan semuanya:
 
 ```go
 type Family interface {
     ID() string
-    Generate(seed int64, difficulty Band) (Draft, error) // deterministik untuk seed sama
-    Solve(p Params) (Answer, Steps)                      // penyelesaian independen
+    Label() string                                       // nama pola untuk UI
+    Misconceptions() map[string]string                   // id miskonsepsi -> label (unik per pola)
+    Generate(seed int64, band Band) (Draft, error)       // deterministik untuk seed sama
 }
 ```
 
-- Kunci dan langkah penyelesaian berasal dari `Solve`. Pengecoh dibangkitkan dari aturan miskonsepsi berlabel (misal "menjumlahkan persentase langsung" pada persentase berantai) sehingga opsi salah memiliki `misconception_id`. Label ini yang dipakai UI drill ("Kenapa A salah") dan klasifikasi sebab.
+- Kunci dan langkah penyelesaian dihitung di dalam paket keluarga (solver internal), bukan di antarmuka. Independensi kunci dijaga oleh uji properti yang menghitung ulang jawaban hanya dari teks soal. Pengecoh dibangkitkan dari aturan miskonsepsi berlabel (misal "menjumlahkan persentase langsung" pada persentase berantai) sehingga opsi salah memiliki `misconception_id`. Label ini dilayani `GET /v1/patterns` (`misconceptions`) dan dipakai UI drill ("Kenapa A salah") dan klasifikasi sebab. Id hanya unik per pola, jadi klien mencari label lewat `pattern_id` percobaan.
 - Enam keluarga MVP sesuai FR-06: persentase berantai, kerja-sama, kecepatan relatif, rata-rata gabungan, deret angka, perbandingan. Silogisme (FR-07) memakai pemeriksa keabsahan dari aturan logika formal.
 - Uji wajib per keluarga: (a) properti: untuk ribuan seed, `answer_key` sama dengan penghitung independen yang ditulis terpisah di berkas uji, (b) tepat satu opsi benar, (c) tidak ada dua opsi bernilai sama, (d) determinisme seed.
 
@@ -267,7 +284,7 @@ Target "TIU ≥7/10 dalam 9 menit" (PRD §5) dihitung dari `response` dan `attem
 ## 11. Keamanan, privasi, dan kepatuhan
 
 - **Autentikasi:** klien memperoleh token dari penyedia OIDC. API memvalidasi `iss`, `aud`, `exp`, dan tanda tangan lewat JWKS ter-cache. Pengguna lokal dibuat saat token pertama (`sub` → `user`). Tidak ada kata sandi di database sendiri.
-- **Otorisasi:** setiap kueri tabel pengguna dibatasi `user_id` dari token. Kandidat tambahan: Row Level Security di Postgres sebagai lapis kedua (**Asumsi (belum pasti):** biaya kompleksitas dengan `sqlc` belum dinilai).
+- **Otorisasi:** setiap kueri tabel pengguna dibatasi `user_id` dari token. Kandidat tambahan: Row Level Security di Postgres sebagai lapis kedua (**Asumsi (belum pasti):** biaya kompleksitas pada lapisan akses data `pgx` belum dinilai).
 - **Peran DB terpisah:** `app_rw` (runtime), `content_writer` (pipeline), `readonly_analytics` (opsional, tanpa kolom identitas).
 - **Data pribadi:** simpan seminimal mungkin (email, `sub`, jalur, riwayat). Persetujuan eksplisit di onboarding. Ekspor JSON dan hapus akun menghapus `attempt`, `response`, `mastery`, dan `user` secara berantai, dengan uji otomatis bahwa tidak ada baris yatim (UU 27/2022, FR-12).
 - **LLM:** tidak ada identitas atau jawaban per pengguna dalam prompt. Chat tutor berkuota (fase 3) hanya mengirim `item_id` dan opsi yang dipilih, tanpa email atau `user_id`. Kuota dihitung di sisi server.
@@ -290,9 +307,11 @@ Cakupan ditargetkan per paket (solver, scoring), bukan angka global.
 
 ## 13. Operasional
 
-- **Lingkungan:** `dev` (Compose lokal), `prod` (VPS). Staging ditunda sampai ada pengguna lain.
-- **Migrasi:** `goose`, dijalankan sebelum API baru menerima trafik. Migrasi harus maju-kompatibel satu versi.
-- **Cadangan:** dump harian ke penyimpanan objek, uji pemulihan terjadwal. **Asumsi (belum pasti):** frekuensi dan retensi belum ditentukan.
+- **Lingkungan:** `dev` (Docker Compose lokal: `postgres` di `127.0.0.1:5433`, `api` di `127.0.0.1:8080`, `web` nginx di `:8081`), `prod` (Cloudflare + Cloud Run + Neon). Staging ditunda sampai ada pengguna lain.
+- **Deploy (rencana, belum dilakukan):** SPA: `vite build` ke Cloudflare. API: image dari `api/Dockerfile` ke Cloud Run dengan `DATABASE_URL` (Neon, `sslmode=require`) dan `CORS_ORIGIN` dari variabel lingkungan. **[Terbuka]** SPA dan API berbeda origin di produksi: pilih CORS dengan `CORS_ORIGIN` (sudah didukung `httpx`) atau rute `/v1` satu origin lewat Cloudflare. Lokal sudah satu origin lewat proxy nginx.
+- **Migrasi:** SQL ter-embed dijalankan API saat start dengan kunci advisory Postgres agar instance paralel tidak berebut (`store.Migrate`, dicatat di `schema_migrations`). Migrasi harus maju-kompatibel satu versi, karena Cloud Run dapat menjalankan revisi lama dan baru bersamaan saat rilis. **Asumsi (belum pasti):** perilaku itu berasal dari model rilis Cloud Run yang belum saya verifikasi di dokumentasi resminya.
+- **Pekerjaan terjadwal:** auto-submit (§8) memakai penilaian lazy saat sesi dibaca, sehingga tidak butuh proses latar. **Asumsi (belum pasti):** Cloud Run bisa turun ke nol instans, sehingga pekerjaan berkala butuh pemicu eksternal (mis. Cloud Scheduler); belum dipilih dan belum dicek harga/kuotanya.
+- **Cadangan:** bergantung pada fitur Neon. **Asumsi (belum pasti):** retensi cadangan/restore di tier gratis Neon belum diperiksa; periksa halaman resmi sebelum deploy, dan bila tidak memadai, jadwalkan `pg_dump` berkala ke penyimpanan objek. Uji pemulihan tetap dijadwalkan.
 - **Observabilitas:** log terstruktur dengan `request_id`, metrik dasar (latensi, error, antrean sinkron jawaban), pelaporan error. Alat tidak dipilih di dokumen ini.
 - **Kinerja:** target soal termuat kurang dari 1 detik di 4G (PRD §11, **Asumsi (belum pasti)**). `GET /attempts/{id}` membawa seluruh soal sesi dalam satu respons agar navigasi antar soal tidak menunggu jaringan.
 - **Konfigurasi:** variabel lingkungan untuk rahasia, berkas konfigurasi untuk ambang diagnosis.
@@ -312,7 +331,8 @@ Urutan bangun fase 1 yang disarankan: `spec` + `scoring` (murni, mudah diuji) �
 
 | Risiko / keputusan | Dampak | Mitigasi / langkah |
 |---|---|---|
-| **[Terbuka]** Go vs Laravel | Menentukan seluruh `api/` | Putuskan sebelum fase 1. Arsitektur logis (modul, data, API) tidak berubah. |
+| ~~Go vs Laravel~~ **[Dikonfirmasi]** Go | Menentukan seluruh `api/` | Selesai; slice 1 sudah ditulis dengan Go. |
+| **[Terbuka]** Layanan gratis (Cloud Run, Neon, Cloudflare) | Kuota atau syarat penagihan bisa berbeda dari catatan | Cek halaman harga resmi sebelum deploy; pasang batas biaya/anggaran di akun Google. |
 | **[Terbuka]** Auth terkelola vs Keycloak | Beban operasional vs kontrol penuh | Mulai terkelola. Backend hanya bergantung pada OIDC standar, jadi bisa diganti. |
 | **[Terbuka]** Peninjau kedua TKP/TWK | Kapasitas bank soal terbatas oleh review, bukan biaya LLM | Mulai dengan bank kecil bermutu. Batasi TKP sampai ada peninjau. |
 | **[Terbuka]** Publik atau pribadi dulu | Menentukan kapan privasi, kuota, dan pembayaran perlu matang | Bangun auth dan hapus-data sejak awal karena murah di awal dan mahal bila ditambal. |
