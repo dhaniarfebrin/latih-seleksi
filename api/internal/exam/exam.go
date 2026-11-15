@@ -5,54 +5,42 @@ package exam
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	"latihseleksi/api/internal/gen"
+	"latihseleksi/api/internal/question"
 	"latihseleksi/api/internal/scoring"
 	"latihseleksi/api/internal/spec"
-	"latihseleksi/api/internal/store"
 )
 
 const (
 	// grace is how long after the deadline answers and submits are still
 	// accepted, for network delay. Assumption (docs/architecture.md section 8),
 	// not an official rule.
-	grace      = 5 * time.Second
-	maxTimeMS  = 24 * 60 * 60 * 1000
-	answerKeys = "ABCDE"
+	grace     = 5 * time.Second
+	maxTimeMS = 24 * 60 * 60 * 1000
 
 	// Duration bases reported to the client.
 	BasisSpec     = "spec"
 	BasisProrated = "prorated"
+
+	// Exam statuses, as stored.
+	StatusInProgress = "in_progress"
+	StatusSubmitted  = "submitted"
+	StatusExpired    = "expired"
 )
 
 var (
-	ErrNotFound   = errors.New("not found")
-	ErrInvalid    = errors.New("invalid input")
+	ErrNotFound   = question.ErrNotFound
+	ErrInvalid    = question.ErrInvalid
 	ErrClosed     = errors.New("exam is closed")
 	ErrInProgress = errors.New("exam is still in progress")
 )
 
 func invalid(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, a...))
-}
-
-type snapshot struct {
-	Stem      string           `json:"stem"`
-	Options   []snapshotOption `json:"options"`
-	AnswerKey string           `json:"answer_key"`
-	Steps     []string         `json:"steps"`
-}
-
-type snapshotOption struct {
-	Key             string `json:"key"`
-	Text            string `json:"text"`
-	MisconceptionID string `json:"misconception_id,omitempty"`
 }
 
 // Views returned to clients. Key, steps and correctness appear only once the
@@ -138,7 +126,7 @@ type SpecView struct {
 }
 
 type Service struct {
-	store   *store.Store
+	store   Store
 	specs   *spec.Registry
 	sources map[string]ItemSource // by section id
 	now     func() time.Time
@@ -146,7 +134,7 @@ type Service struct {
 
 // New builds the service. A section is available when one of the sources
 // serves it; a later source wins for a section two sources serve.
-func New(st *store.Store, specs *spec.Registry, sources ...ItemSource) *Service {
+func New(st Store, specs *spec.Registry, sources ...ItemSource) *Service {
 	by := map[string]ItemSource{}
 	for _, src := range sources {
 		for _, sec := range src.Sections() {
@@ -195,14 +183,6 @@ func duration(sp spec.Spec, sections []spec.Section) (time.Duration, string) {
 	return full * time.Duration(picked) / time.Duration(total), BasisProrated
 }
 
-func randomSeed() (int64, error) {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return 0, err
-	}
-	return int64(binary.BigEndian.Uint64(b[:]) >> 1), nil
-}
-
 // Create picks and freezes the items of the chosen sections and starts the
 // timer. Items are numbered in spec section order.
 func (s *Service) Create(ctx context.Context, userID, specID, trackID string, sectionIDs []string) (ExamView, error) {
@@ -232,26 +212,27 @@ func (s *Service) Create(ctx context.Context, userID, specID, trackID string, se
 	}
 
 	var chosen []spec.Section
-	var items []store.Item
+	var items []question.Item
 	for _, sec := range sp.Sections {
 		if !want[sec.ID] {
 			continue
 		}
 		chosen = append(chosen, sec)
-		seed, err := randomSeed()
+		seed, err := question.RandomSeed()
 		if err != nil {
 			return ExamView{}, err
 		}
 		drafts, err := s.sources[sec.ID].Pick(sec.ID, sec.Items, seed)
 		if err != nil {
-			return ExamView{}, invalid("section %s: %v", sec.ID, err)
+			// A source that cannot serve its section is a server fault, not bad input.
+			return ExamView{}, fmt.Errorf("pick items for section %s: %w", sec.ID, err)
 		}
 		for _, d := range drafts {
-			raw, err := json.Marshal(toSnapshot(d))
+			raw, err := json.Marshal(question.FromDraft(d))
 			if err != nil {
 				return ExamView{}, err
 			}
-			items = append(items, store.Item{Pos: len(items) + 1, Seed: d.Seed, Snapshot: raw, Section: sec.ID, PatternID: d.PatternID})
+			items = append(items, question.Item{Pos: len(items) + 1, Seed: d.Seed, Snapshot: raw, Section: sec.ID, PatternID: d.PatternID})
 		}
 	}
 
@@ -265,7 +246,7 @@ func (s *Service) Create(ctx context.Context, userID, specID, trackID string, se
 	for _, sec := range chosen {
 		ids = append(ids, sec.ID)
 	}
-	e, err := s.store.CreateExam(ctx, store.Exam{
+	e, err := s.store.CreateExam(ctx, question.Exam{
 		UserID: userID, SpecID: sp.ID, SpecBody: body, Track: trackID, Sections: ids, StartedAt: now, DeadlineAt: now.Add(dur),
 	}, items)
 	if err != nil {
@@ -274,23 +255,15 @@ func (s *Service) Create(ctx context.Context, userID, specID, trackID string, se
 	return s.Get(ctx, userID, e.ID)
 }
 
-func toSnapshot(d gen.Draft) snapshot {
-	sn := snapshot{Stem: d.Stem, AnswerKey: d.AnswerKey, Steps: d.Steps}
-	for _, o := range d.Options {
-		sn.Options = append(sn.Options, snapshotOption{Key: o.Key, Text: o.Text, MisconceptionID: o.MisconceptionID})
-	}
-	return sn
-}
-
 type loaded struct {
-	exam  store.Exam
+	exam  question.Exam
 	spec  spec.Spec
-	snaps map[int]snapshot
-	items []store.Item
-	resps []store.Response
+	snaps map[int]question.Snapshot
+	items []question.Item
+	resps []question.Response
 }
 
-func (l loaded) closed() bool { return l.exam.Status != store.StatusInProgress }
+func (l loaded) closed() bool { return l.exam.Status != StatusInProgress }
 
 // load reads the exam owned by userID and, if the deadline plus grace has
 // passed, closes it as expired first (lazy auto-submit: there is no background
@@ -298,17 +271,14 @@ func (l loaded) closed() bool { return l.exam.Status != store.StatusInProgress }
 // ids cannot be probed.
 func (s *Service) load(ctx context.Context, userID, id string) (loaded, error) {
 	e, items, resps, err := s.store.GetExam(ctx, id)
-	if errors.Is(err, store.ErrNotFound) {
-		return loaded{}, ErrNotFound
-	}
 	if err != nil {
 		return loaded{}, err
 	}
 	if userID == "" || e.UserID != userID {
 		return loaded{}, ErrNotFound
 	}
-	if e.Status == store.StatusInProgress && s.now().After(e.DeadlineAt.Add(grace)) {
-		if err := s.store.CloseExam(ctx, id, store.StatusExpired, e.DeadlineAt); err != nil {
+	if e.Status == StatusInProgress && s.now().After(e.DeadlineAt.Add(grace)) {
+		if err := s.store.CloseExam(ctx, id, StatusExpired, e.DeadlineAt); err != nil {
 			return loaded{}, err
 		}
 		if e, items, resps, err = s.store.GetExam(ctx, id); err != nil {
@@ -319,9 +289,9 @@ func (s *Service) load(ctx context.Context, userID, id string) (loaded, error) {
 	if err != nil {
 		return loaded{}, fmt.Errorf("decode frozen spec: %w", err)
 	}
-	snaps := make(map[int]snapshot, len(items))
+	snaps := make(map[int]question.Snapshot, len(items))
 	for _, it := range items {
-		var sn snapshot
+		var sn question.Snapshot
 		if err := json.Unmarshal(it.Snapshot, &sn); err != nil {
 			return loaded{}, fmt.Errorf("decode snapshot %d: %w", it.Pos, err)
 		}
@@ -353,7 +323,7 @@ func (s *Service) Get(ctx context.Context, userID, id string) (ExamView, error) 
 		DurationSeconds: int(dur / time.Second), DurationBasis: basis, SubmittedAt: l.exam.SubmittedAt,
 		Items: make([]ItemView, 0, len(l.items)),
 	}
-	byPos := make(map[int]store.Response, len(l.resps))
+	byPos := make(map[int]question.Response, len(l.resps))
 	for _, r := range l.resps {
 		byPos[r.Pos] = r
 	}
@@ -434,56 +404,51 @@ func (s *Service) List(ctx context.Context, userID string, limit int) ([]ExamSum
 	return out, nil
 }
 
-// Answer stores the answer for pos unless a response with an equal or higher
+// AnswerInput is one answer submitted for a position.
+type AnswerInput struct {
+	Pos     int
+	Answer  string
+	TimeMS  int
+	Flagged bool
+	Seq     int
+}
+
+// Answer stores the answer for in.Pos unless a response with an equal or higher
 // seq is already stored; either way it returns the stored response. The answer
 // may be changed while the exam is open. Accepted until deadline + grace.
-func (s *Service) Answer(ctx context.Context, userID, id string, pos int, answer string, timeMS int, flagged bool, seq int) (ResponseView, error) {
-	if len(answer) != 1 || !containsByte(answerKeys, answer[0]) {
+func (s *Service) Answer(ctx context.Context, userID, id string, in AnswerInput) (ResponseView, error) {
+	if !question.ValidAnswer(in.Answer) {
 		return ResponseView{}, invalid("answer must be one of A-E")
 	}
-	if timeMS < 0 || timeMS > maxTimeMS {
+	if in.TimeMS < 0 || in.TimeMS > maxTimeMS {
 		return ResponseView{}, invalid("time_ms must be between 0 and %d", maxTimeMS)
 	}
-	if seq < 0 {
+	if in.Seq < 0 {
 		return ResponseView{}, invalid("seq must not be negative")
 	}
 	l, err := s.load(ctx, userID, id)
 	if err != nil {
 		return ResponseView{}, err
 	}
-	sn, ok := l.snaps[pos]
+	sn, ok := l.snaps[in.Pos]
 	if !ok {
 		return ResponseView{}, ErrNotFound
 	}
 	if l.closed() {
 		return ResponseView{}, ErrClosed
 	}
-	chosen, found := snapshotOption{}, false
-	for _, o := range sn.Options {
-		if o.Key == answer {
-			chosen, found = o, true
-		}
-	}
+	chosen, found := sn.Option(in.Answer)
 	if !found {
-		return ResponseView{}, invalid("answer %s is not an option of this question", answer)
+		return ResponseView{}, invalid("answer %s is not an option of this question", in.Answer)
 	}
-	stored, err := s.store.SaveExamResponse(ctx, id, store.Response{
-		Pos: pos, Answer: answer, Correct: answer == sn.AnswerKey, TimeMS: timeMS,
-		MisconceptionID: chosen.MisconceptionID, Seq: seq, Flagged: flagged,
+	stored, err := s.store.SaveExamResponse(ctx, id, question.Response{
+		Pos: in.Pos, Answer: in.Answer, Correct: in.Answer == sn.AnswerKey, TimeMS: in.TimeMS,
+		MisconceptionID: chosen.MisconceptionID, Seq: in.Seq, Flagged: in.Flagged,
 	})
 	if err != nil {
 		return ResponseView{}, err
 	}
 	return ResponseView{Answer: stored.Answer, TimeMS: stored.TimeMS, Flagged: stored.Flagged, Seq: stored.Seq}, nil
-}
-
-func containsByte(s string, b byte) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] == b {
-			return true
-		}
-	}
-	return false
 }
 
 // Submit closes the exam and returns the result. Repeating it, or submitting
@@ -494,7 +459,7 @@ func (s *Service) Submit(ctx context.Context, userID, id string) (Result, error)
 		return Result{}, err
 	}
 	if !l.closed() {
-		if err := s.store.CloseExam(ctx, id, store.StatusSubmitted, s.now()); err != nil {
+		if err := s.store.CloseExam(ctx, id, StatusSubmitted, s.now()); err != nil {
 			return Result{}, err
 		}
 	}
@@ -514,7 +479,7 @@ func (s *Service) Result(ctx context.Context, userID, id string) (Result, error)
 	if !ok {
 		return Result{}, fmt.Errorf("frozen spec %s lost track %q", l.spec.ID, l.exam.Track)
 	}
-	byPos := make(map[int]store.Response, len(l.resps))
+	byPos := make(map[int]question.Response, len(l.resps))
 	for _, r := range l.resps {
 		byPos[r.Pos] = r
 	}

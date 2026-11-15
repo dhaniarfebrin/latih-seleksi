@@ -3,31 +3,27 @@ package drill
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"latihseleksi/api/internal/gen"
-	"latihseleksi/api/internal/gen/catalog"
-	"latihseleksi/api/internal/store"
+	"latihseleksi/api/internal/question"
 )
 
 const (
-	ModeDrill     = "drill"
-	DefaultN      = 8
-	DefaultBand   = 2
-	maxN          = 20
-	maxTimeMS     = 24 * 60 * 60 * 1000
-	seedRetries   = 5
-	answerKeyChar = "ABCDE"
+	ModeDrill   = "drill"
+	DefaultN    = 8
+	DefaultBand = 2
+	maxN        = 20
+	maxTimeMS   = 24 * 60 * 60 * 1000
+	seedRetries = 5
 )
 
 var (
-	ErrNotFound  = errors.New("not found")
-	ErrInvalid   = errors.New("invalid input")
+	ErrNotFound  = question.ErrNotFound
+	ErrInvalid   = question.ErrInvalid
 	ErrSubmitted = errors.New("attempt already submitted")
 )
 
@@ -40,20 +36,6 @@ type Pattern struct {
 	ID             string            `json:"id"`
 	Label          string            `json:"label"`
 	Misconceptions map[string]string `json:"misconceptions"`
-}
-
-// snapshot is the frozen question stored in attempt_item.item_snapshot.
-type snapshot struct {
-	Stem      string           `json:"stem"`
-	Options   []snapshotOption `json:"options"`
-	AnswerKey string           `json:"answer_key"`
-	Steps     []string         `json:"steps"`
-}
-
-type snapshotOption struct {
-	Key             string `json:"key"`
-	Text            string `json:"text"`
-	MisconceptionID string `json:"misconception_id,omitempty"`
 }
 
 // Views returned to clients. Key, steps and misconception appear only inside a
@@ -102,18 +84,19 @@ type Result struct {
 }
 
 type Service struct {
-	store    *store.Store
+	store    Store
 	ordered  []gen.Family // catalog order, for listing
 	families map[string]gen.Family
 }
 
-func New(s *store.Store) *Service {
-	ordered := catalog.All()
+// New builds the service over st and the registered question families
+// (catalog order is the listing order).
+func New(st Store, ordered []gen.Family) *Service {
 	families := make(map[string]gen.Family, len(ordered))
 	for _, f := range ordered {
 		families[f.ID()] = f
 	}
-	return &Service{store: s, ordered: ordered, families: families}
+	return &Service{store: st, ordered: ordered, families: families}
 }
 
 // Patterns lists the registered families in catalog order.
@@ -123,14 +106,6 @@ func (s *Service) Patterns() []Pattern {
 		out = append(out, Pattern{ID: f.ID(), Label: f.Label(), Misconceptions: f.Misconceptions()})
 	}
 	return out
-}
-
-func randomSeed() (int64, error) {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return 0, err
-	}
-	return int64(binary.BigEndian.Uint64(b[:]) >> 1), nil
 }
 
 // Create generates n questions with random seeds and freezes them.
@@ -146,7 +121,7 @@ func (s *Service) Create(ctx context.Context, patternID string, n, band int) (At
 		return AttemptView{}, invalid("band must be between 1 and 3")
 	}
 
-	items := make([]store.Item, 0, n)
+	items := make([]question.Item, 0, n)
 	seen := make(map[string]bool, n)
 	for pos := 1; pos <= n; pos++ {
 		// Retry on a generation error or a stem already in this attempt; if
@@ -156,7 +131,7 @@ func (s *Service) Create(ctx context.Context, patternID string, n, band int) (At
 		got := false
 		for try := 0; try < seedRetries; try++ {
 			var seed int64
-			if seed, err = randomSeed(); err != nil {
+			if seed, err = question.RandomSeed(); err != nil {
 				return AttemptView{}, err
 			}
 			d, genErr := fam.Generate(seed, gen.Band(band))
@@ -173,39 +148,28 @@ func (s *Service) Create(ctx context.Context, patternID string, n, band int) (At
 			return AttemptView{}, fmt.Errorf("generate item %d: %w", pos, err)
 		}
 		seen[draft.Stem] = true
-		raw, err := json.Marshal(toSnapshot(draft))
+		raw, err := json.Marshal(question.FromDraft(draft))
 		if err != nil {
 			return AttemptView{}, err
 		}
-		items = append(items, store.Item{Pos: pos, Seed: draft.Seed, Snapshot: raw})
+		items = append(items, question.Item{Pos: pos, Seed: draft.Seed, Snapshot: raw})
 	}
 
-	a, err := s.store.CreateAttempt(ctx, store.Attempt{Mode: ModeDrill, PatternID: patternID, Band: band, N: n}, items)
+	a, err := s.store.CreateAttempt(ctx, question.Attempt{Mode: ModeDrill, PatternID: patternID, Band: band, N: n}, items)
 	if err != nil {
 		return AttemptView{}, err
 	}
 	return s.Get(ctx, a.ID)
 }
 
-func toSnapshot(d gen.Draft) snapshot {
-	sn := snapshot{Stem: d.Stem, AnswerKey: d.AnswerKey, Steps: d.Steps}
-	for _, o := range d.Options {
-		sn.Options = append(sn.Options, snapshotOption{Key: o.Key, Text: o.Text, MisconceptionID: o.MisconceptionID})
-	}
-	return sn
-}
-
-func (s *Service) load(ctx context.Context, id string) (store.Attempt, map[int]snapshot, []store.Item, []store.Response, error) {
+func (s *Service) load(ctx context.Context, id string) (question.Attempt, map[int]question.Snapshot, []question.Item, []question.Response, error) {
 	a, items, resps, err := s.store.GetAttempt(ctx, id)
-	if errors.Is(err, store.ErrNotFound) {
-		return a, nil, nil, nil, ErrNotFound
-	}
 	if err != nil {
 		return a, nil, nil, nil, err
 	}
-	snaps := make(map[int]snapshot, len(items))
+	snaps := make(map[int]question.Snapshot, len(items))
 	for _, it := range items {
-		var sn snapshot
+		var sn question.Snapshot
 		if err := json.Unmarshal(it.Snapshot, &sn); err != nil {
 			return a, nil, nil, nil, fmt.Errorf("decode snapshot %d: %w", it.Pos, err)
 		}
@@ -214,7 +178,7 @@ func (s *Service) load(ctx context.Context, id string) (store.Attempt, map[int]s
 	return a, snaps, items, resps, nil
 }
 
-func responseView(r store.Response, sn snapshot) *ResponseView {
+func responseView(r question.Response, sn question.Snapshot) *ResponseView {
 	return &ResponseView{
 		Answer:          r.Answer,
 		Correct:         r.Correct,
@@ -232,7 +196,7 @@ func (s *Service) Get(ctx context.Context, id string) (AttemptView, error) {
 	if err != nil {
 		return AttemptView{}, err
 	}
-	byPos := make(map[int]store.Response, len(resps))
+	byPos := make(map[int]question.Response, len(resps))
 	for _, r := range resps {
 		byPos[r.Pos] = r
 	}
@@ -257,7 +221,7 @@ func (s *Service) Get(ctx context.Context, id string) (AttemptView, error) {
 // Answer records the first answer for pos and returns the revealed result.
 // Repeating the call returns the stored result unchanged.
 func (s *Service) Answer(ctx context.Context, id string, pos int, answer string, timeMS int) (ResponseView, error) {
-	if len(answer) != 1 || !containsByte(answerKeyChar, answer[0]) {
+	if !question.ValidAnswer(answer) {
 		return ResponseView{}, invalid("answer must be one of A-E")
 	}
 	if timeMS < 0 || timeMS > maxTimeMS {
@@ -279,16 +243,11 @@ func (s *Service) Answer(ctx context.Context, id string, pos int, answer string,
 	if a.SubmittedAt != nil {
 		return ResponseView{}, ErrSubmitted
 	}
-	chosen, found := snapshotOption{}, false
-	for _, o := range sn.Options {
-		if o.Key == answer {
-			chosen, found = o, true
-		}
-	}
+	chosen, found := sn.Option(answer)
 	if !found {
 		return ResponseView{}, invalid("answer %s is not an option of this question", answer)
 	}
-	stored, err := s.store.SaveResponse(ctx, id, store.Response{
+	stored, err := s.store.SaveResponse(ctx, id, question.Response{
 		Pos: pos, Answer: answer, Correct: answer == sn.AnswerKey, TimeMS: timeMS, MisconceptionID: chosen.MisconceptionID,
 	})
 	if err != nil {
@@ -297,22 +256,10 @@ func (s *Service) Answer(ctx context.Context, id string, pos int, answer string,
 	return *responseView(stored, sn), nil
 }
 
-func containsByte(s string, b byte) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] == b {
-			return true
-		}
-	}
-	return false
-}
-
 // Submit closes the attempt and returns score, mean time and misconception tally.
 // Unanswered positions count as incorrect. Repeating the call is safe.
 func (s *Service) Submit(ctx context.Context, id string) (Result, error) {
 	submittedAt, err := s.store.MarkSubmitted(ctx, id)
-	if errors.Is(err, store.ErrNotFound) {
-		return Result{}, ErrNotFound
-	}
 	if err != nil {
 		return Result{}, err
 	}

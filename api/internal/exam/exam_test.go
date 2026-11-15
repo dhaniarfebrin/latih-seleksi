@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"latihseleksi/api/internal/drill"
+	"latihseleksi/api/internal/gen"
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
+	"latihseleksi/api/internal/question"
 	"latihseleksi/api/internal/scoring"
 	"latihseleksi/api/internal/spec"
 	"latihseleksi/api/internal/store"
@@ -102,15 +104,15 @@ func (e *env) create(t *testing.T) ExamView {
 }
 
 // keys reads the frozen answer keys straight from the store.
-func (e *env) keys(t *testing.T, id string) map[int]snapshot {
+func (e *env) keys(t *testing.T, id string) map[int]question.Snapshot {
 	t.Helper()
 	_, items, _, err := e.st.GetExam(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := map[int]snapshot{}
+	out := map[int]question.Snapshot{}
 	for _, it := range items {
-		var sn snapshot
+		var sn question.Snapshot
 		if err := json.Unmarshal(it.Snapshot, &sn); err != nil {
 			t.Fatal(err)
 		}
@@ -119,7 +121,7 @@ func (e *env) keys(t *testing.T, id string) map[int]snapshot {
 	return out
 }
 
-func wrongKey(sn snapshot) string {
+func wrongKey(sn question.Snapshot) string {
 	for _, o := range sn.Options {
 		if o.Key != sn.AnswerKey {
 			return o.Key
@@ -137,7 +139,7 @@ func (e *env) answerK(t *testing.T, v ExamView, k int) {
 		if it.Pos <= k {
 			ans = keys[it.Pos].AnswerKey
 		}
-		if _, err := e.svc.Answer(context.Background(), e.user, v.ID, it.Pos, ans, 1000, false, 1); err != nil {
+		if _, err := e.svc.Answer(context.Background(), e.user, v.ID, AnswerInput{Pos: it.Pos, Answer: ans, TimeMS: 1000, Seq: 1}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -146,7 +148,7 @@ func (e *env) answerK(t *testing.T, v ExamView, k int) {
 func TestCreatePartialTIU(t *testing.T) {
 	e := newEnv(t)
 	v := e.create(t)
-	if len(v.Items) != 35 || v.Status != store.StatusInProgress || len(v.Sections) != 1 || v.Sections[0] != "TIU" {
+	if len(v.Items) != 35 || v.Status != StatusInProgress || len(v.Sections) != 1 || v.Sections[0] != "TIU" {
 		t.Fatalf("view %+v", v)
 	}
 	// 100 min * 35/110 = 1909 s; basis must say it is prorated.
@@ -207,7 +209,7 @@ func TestScoreMatchesHandCountAndScoreSection(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(res.Sections) != 1 || !res.Partial || res.Status != store.StatusSubmitted {
+		if len(res.Sections) != 1 || !res.Partial || res.Status != StatusSubmitted {
 			t.Fatalf("k=%d: result %+v", k, res)
 		}
 		s := res.Sections[0]
@@ -239,22 +241,22 @@ func TestSeqHighestWins(t *testing.T) {
 	keys := e.keys(t, v.ID)
 	right, wrong := keys[1].AnswerKey, wrongKey(keys[1])
 
-	r, err := e.svc.Answer(ctx, e.user, v.ID, 1, right, 100, true, 2)
+	r, err := e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 1, Answer: right, TimeMS: 100, Flagged: true, Seq: 2})
 	if err != nil || r.Answer != right || r.Seq != 2 || !r.Flagged {
 		t.Fatalf("seq 2: %+v %v", r, err)
 	}
 	// An older write that arrives late must not overwrite, and reports the stored value.
-	r, err = e.svc.Answer(ctx, e.user, v.ID, 1, wrong, 200, false, 1)
+	r, err = e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 1, Answer: wrong, TimeMS: 200, Seq: 1})
 	if err != nil || r.Answer != right || r.Seq != 2 || r.TimeMS != 100 || !r.Flagged {
 		t.Fatalf("seq 1 after 2: %+v %v", r, err)
 	}
 	// Same seq is a retry: ignored.
-	r, _ = e.svc.Answer(ctx, e.user, v.ID, 1, wrong, 200, false, 2)
+	r, _ = e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 1, Answer: wrong, TimeMS: 200, Seq: 2})
 	if r.Answer != right {
 		t.Errorf("equal seq replaced the answer: %+v", r)
 	}
 	// The answer can be changed with a higher seq.
-	r, _ = e.svc.Answer(ctx, e.user, v.ID, 1, wrong, 300, false, 3)
+	r, _ = e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 1, Answer: wrong, TimeMS: 300, Seq: 3})
 	if r.Answer != wrong || r.Seq != 3 || r.Flagged {
 		t.Errorf("seq 3: %+v", r)
 	}
@@ -271,11 +273,11 @@ func TestDeadlineGrace(t *testing.T) {
 	keys := e.keys(t, v.ID)
 
 	e.clock = v.DeadlineAt.Add(4 * time.Second)
-	if _, err := e.svc.Answer(ctx, e.user, v.ID, 1, keys[1].AnswerKey, 1, false, 1); err != nil {
+	if _, err := e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 1, Answer: keys[1].AnswerKey, TimeMS: 1, Seq: 1}); err != nil {
 		t.Fatalf("PUT at deadline+4s: %v", err)
 	}
 	e.clock = v.DeadlineAt.Add(6 * time.Second)
-	if _, err := e.svc.Answer(ctx, e.user, v.ID, 2, keys[2].AnswerKey, 1, false, 1); !errors.Is(err, ErrClosed) {
+	if _, err := e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 2, Answer: keys[2].AnswerKey, TimeMS: 1, Seq: 1}); !errors.Is(err, ErrClosed) {
 		t.Fatalf("PUT at deadline+6s: %v, want ErrClosed", err)
 	}
 	if _, err := e.svc.Submit(ctx, e.user, v.ID); err != nil {
@@ -289,7 +291,7 @@ func TestExpiredOnReadScoresBlankAsZero(t *testing.T) {
 	v := e.create(t)
 	keys := e.keys(t, v.ID)
 	for pos := 1; pos <= 3; pos++ {
-		if _, err := e.svc.Answer(ctx, e.user, v.ID, pos, keys[pos].AnswerKey, 1, false, 1); err != nil {
+		if _, err := e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: pos, Answer: keys[pos].AnswerKey, TimeMS: 1, Seq: 1}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -302,7 +304,7 @@ func TestExpiredOnReadScoresBlankAsZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g.Status != store.StatusExpired || g.SubmittedAt == nil || !g.SubmittedAt.Equal(v.DeadlineAt) {
+	if g.Status != StatusExpired || g.SubmittedAt == nil || !g.SubmittedAt.Equal(v.DeadlineAt) {
 		t.Fatalf("status %q submitted_at %v", g.Status, g.SubmittedAt)
 	}
 	if g.Items[0].AnswerKey == "" || len(g.Items[0].Steps) == 0 || g.Items[0].Response == nil || g.Items[0].Response.Correct == nil {
@@ -312,7 +314,7 @@ func TestExpiredOnReadScoresBlankAsZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Status != store.StatusExpired || res.Sections[0].Score != 15 || res.Sections[0].Answered != 3 {
+	if res.Status != StatusExpired || res.Sections[0].Score != 15 || res.Sections[0].Answered != 3 {
 		t.Errorf("expired result %+v", res)
 	}
 }
@@ -335,7 +337,7 @@ func TestSubmitTwiceIsSafe(t *testing.T) {
 		t.Errorf("first %+v second %+v", a, b)
 	}
 	keys := e.keys(t, v.ID)
-	if _, err := e.svc.Answer(ctx, e.user, v.ID, 1, keys[1].AnswerKey, 1, false, 9); !errors.Is(err, ErrClosed) {
+	if _, err := e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: 1, Answer: keys[1].AnswerKey, TimeMS: 1, Seq: 9}); !errors.Is(err, ErrClosed) {
 		t.Errorf("answer after submit: %v", err)
 	}
 }
@@ -382,7 +384,7 @@ func TestAnswerValidation(t *testing.T) {
 		{"pos out of range", 99, "A", 1, 1, ErrNotFound},
 	}
 	for _, c := range cases {
-		if _, err := e.svc.Answer(ctx, e.user, v.ID, c.pos, c.ans, c.ms, false, c.seq); !errors.Is(err, c.want) {
+		if _, err := e.svc.Answer(ctx, e.user, v.ID, AnswerInput{Pos: c.pos, Answer: c.ans, TimeMS: c.ms, Seq: c.seq}); !errors.Is(err, c.want) {
 			t.Errorf("%s: err %v, want %v", c.name, err, c.want)
 		}
 	}
@@ -395,10 +397,10 @@ func TestExamAndDrillAttemptsAreSeparate(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	v := e.create(t)
-	if _, err := drill.New(e.st).Get(ctx, v.ID); !errors.Is(err, drill.ErrNotFound) {
+	if _, err := drill.New(e.st, catalog.All()).Get(ctx, v.ID); !errors.Is(err, drill.ErrNotFound) {
 		t.Errorf("drill route sees an exam: %v", err)
 	}
-	d, err := drill.New(e.st).Create(ctx, persentase.PatternID, 2, 1)
+	d, err := drill.New(e.st, catalog.All()).Create(ctx, persentase.PatternID, 2, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +435,7 @@ func TestExamBelongsToItsUser(t *testing.T) {
 	if _, err := e.svc.Get(ctx, other, v.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("Get by another user: %v, want ErrNotFound", err)
 	}
-	if _, err := e.svc.Answer(ctx, other, v.ID, 1, keys[1].AnswerKey, 1, false, 1); !errors.Is(err, ErrNotFound) {
+	if _, err := e.svc.Answer(ctx, other, v.ID, AnswerInput{Pos: 1, Answer: keys[1].AnswerKey, TimeMS: 1, Seq: 1}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("Answer by another user: %v, want ErrNotFound", err)
 	}
 	if _, err := e.svc.Submit(ctx, other, v.ID); !errors.Is(err, ErrNotFound) {
@@ -447,7 +449,7 @@ func TestExamBelongsToItsUser(t *testing.T) {
 	}
 	// The other user's attempts did not close or change the owner's exam.
 	g, err := e.svc.Get(ctx, e.user, v.ID)
-	if err != nil || g.Status != store.StatusInProgress {
+	if err != nil || g.Status != StatusInProgress {
 		t.Errorf("owner Get: %v status=%q", err, g.Status)
 	}
 }
@@ -482,13 +484,13 @@ func TestListOwnOrderLimitAndExpiry(t *testing.T) {
 	if len(list) != 3 || list[0].ID != third.ID || list[1].ID != second.ID || list[2].ID != first.ID {
 		t.Fatalf("order/ownership wrong: %+v", list)
 	}
-	if list[0].Status != store.StatusInProgress || list[0].Result != nil {
+	if list[0].Status != StatusInProgress || list[0].Result != nil {
 		t.Errorf("in-progress exam must have no result: %+v", list[0])
 	}
-	if list[1].Status != store.StatusSubmitted || list[1].Result == nil || list[1].Result.Sections[0].Score != 50 {
+	if list[1].Status != StatusSubmitted || list[1].Result == nil || list[1].Result.Sections[0].Score != 50 {
 		t.Errorf("submitted exam result: %+v", list[1].Result)
 	}
-	if list[2].Status != store.StatusExpired || list[2].Result == nil || list[2].Result.Sections[0].Answered != 0 {
+	if list[2].Status != StatusExpired || list[2].Result == nil || list[2].Result.Sections[0].Answered != 0 {
 		t.Errorf("overdue exam should be closed as expired with a result: %+v", list[2])
 	}
 	// The other user sees only their own.
@@ -507,5 +509,26 @@ func TestListOwnOrderLimitAndExpiry(t *testing.T) {
 	// No user: empty list, not someone else's exams.
 	if none, err := e.svc.List(ctx, "", 5); err == nil && len(none) != 0 {
 		t.Errorf("empty user got %d exams", len(none))
+	}
+}
+
+// failingSource serves TIU but always fails to pick, like a broken generator.
+type failingSource struct{}
+
+func (failingSource) Sections() []string { return []string{"TIU"} }
+func (failingSource) Pick(string, int, int64) ([]gen.Draft, error) {
+	return nil, errors.New("generator exploded")
+}
+
+// A source failure is a server fault (500), not bad input (400).
+func TestCreate_sourceFailureIsNotInvalid(t *testing.T) {
+	specs, err := spec.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := New(nil, specs, failingSource{}) // Pick fails before the store is used
+	_, err = svc.Create(context.Background(), "u", "skd-2024", "umum", []string{"TIU"})
+	if err == nil || errors.Is(err, ErrInvalid) {
+		t.Fatalf("Create err = %v, want a non-ErrInvalid error", err)
 	}
 }

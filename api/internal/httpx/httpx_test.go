@@ -45,7 +45,7 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 		t.Fatal(err)
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
-	srv := httptest.NewServer(NewHandler(drill.New(st), examSvc, st, cfg))
+	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }

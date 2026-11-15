@@ -11,6 +11,7 @@ import (
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/kerjasama"
 	"latihseleksi/api/internal/gen/persentase"
+	"latihseleksi/api/internal/question"
 	"latihseleksi/api/internal/store"
 )
 
@@ -28,17 +29,17 @@ func newService(t *testing.T) (*Service, *store.Store) {
 	if err := st.Migrate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	return New(st), st
+	return New(st, catalog.All()), st
 }
 
-// frozenSnapshot reads the stored snapshot of pos through the store.
-func frozenSnapshot(t *testing.T, st *store.Store, id string, pos int) snapshot {
+// frozenSnapshot reads the stored question.Snapshot of pos through the store.
+func frozenSnapshot(t *testing.T, st *store.Store, id string, pos int) question.Snapshot {
 	t.Helper()
 	_, items, _, err := st.GetAttempt(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sn snapshot
+	var sn question.Snapshot
 	if err := json.Unmarshal(items[pos-1].Snapshot, &sn); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func frozenSnapshot(t *testing.T, st *store.Store, id string, pos int) snapshot 
 }
 
 func TestPatternsListAllFamiliesWithLabels(t *testing.T) {
-	got := New(nil).Patterns() // Patterns does not touch the store
+	got := New(nil, catalog.All()).Patterns() // Patterns does not touch the store
 	var ids []string
 	for _, p := range got {
 		ids = append(ids, p.ID)
@@ -157,7 +158,7 @@ func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
 
 	// A wrong answer at pos 2 carries its misconception id.
 	sn2 := frozenSnapshot(t, st, v.ID, 2)
-	var wrongOpt snapshotOption
+	var wrongOpt question.SnapshotOption
 	for _, o := range sn2.Options {
 		if o.Key != sn2.AnswerKey {
 			wrongOpt = o
