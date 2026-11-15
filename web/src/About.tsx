@@ -33,6 +33,20 @@ export function About() {
           ambang CPNS 2026 belum diumumkan.
         </p>
       </div>
+      <div className="panel">
+        <h2 className="sub">Pembuat</h2>
+        <p>
+          Dibuat oleh{' '}
+          <a href="https://github.com/dhaniarfebrin" target="_blank" rel="noopener noreferrer">
+            Dhaniar
+          </a>
+          . Kode sumber ada di{' '}
+          <a href="https://github.com/dhaniarfebrin/latih-seleksi" target="_blank" rel="noopener noreferrer">
+            GitHub
+          </a>
+          .
+        </p>
+      </div>
       <p>
         <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
           Simulasi resmi (cat.bkn.go.id)
