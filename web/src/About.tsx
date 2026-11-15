@@ -6,7 +6,7 @@ export function About() {
         Tentang <mark>Latih Seleksi</mark>
       </h1>
       <div className="panel">
-        <h2 className="sub">Penafian</h2>
+        <h2 className="sub">Catatan penting</h2>
         <p>
           Aplikasi latihan independen, bukan produk resmi penyelenggara seleksi atau instansi pemerintah. Semua soal dibuat sendiri
           dan tidak menjamin kelulusan.
