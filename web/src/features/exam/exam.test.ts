@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Exam, ExamItem, ExamResult } from './api'
+import type { Exam, ExamItem, ExamResult } from './types'
 import {
   examReduce,
   initialExamSession,

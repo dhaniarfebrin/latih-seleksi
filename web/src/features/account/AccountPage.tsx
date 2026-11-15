@@ -1,10 +1,10 @@
 import { LogOut, MailCheck, MailWarning } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from './AuthContext'
-import { authErrorMessage, signOut } from './auth'
+import { useAuth } from '@/features/auth/AuthContext'
+import { authErrorMessage, signOut } from '@/features/auth/auth'
 import { useState } from 'react'
 
-export function Account() {
+export function AccountPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState('')

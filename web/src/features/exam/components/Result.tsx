@@ -1,6 +1,6 @@
 import { CircleCheck, CircleX, Minus } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import type { Exam, ExamItem, ExamResult } from './api'
+import type { Exam, ExamItem, ExamResult } from '../types'
 
 export function Result(props: { result: ExamResult; exam: Exam | null }) {
   const { result, exam } = props

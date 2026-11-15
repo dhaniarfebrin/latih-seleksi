@@ -1,18 +1,11 @@
 import { Check, ChevronLeft, ChevronRight, Clock, Flag } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  ApiError,
-  getExam,
-  getExamResult,
-  getServerOffset,
-  putExamResponse,
-  submitExam,
-  type Exam,
-  type ExamItem,
-  type ExamResult,
-} from './api'
-import { getToken } from './auth'
-import { fmtClock, itemStatus, nextSeq, remainingSeconds, summarizeSections } from './exam'
+import { ApiError, getServerOffset } from '@/shared/api/client'
+import { getExam, getExamResult, putExamResponse, submitExam } from '../api'
+import type { Exam, ExamItem, ExamResult } from '../types'
+import { fmtClock } from '@/shared/lib/time'
+import { itemStatus, nextSeq, remainingSeconds, summarizeSections } from '../exam'
+import { errorMessage } from '@/shared/lib/error'
 
 const STATUS_LABEL = { empty: 'belum dijawab', answered: 'terjawab', flagged: 'ragu-ragu' }
 
@@ -39,20 +32,19 @@ export function Running(props: {
     setBusy(true)
     setError('')
     try {
-      const token = await getToken()
       let result: ExamResult
       try {
-        result = await submitExam(token, exam.id)
+        result = await submitExam(exam.id)
       } catch (e) {
         // 409: already closed (deadline passed or submitted elsewhere); just read the result.
-        if (e instanceof ApiError && e.status === 409) result = await getExamResult(token, exam.id)
+        if (e instanceof ApiError && e.status === 409) result = await getExamResult(exam.id)
         else throw e
       }
-      onFinished(result, await getExam(token, exam.id))
+      onFinished(result, await getExam(exam.id))
     } catch (e) {
       submitted.current = false
       setBusy(false)
-      setError((e as Error).message)
+      setError(errorMessage(e))
     }
   }, [exam.id, onFinished])
 
@@ -76,7 +68,7 @@ export function Running(props: {
     setError('')
     const ms = Math.round((spent.current.get(item.pos) ?? 0) + performance.now() - shownAt.current)
     try {
-      const resp = await putExamResponse(await getToken(), exam.id, item.pos, {
+      const resp = await putExamResponse(exam.id, item.pos, {
         answer,
         time_ms: ms,
         flagged,
@@ -85,7 +77,7 @@ export function Running(props: {
       onAnswered(item.pos, resp)
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) void finish()
-      else setError((e as Error).message)
+      else setError(errorMessage(e))
     }
   }
 

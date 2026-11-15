@@ -1,5 +1,5 @@
 // Pure helpers for the exam simulation screen: timer, seq, screen reducer.
-import type { Exam, ExamItem, ExamResponse, ExamResult } from './api'
+import type { Exam, ExamItem, ExamResponse, ExamResult } from './types'
 
 // Whole seconds left until the deadline, never negative. offsetMs is server
 // clock minus client clock, so the client's clock error does not move the timer.
@@ -85,9 +85,4 @@ export function summarizeSections(items: ExamItem[]): SectionSummary[] {
     by.set(it.section, s)
   }
   return [...by.values()]
-}
-
-export const fmtClock = (sec: number) => {
-  const t = Math.max(0, Math.floor(sec))
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
 }

@@ -13,7 +13,7 @@ import {
   signUpEmail,
 } from './auth'
 
-export function Login() {
+export function LoginPage() {
   const { user, ready } = useAuth()
   const loc = useLocation()
   const [email, setEmail] = useState('')

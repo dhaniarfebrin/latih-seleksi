@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Attempt, ResponseView } from './api'
+import type { Attempt, ResponseView } from './types'
 import { initialSession, misconceptionLabel, reduce, summarize } from './session'
 
 const resp = (correct: boolean, time_ms: number, mis?: string): ResponseView => ({

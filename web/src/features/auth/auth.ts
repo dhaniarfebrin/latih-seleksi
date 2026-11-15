@@ -14,6 +14,7 @@ import {
   type Auth,
   type User,
 } from 'firebase/auth'
+import { errorMessage } from '@/shared/lib/error'
 
 export interface AuthUser {
   uid: string
@@ -108,6 +109,6 @@ export function authErrorMessage(e: unknown): string {
     case 'auth/network-request-failed':
       return 'Koneksi gagal'
     default:
-      return (e as Error).message || 'Login gagal'
+      return errorMessage(e) || 'Login gagal'
   }
 }

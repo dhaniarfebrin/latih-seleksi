@@ -1,6 +1,6 @@
 import { CircleCheck, CircleX, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import type { ExamSummary, Spec } from './api'
+import type { ExamSummary, Spec } from '../types'
 
 const STATUS: Record<ExamSummary['status'], string> = {
   in_progress: 'Sedang berjalan',

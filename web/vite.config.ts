@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 // container serves the production build.
 export default defineConfig({
   plugins: [react()],
+  resolve: { alias: { '@': '/src' } },
   server: {
     host: 'localhost',
     proxy: { '/v1': 'http://localhost:8080' },

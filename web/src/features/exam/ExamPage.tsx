@@ -1,10 +1,11 @@
 import { useEffect, useReducer, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ApiError, getExam, getExamResult } from './api'
-import { getToken } from './auth'
+import { ApiError } from '@/shared/api/client'
+import { getExam, getExamResult } from './api'
 import { examReduce, initialExamSession } from './exam'
-import { Result } from './Result'
-import { Running } from './Running'
+import { Result } from './components/Result'
+import { Running } from './components/Running'
+import { errorMessage } from '@/shared/lib/error'
 
 // The exam id comes from the URL, so a refresh or a shared link resumes the
 // same exam. Keyed by id so switching exams starts from a clean state.
@@ -22,14 +23,13 @@ function ExamPage({ id }: { id: string }) {
     let live = true
     void (async () => {
       try {
-        const token = await getToken()
-        const exam = await getExam(token, id)
-        const result = exam.status === 'in_progress' ? undefined : await getExamResult(token, id)
+        const exam = await getExam(id)
+        const result = exam.status === 'in_progress' ? undefined : await getExamResult(id)
         if (live) dispatch({ type: 'resumed', exam, result })
       } catch (e) {
         if (!live) return
         if (e instanceof ApiError && e.status === 404) setMissing(true)
-        else setError((e as Error).message)
+        else setError(errorMessage(e))
       }
     })()
     return () => {

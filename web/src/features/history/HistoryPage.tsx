@@ -1,12 +1,10 @@
 import { Link } from 'react-router-dom'
-import { listExams, listSpecs } from './api'
-import { getToken } from './auth'
-import { ExamRow } from './ExamRow'
-import { useLoad } from './useLoad'
+import { ExamRow, listExams, listSpecs } from '@/features/exam'
+import { useLoad } from '@/shared/hooks/useLoad'
 
-export function History() {
+export function HistoryPage() {
   const { data, error, loading } = useLoad(async () => {
-    const [exams, specs] = await Promise.all([getToken().then((t) => listExams(t)), listSpecs().catch(() => [])])
+    const [exams, specs] = await Promise.all([listExams(), listSpecs().catch(() => [])])
     return { exams, specs }
   })
   return (

@@ -1,15 +1,13 @@
 import { Play, Target, Timer } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { listExams, listSpecs } from './api'
-import { useAuth } from './AuthContext'
-import { getToken } from './auth'
-import { ExamRow } from './ExamRow'
-import { useLoad } from './useLoad'
+import { ExamRow, listExams, listSpecs } from '@/features/exam'
+import { useAuth } from '@/features/auth/AuthContext'
+import { useLoad } from '@/shared/hooks/useLoad'
 
-export function Home() {
+export function HomePage() {
   const { user } = useAuth()
   const { data, error, loading } = useLoad(async () => {
-    const [exams, specs] = await Promise.all([getToken().then((t) => listExams(t, 5)), listSpecs().catch(() => [])])
+    const [exams, specs] = await Promise.all([listExams(5), listSpecs().catch(() => [])])
     return { exams, specs }
   })
   const running = data?.exams[0]?.status === 'in_progress' ? data.exams[0] : undefined

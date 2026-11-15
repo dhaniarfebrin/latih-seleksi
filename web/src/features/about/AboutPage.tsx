@@ -1,6 +1,6 @@
 import { ExternalLink, Globe, Info } from 'lucide-react'
 
-export function About() {
+export function AboutPage() {
   return (
     <section className="screen narrow">
       <p className="eyebrow">Tentang</p>

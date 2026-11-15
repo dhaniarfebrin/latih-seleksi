@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createExam, listSpecs, type Spec } from './api'
-import { getToken } from './auth'
+import { createExam, listSpecs } from './api'
+import type { Spec } from './types'
+import { errorMessage } from '@/shared/lib/error'
 
 const SECTION = 'TIU'
 
-export function Start() {
+export function StartPage() {
   const navigate = useNavigate()
   const [specs, setSpecs] = useState<Spec[]>([])
   const [specId, setSpecId] = useState('')
@@ -16,7 +17,7 @@ export function Start() {
   useEffect(() => {
     listSpecs()
       .then((all) => setSpecs(all.filter((sp) => sp.sections.some((sec) => sec.id === SECTION && sec.available))))
-      .catch((e: Error) => setError(e.message))
+      .catch((e) => setError(errorMessage(e)))
   }, [])
 
   const spec = specs.find((sp) => sp.id === specId) ?? specs[0]
@@ -28,10 +29,10 @@ export function Start() {
     setBusy(true)
     setError('')
     try {
-      const exam = await createExam(await getToken(), spec.id, track.id, [SECTION])
+      const exam = await createExam(spec.id, track.id, [SECTION])
       navigate(`/simulation/${exam.id}`)
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
       setBusy(false)
     }
   }

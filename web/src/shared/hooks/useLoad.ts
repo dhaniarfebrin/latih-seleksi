@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { errorMessage } from '@/shared/lib/error'
 
 export interface Loaded<T> {
   data: T | undefined
@@ -14,12 +15,11 @@ export function useLoad<T>(load: () => Promise<T>): Loaded<T> {
     let live = true
     load().then(
       (data) => live && setState({ data, error: '', loading: false }),
-      (e: Error) => live && setState({ data: undefined, error: e.message, loading: false }),
+      (e) => live && setState({ data: undefined, error: errorMessage(e), loading: false }),
     )
     return () => {
       live = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- load runs once on mount by contract; callers pass inline closures
   return state
 }

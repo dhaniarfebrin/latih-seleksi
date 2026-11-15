@@ -1,30 +1,30 @@
 import { History as HistoryIcon, House, Target, Timer, UserRound } from 'lucide-react'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router-dom'
-import { About } from './About'
-import { Account } from './Account'
-import { AuthProvider, useAuth } from './AuthContext'
-import { authConfigured } from './auth'
-import { Drill } from './Drill'
-import { ExamRoute } from './ExamPage'
-import { History } from './History'
-import { Home } from './Home'
-import { Login, Verify } from './Login'
-import { Start } from './Start'
+import { AboutPage } from '@/features/about/AboutPage'
+import { AccountPage } from '@/features/account/AccountPage'
+import { AuthProvider, useAuth } from '@/features/auth/AuthContext'
+import { authConfigured } from '@/features/auth/auth'
+import { DrillPage } from '@/features/drill/DrillPage'
+import { ExamRoute } from '@/features/exam/ExamPage'
+import { HistoryPage } from '@/features/history/HistoryPage'
+import { HomePage } from '@/features/home/HomePage'
+import { LoginPage, Verify } from '@/features/auth/LoginPage'
+import { StartPage } from '@/features/exam/StartPage'
 
 export function App() {
   return (
     <AuthProvider>
       <Routes>
         <Route element={<Shell />}>
-          <Route path="login" element={<Login />} />
-          <Route path="about" element={<About />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="about" element={<AboutPage />} />
           <Route element={<RequireAuth />}>
-            <Route index element={<Home />} />
-            <Route path="drill" element={<Drill />} />
-            <Route path="simulation" element={<Start />} />
+            <Route index element={<HomePage />} />
+            <Route path="drill" element={<DrillPage />} />
+            <Route path="simulation" element={<StartPage />} />
             <Route path="simulation/:id" element={<ExamRoute />} />
-            <Route path="history" element={<History />} />
-            <Route path="account" element={<Account />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="account" element={<AccountPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

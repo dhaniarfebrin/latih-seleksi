@@ -1,4 +1,4 @@
-import type { Attempt, Item, ResponseView } from './api'
+import type { Attempt, Item, ResponseView } from './types'
 
 export type Screen = 'start' | 'question' | 'summary'
 
