@@ -47,30 +47,19 @@ func Score(s spec.Spec, trackID string, rs []Response) (Result, error) {
 		return Result{}, fmt.Errorf("scoring: unknown track %q in spec %s", trackID, s.ID)
 	}
 
-	scores := map[string]int{}
-	counts := map[string]int{}
+	bySection := map[string][]Response{}
 	for i, r := range rs {
-		sec, ok := s.Section(r.Section)
-		if !ok {
+		if _, ok := s.Section(r.Section); !ok {
 			return Result{}, fmt.Errorf("scoring: response %d: unknown section %q", i, r.Section)
 		}
-		pts, err := itemScore(sec, r)
-		if err != nil {
-			return Result{}, fmt.Errorf("scoring: response %d: %w", i, err)
-		}
-		scores[sec.ID] += pts
-		counts[sec.ID]++
+		bySection[r.Section] = append(bySection[r.Section], r)
 	}
 
 	res := Result{SpecID: s.ID, Track: track.ID, MaxTotal: s.MaxTotal, TotalMet: true, Passed: true}
 	for _, sec := range s.Sections {
-		if counts[sec.ID] != sec.Items {
-			return Result{}, fmt.Errorf("scoring: section %s: got %d responses, want %d", sec.ID, counts[sec.ID], sec.Items)
-		}
-		sr := SectionResult{ID: sec.ID, Score: scores[sec.ID], Max: sec.MaxScore(), Met: true}
-		if th, ok := track.Thresholds[sec.ID]; ok {
-			sr.Min = &th
-			sr.Met = sr.Score >= th
+		sr, err := ScoreSection(sec, track, bySection[sec.ID])
+		if err != nil {
+			return Result{}, err
 		}
 		res.Total += sr.Score
 		res.Passed = res.Passed && sr.Met
@@ -83,6 +72,31 @@ func Score(s spec.Spec, trackID string, rs []Response) (Result, error) {
 	}
 	res.Passed = res.Passed && res.TotalMet
 	return res, nil
+}
+
+// ScoreSection scores one subtest against the track threshold. It needs
+// exactly sec.Items responses, all of this section.
+func ScoreSection(sec spec.Section, track spec.Track, rs []Response) (SectionResult, error) {
+	if len(rs) != sec.Items {
+		return SectionResult{}, fmt.Errorf("scoring: section %s: got %d responses, want %d", sec.ID, len(rs), sec.Items)
+	}
+	score := 0
+	for i, r := range rs {
+		if r.Section != sec.ID {
+			return SectionResult{}, fmt.Errorf("scoring: section %s: response %d is of section %q", sec.ID, i, r.Section)
+		}
+		pts, err := itemScore(sec, r)
+		if err != nil {
+			return SectionResult{}, fmt.Errorf("scoring: response %d: %w", i, err)
+		}
+		score += pts
+	}
+	sr := SectionResult{ID: sec.ID, Score: score, Max: sec.MaxScore(), Met: true}
+	if th, ok := track.Thresholds[sec.ID]; ok {
+		sr.Min = &th
+		sr.Met = sr.Score >= th
+	}
+	return sr, nil
 }
 
 func itemScore(sec spec.Section, r Response) (int, error) {

@@ -147,6 +147,8 @@ Spesifikasi berupa berkas JSON di `api/internal/spec/data/`, di-embed ke biner (
 
 Mengembangkan PRD §9. Hanya bagian yang menentukan arsitektur yang dirinci.
 
+**[Putusan, simulasi parsial TIU, 2026-11-15]** Dua penyimpangan dari skema di bawah: (1) tidak ada tabel `exam_spec`; `attempt` menyimpan `spec_id` dan `spec_body jsonb` (salinan beku spec), karena spec sudah di-embed dan tabel kembar rawan beda. (2) Sesi simulasi memakai rute `/v1/exams` (`GET /specs`, `POST /exams`, `GET /exams/{id}`, `PUT /exams/{id}/responses/{pos}`, `POST /exams/{id}/submit`, `GET /exams/{id}/result`), terpisah dari `/v1/attempts` (§7), supaya `drill` tidak mendapat logika skor/sesi. Sampai bank TWK/TKP cukup, simulasi hanya untuk subtes yang punya sumber soal (sekarang TIU): hasilnya skor TIU vs ambang TIU tanpa status lulus keseluruhan, durasi = durasi spec x jumlah soal/total soal, ditandai `duration_basis: "prorated"` (angka prorata bukan dari sumber resmi). Toleransi 5 detik diterapkan di `exam` (lazy: sesi dikunci saat dibaca setelah `deadline_at` + 5 detik).
+
 ```sql
 -- Konten
 pattern(id text pk,            -- 'TIU.numerik.persentase-berantai'

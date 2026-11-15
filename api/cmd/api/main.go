@@ -12,7 +12,10 @@ import (
 	"time"
 
 	"latihseleksi/api/internal/drill"
+	"latihseleksi/api/internal/exam"
+	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/httpx"
+	"latihseleksi/api/internal/spec"
 	"latihseleksi/api/internal/store"
 )
 
@@ -45,9 +48,17 @@ func run() error {
 		return err
 	}
 
+	specs, err := spec.Load()
+	if err != nil {
+		return err
+	}
+	// Only TIU has a source that can be scored today. The TWK/TKP bank is not
+	// wired in: it has too few reviewed items and TKP needs option weights.
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
+
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpx.NewHandler(drill.New(st), httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN")}),
+		Handler:           httpx.NewHandler(drill.New(st), examSvc, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN")}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

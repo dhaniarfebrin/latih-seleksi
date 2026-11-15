@@ -11,8 +11,10 @@ import (
 	"testing"
 
 	"latihseleksi/api/internal/drill"
+	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
+	"latihseleksi/api/internal/spec"
 	"latihseleksi/api/internal/store"
 )
 
@@ -30,7 +32,12 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 	if err := st.Migrate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(NewHandler(drill.New(st), cfg))
+	specs, err := spec.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
+	srv := httptest.NewServer(NewHandler(drill.New(st), examSvc, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -202,5 +209,48 @@ func TestCORS(t *testing.T) {
 	_, _, hdr = do(t, "GET", srv.URL+"/healthz", "")
 	if hdr.Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
 		t.Errorf("GET lacks CORS header")
+	}
+}
+
+func TestExamFlowAndStatusCodes(t *testing.T) {
+	srv := newServer(t, Config{})
+	if code, out, _ := do(t, "GET", srv.URL+"/v1/specs", ""); code != http.StatusOK || !strings.Contains(out, `"skd-2024"`) {
+		t.Fatalf("specs: %d %s", code, out)
+	}
+	code, out, _ := do(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TWK"]}`)
+	if code != http.StatusBadRequest {
+		t.Fatalf("TWK exam = %d %s, want 400", code, out)
+	}
+	code, out, _ = do(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`)
+	if code != http.StatusCreated {
+		t.Fatalf("create exam = %d %s", code, out)
+	}
+	var c createResp
+	if err := json.Unmarshal([]byte(out), &c); err != nil || len(c.Items) != 35 {
+		t.Fatalf("exam body: %v items=%d", err, len(c.Items))
+	}
+	for _, banned := range []string{"answer_key", "steps"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("create response leaks %q", banned)
+		}
+	}
+	if code, _, _ := do(t, "GET", srv.URL+"/v1/exams/"+c.ID+"/result", ""); code != http.StatusConflict {
+		t.Errorf("result while open = %d, want 409", code)
+	}
+	url := srv.URL + "/v1/exams/" + c.ID + "/responses/1"
+	if code, out, _ := do(t, "PUT", url, `{"answer":"A","time_ms":5,"seq":1}`); code != http.StatusOK {
+		t.Fatalf("put = %d %s", code, out)
+	}
+	if code, _, _ := do(t, "PUT", url, `{"answer":"Z","time_ms":5,"seq":2}`); code != http.StatusBadRequest {
+		t.Errorf("bad answer = %d, want 400", code)
+	}
+	if code, out, _ := do(t, "POST", srv.URL+"/v1/exams/"+c.ID+"/submit", ""); code != http.StatusOK || !strings.Contains(out, `"partial":true`) {
+		t.Fatalf("submit = %d %s", code, out)
+	}
+	if code, _, _ := do(t, "PUT", url, `{"answer":"B","time_ms":5,"seq":3}`); code != http.StatusConflict {
+		t.Errorf("put after submit = %d, want 409", code)
+	}
+	if code, _, _ := do(t, "GET", srv.URL+"/v1/attempts/"+c.ID, ""); code != http.StatusNotFound {
+		t.Errorf("drill route on an exam = %d, want 404", code)
 	}
 }

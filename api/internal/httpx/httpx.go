@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"latihseleksi/api/internal/drill"
+	"latihseleksi/api/internal/exam"
 )
 
 const maxBodyBytes = 1 << 16
@@ -27,12 +28,13 @@ type Config struct {
 }
 
 type api struct {
-	svc *drill.Service
+	svc  *drill.Service
+	exam *exam.Service
 }
 
 // NewHandler builds the router with request id, access log and CORS middleware.
-func NewHandler(svc *drill.Service, cfg Config) http.Handler {
-	a := &api{svc: svc}
+func NewHandler(svc *drill.Service, ex *exam.Service, cfg Config) http.Handler {
+	a := &api{svc: svc, exam: ex}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -42,6 +44,12 @@ func NewHandler(svc *drill.Service, cfg Config) http.Handler {
 	mux.HandleFunc("GET /v1/attempts/{id}", a.getAttempt)
 	mux.HandleFunc("PUT /v1/attempts/{id}/responses/{pos}", a.putResponse)
 	mux.HandleFunc("POST /v1/attempts/{id}/submit", a.submit)
+	mux.HandleFunc("GET /v1/specs", a.specs)
+	mux.HandleFunc("POST /v1/exams", a.createExam)
+	mux.HandleFunc("GET /v1/exams/{id}", a.getExam)
+	mux.HandleFunc("PUT /v1/exams/{id}/responses/{pos}", a.putExamResponse)
+	mux.HandleFunc("POST /v1/exams/{id}/submit", a.submitExam)
+	mux.HandleFunc("GET /v1/exams/{id}/result", a.examResult)
 	return requestID(cors(cfg.CORSOrigin, mux))
 }
 
@@ -95,11 +103,11 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, drill.ErrInvalid):
+	case errors.Is(err, drill.ErrInvalid), errors.Is(err, exam.ErrInvalid):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	case errors.Is(err, drill.ErrNotFound):
+	case errors.Is(err, drill.ErrNotFound), errors.Is(err, exam.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
-	case errors.Is(err, drill.ErrSubmitted):
+	case errors.Is(err, drill.ErrSubmitted), errors.Is(err, exam.ErrClosed), errors.Is(err, exam.ErrInProgress):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	default:
 		id, _ := r.Context().Value(ctxKey{}).(string)
@@ -188,6 +196,80 @@ func (a *api) putResponse(w http.ResponseWriter, r *http.Request) {
 
 func (a *api) submit(w http.ResponseWriter, r *http.Request) {
 	res, err := a.svc.Submit(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (a *api) specs(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"specs": a.exam.Specs()})
+}
+
+func (a *api) createExam(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		SpecID   string   `json:"spec_id"`
+		Track    string   `json:"track"`
+		Sections []string `json:"sections"`
+	}
+	if err := decode(w, r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	v, err := a.exam.Create(r.Context(), body.SpecID, body.Track, body.Sections)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.Header().Set("Location", "/v1/exams/"+v.ID)
+	writeJSON(w, http.StatusCreated, v)
+}
+
+func (a *api) getExam(w http.ResponseWriter, r *http.Request) {
+	v, err := a.exam.Get(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+func (a *api) putExamResponse(w http.ResponseWriter, r *http.Request) {
+	pos, err := strconv.Atoi(r.PathValue("pos"))
+	if err != nil {
+		writeError(w, r, exam.ErrNotFound)
+		return
+	}
+	var body struct {
+		Answer  string `json:"answer"`
+		TimeMS  int    `json:"time_ms"`
+		Flagged bool   `json:"flagged"`
+		Seq     int    `json:"seq"`
+	}
+	if err := decode(w, r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	v, err := a.exam.Answer(r.Context(), r.PathValue("id"), pos, body.Answer, body.TimeMS, body.Flagged, body.Seq)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+func (a *api) submitExam(w http.ResponseWriter, r *http.Request) {
+	res, err := a.exam.Submit(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (a *api) examResult(w http.ResponseWriter, r *http.Request) {
+	res, err := a.exam.Result(r.Context(), r.PathValue("id"))
 	if err != nil {
 		writeError(w, r, err)
 		return

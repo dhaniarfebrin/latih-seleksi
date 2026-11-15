@@ -1,0 +1,494 @@
+// Package exam runs simulation attempts: items frozen at creation, a server
+// timer, idempotent answers (highest seq wins) and scoring against the
+// frozen exam spec. Only sections with an ItemSource can be taken.
+package exam
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/binary"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+
+	"latihseleksi/api/internal/gen"
+	"latihseleksi/api/internal/scoring"
+	"latihseleksi/api/internal/spec"
+	"latihseleksi/api/internal/store"
+)
+
+const (
+	// grace is how long after the deadline answers and submits are still
+	// accepted, for network delay. Assumption (docs/architecture.md section 8),
+	// not an official rule.
+	grace      = 5 * time.Second
+	maxTimeMS  = 24 * 60 * 60 * 1000
+	answerKeys = "ABCDE"
+
+	// Duration bases reported to the client.
+	BasisSpec     = "spec"
+	BasisProrated = "prorated"
+)
+
+var (
+	ErrNotFound   = errors.New("not found")
+	ErrInvalid    = errors.New("invalid input")
+	ErrClosed     = errors.New("exam is closed")
+	ErrInProgress = errors.New("exam is still in progress")
+)
+
+func invalid(format string, a ...any) error {
+	return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, a...))
+}
+
+type snapshot struct {
+	Stem      string           `json:"stem"`
+	Options   []snapshotOption `json:"options"`
+	AnswerKey string           `json:"answer_key"`
+	Steps     []string         `json:"steps"`
+}
+
+type snapshotOption struct {
+	Key             string `json:"key"`
+	Text            string `json:"text"`
+	MisconceptionID string `json:"misconception_id,omitempty"`
+}
+
+// Views returned to clients. Key, steps and correctness appear only once the
+// exam is closed (submitted or expired).
+type OptionView struct {
+	Key  string `json:"key"`
+	Text string `json:"text"`
+}
+
+type ResponseView struct {
+	Answer          string `json:"answer"`
+	TimeMS          int    `json:"time_ms"`
+	Flagged         bool   `json:"flagged"`
+	Seq             int    `json:"seq"`
+	Correct         *bool  `json:"correct,omitempty"`
+	MisconceptionID string `json:"misconception_id,omitempty"`
+}
+
+type ItemView struct {
+	Pos       int           `json:"pos"`
+	Section   string        `json:"section"`
+	Stem      string        `json:"stem"`
+	Options   []OptionView  `json:"options"`
+	Response  *ResponseView `json:"response,omitempty"`
+	AnswerKey string        `json:"answer_key,omitempty"`
+	Steps     []string      `json:"steps,omitempty"`
+}
+
+type ExamView struct {
+	ID              string     `json:"id"`
+	SpecID          string     `json:"spec_id"`
+	Track           string     `json:"track"`
+	Sections        []string   `json:"sections"`
+	Status          string     `json:"status"`
+	StartedAt       time.Time  `json:"started_at"`
+	DeadlineAt      time.Time  `json:"deadline_at"`
+	DurationSeconds int        `json:"duration_seconds"`
+	DurationBasis   string     `json:"duration_basis"`
+	SubmittedAt     *time.Time `json:"submitted_at,omitempty"`
+	Items           []ItemView `json:"items"`
+}
+
+type SectionResult struct {
+	ID       string `json:"id"`
+	Items    int    `json:"items"`
+	Answered int    `json:"answered"`
+	Score    int    `json:"score"`
+	Max      int    `json:"max"`
+	Min      *int   `json:"min,omitempty"`
+	Met      bool   `json:"met"`
+}
+
+// Result is the outcome per section. Partial is true when not every spec
+// section was taken; then there is no overall pass/fail, only each section
+// against its threshold.
+type Result struct {
+	ExamID        string          `json:"exam_id"`
+	SpecID        string          `json:"spec_id"`
+	Track         string          `json:"track"`
+	Status        string          `json:"status"`
+	Partial       bool            `json:"partial"`
+	DurationBasis string          `json:"duration_basis"`
+	Sections      []SectionResult `json:"sections"`
+	Total         int             `json:"total"`
+	MaxTotal      int             `json:"max_total"`
+	SubmittedAt   time.Time       `json:"submitted_at"`
+}
+
+type SpecSectionView struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	Items     int    `json:"items"`
+	Available bool   `json:"available"`
+}
+
+type SpecView struct {
+	ID          string            `json:"id"`
+	Label       string            `json:"label"`
+	Scope       string            `json:"scope"`
+	DurationMin int               `json:"duration_min"`
+	Sections    []SpecSectionView `json:"sections"`
+	Tracks      []spec.Track      `json:"tracks"`
+}
+
+type Service struct {
+	store   *store.Store
+	specs   *spec.Registry
+	sources map[string]ItemSource // by section id
+	now     func() time.Time
+}
+
+// New builds the service. A section is available when one of the sources
+// serves it; a later source wins for a section two sources serve.
+func New(st *store.Store, specs *spec.Registry, sources ...ItemSource) *Service {
+	by := map[string]ItemSource{}
+	for _, src := range sources {
+		for _, sec := range src.Sections() {
+			by[sec] = src
+		}
+	}
+	return &Service{store: st, specs: specs, sources: by, now: time.Now}
+}
+
+// available reports whether a section can be taken: it has a source and is
+// right-wrong scored (weighted sections need per-option weights, which items
+// do not carry yet).
+func (s *Service) available(sec spec.Section) bool {
+	_, ok := s.sources[sec.ID]
+	return ok && sec.Scoring.Kind == spec.KindRightWrong
+}
+
+// Specs lists the exam specs with which sections can be taken now.
+func (s *Service) Specs() []SpecView {
+	var out []SpecView
+	for _, sp := range s.specs.All() {
+		v := SpecView{ID: sp.ID, Label: sp.Label, Scope: sp.Scope, DurationMin: sp.DurationMin, Tracks: sp.Tracks}
+		for _, sec := range sp.Sections {
+			v.Sections = append(v.Sections, SpecSectionView{ID: sec.ID, Label: sec.Label, Items: sec.Items, Available: s.available(sec)})
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// duration is the time allowed for the chosen sections: the spec duration
+// when all sections are taken, else prorated by item count (an assumption,
+// not an official figure).
+func duration(sp spec.Spec, sections []spec.Section) (time.Duration, string) {
+	total, picked := 0, 0
+	for _, sec := range sp.Sections {
+		total += sec.Items
+	}
+	for _, sec := range sections {
+		picked += sec.Items
+	}
+	full := time.Duration(sp.DurationMin) * time.Minute
+	if picked == total {
+		return full, BasisSpec
+	}
+	return full * time.Duration(picked) / time.Duration(total), BasisProrated
+}
+
+func randomSeed() (int64, error) {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0, err
+	}
+	return int64(binary.BigEndian.Uint64(b[:]) >> 1), nil
+}
+
+// Create picks and freezes the items of the chosen sections and starts the
+// timer. Items are numbered in spec section order.
+func (s *Service) Create(ctx context.Context, specID, trackID string, sectionIDs []string) (ExamView, error) {
+	sp, ok := s.specs.Get(specID)
+	if !ok {
+		return ExamView{}, invalid("unknown spec_id %q", specID)
+	}
+	if _, ok := sp.Track(trackID); !ok {
+		return ExamView{}, invalid("unknown track %q for spec %s", trackID, sp.ID)
+	}
+	if len(sectionIDs) == 0 {
+		return ExamView{}, invalid("sections must not be empty")
+	}
+	want := map[string]bool{}
+	for _, id := range sectionIDs {
+		sec, ok := sp.Section(id)
+		if !ok {
+			return ExamView{}, invalid("unknown section %q for spec %s", id, sp.ID)
+		}
+		if want[id] {
+			return ExamView{}, invalid("section %q listed twice", id)
+		}
+		if !s.available(sec) {
+			return ExamView{}, invalid("section %q has no question source yet", id)
+		}
+		want[id] = true
+	}
+
+	var chosen []spec.Section
+	var items []store.Item
+	for _, sec := range sp.Sections {
+		if !want[sec.ID] {
+			continue
+		}
+		chosen = append(chosen, sec)
+		seed, err := randomSeed()
+		if err != nil {
+			return ExamView{}, err
+		}
+		drafts, err := s.sources[sec.ID].Pick(sec.ID, sec.Items, seed)
+		if err != nil {
+			return ExamView{}, invalid("section %s: %v", sec.ID, err)
+		}
+		for _, d := range drafts {
+			raw, err := json.Marshal(toSnapshot(d))
+			if err != nil {
+				return ExamView{}, err
+			}
+			items = append(items, store.Item{Pos: len(items) + 1, Seed: d.Seed, Snapshot: raw, Section: sec.ID, PatternID: d.PatternID})
+		}
+	}
+
+	body, err := json.Marshal(sp)
+	if err != nil {
+		return ExamView{}, err
+	}
+	dur, _ := duration(sp, chosen)
+	now := s.now()
+	ids := make([]string, 0, len(chosen))
+	for _, sec := range chosen {
+		ids = append(ids, sec.ID)
+	}
+	e, err := s.store.CreateExam(ctx, store.Exam{
+		SpecID: sp.ID, SpecBody: body, Track: trackID, Sections: ids, StartedAt: now, DeadlineAt: now.Add(dur),
+	}, items)
+	if err != nil {
+		return ExamView{}, err
+	}
+	return s.Get(ctx, e.ID)
+}
+
+func toSnapshot(d gen.Draft) snapshot {
+	sn := snapshot{Stem: d.Stem, AnswerKey: d.AnswerKey, Steps: d.Steps}
+	for _, o := range d.Options {
+		sn.Options = append(sn.Options, snapshotOption{Key: o.Key, Text: o.Text, MisconceptionID: o.MisconceptionID})
+	}
+	return sn
+}
+
+type loaded struct {
+	exam  store.Exam
+	spec  spec.Spec
+	snaps map[int]snapshot
+	items []store.Item
+	resps []store.Response
+}
+
+func (l loaded) closed() bool { return l.exam.Status != store.StatusInProgress }
+
+// load reads the exam and, if the deadline plus grace has passed, closes it as
+// expired first (lazy auto-submit: there is no background job).
+func (s *Service) load(ctx context.Context, id string) (loaded, error) {
+	e, items, resps, err := s.store.GetExam(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		return loaded{}, ErrNotFound
+	}
+	if err != nil {
+		return loaded{}, err
+	}
+	if e.Status == store.StatusInProgress && s.now().After(e.DeadlineAt.Add(grace)) {
+		if err := s.store.CloseExam(ctx, id, store.StatusExpired, e.DeadlineAt); err != nil {
+			return loaded{}, err
+		}
+		if e, items, resps, err = s.store.GetExam(ctx, id); err != nil {
+			return loaded{}, err
+		}
+	}
+	sp, err := spec.Parse(e.SpecBody)
+	if err != nil {
+		return loaded{}, fmt.Errorf("decode frozen spec: %w", err)
+	}
+	snaps := make(map[int]snapshot, len(items))
+	for _, it := range items {
+		var sn snapshot
+		if err := json.Unmarshal(it.Snapshot, &sn); err != nil {
+			return loaded{}, fmt.Errorf("decode snapshot %d: %w", it.Pos, err)
+		}
+		snaps[it.Pos] = sn
+	}
+	return loaded{exam: e, spec: sp, snaps: snaps, items: items, resps: resps}, nil
+}
+
+func (l loaded) chosenSections() []spec.Section {
+	var out []spec.Section
+	for _, id := range l.exam.Sections {
+		if sec, ok := l.spec.Section(id); ok {
+			out = append(out, sec)
+		}
+	}
+	return out
+}
+
+// Get returns the exam. Keys and steps are included only once it is closed.
+func (s *Service) Get(ctx context.Context, id string) (ExamView, error) {
+	l, err := s.load(ctx, id)
+	if err != nil {
+		return ExamView{}, err
+	}
+	dur, basis := duration(l.spec, l.chosenSections())
+	v := ExamView{
+		ID: l.exam.ID, SpecID: l.exam.SpecID, Track: l.exam.Track, Sections: l.exam.Sections,
+		Status: l.exam.Status, StartedAt: l.exam.StartedAt, DeadlineAt: l.exam.DeadlineAt,
+		DurationSeconds: int(dur / time.Second), DurationBasis: basis, SubmittedAt: l.exam.SubmittedAt,
+		Items: make([]ItemView, 0, len(l.items)),
+	}
+	byPos := make(map[int]store.Response, len(l.resps))
+	for _, r := range l.resps {
+		byPos[r.Pos] = r
+	}
+	for _, it := range l.items {
+		sn := l.snaps[it.Pos]
+		iv := ItemView{Pos: it.Pos, Section: it.Section, Stem: sn.Stem, Options: make([]OptionView, 0, len(sn.Options))}
+		for _, o := range sn.Options {
+			iv.Options = append(iv.Options, OptionView{Key: o.Key, Text: o.Text})
+		}
+		if r, ok := byPos[it.Pos]; ok {
+			iv.Response = &ResponseView{Answer: r.Answer, TimeMS: r.TimeMS, Flagged: r.Flagged, Seq: r.Seq}
+			if l.closed() {
+				c := r.Correct
+				iv.Response.Correct = &c
+				iv.Response.MisconceptionID = r.MisconceptionID
+			}
+		}
+		if l.closed() {
+			iv.AnswerKey, iv.Steps = sn.AnswerKey, sn.Steps
+		}
+		v.Items = append(v.Items, iv)
+	}
+	return v, nil
+}
+
+// Answer stores the answer for pos unless a response with an equal or higher
+// seq is already stored; either way it returns the stored response. The answer
+// may be changed while the exam is open. Accepted until deadline + grace.
+func (s *Service) Answer(ctx context.Context, id string, pos int, answer string, timeMS int, flagged bool, seq int) (ResponseView, error) {
+	if len(answer) != 1 || !containsByte(answerKeys, answer[0]) {
+		return ResponseView{}, invalid("answer must be one of A-E")
+	}
+	if timeMS < 0 || timeMS > maxTimeMS {
+		return ResponseView{}, invalid("time_ms must be between 0 and %d", maxTimeMS)
+	}
+	if seq < 0 {
+		return ResponseView{}, invalid("seq must not be negative")
+	}
+	l, err := s.load(ctx, id)
+	if err != nil {
+		return ResponseView{}, err
+	}
+	sn, ok := l.snaps[pos]
+	if !ok {
+		return ResponseView{}, ErrNotFound
+	}
+	if l.closed() {
+		return ResponseView{}, ErrClosed
+	}
+	chosen, found := snapshotOption{}, false
+	for _, o := range sn.Options {
+		if o.Key == answer {
+			chosen, found = o, true
+		}
+	}
+	if !found {
+		return ResponseView{}, invalid("answer %s is not an option of this question", answer)
+	}
+	stored, err := s.store.SaveExamResponse(ctx, id, store.Response{
+		Pos: pos, Answer: answer, Correct: answer == sn.AnswerKey, TimeMS: timeMS,
+		MisconceptionID: chosen.MisconceptionID, Seq: seq, Flagged: flagged,
+	})
+	if err != nil {
+		return ResponseView{}, err
+	}
+	return ResponseView{Answer: stored.Answer, TimeMS: stored.TimeMS, Flagged: stored.Flagged, Seq: stored.Seq}, nil
+}
+
+func containsByte(s string, b byte) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == b {
+			return true
+		}
+	}
+	return false
+}
+
+// Submit closes the exam and returns the result. Repeating it, or submitting
+// an expired exam, returns the same result.
+func (s *Service) Submit(ctx context.Context, id string) (Result, error) {
+	l, err := s.load(ctx, id)
+	if err != nil {
+		return Result{}, err
+	}
+	if !l.closed() {
+		if err := s.store.CloseExam(ctx, id, store.StatusSubmitted, s.now()); err != nil {
+			return Result{}, err
+		}
+	}
+	return s.Result(ctx, id)
+}
+
+// Result scores a closed exam. An exam still in progress gives ErrInProgress.
+func (s *Service) Result(ctx context.Context, id string) (Result, error) {
+	l, err := s.load(ctx, id)
+	if err != nil {
+		return Result{}, err
+	}
+	if !l.closed() {
+		return Result{}, ErrInProgress
+	}
+	track, ok := l.spec.Track(l.exam.Track)
+	if !ok {
+		return Result{}, fmt.Errorf("frozen spec %s lost track %q", l.spec.ID, l.exam.Track)
+	}
+	byPos := make(map[int]store.Response, len(l.resps))
+	for _, r := range l.resps {
+		byPos[r.Pos] = r
+	}
+	chosen := l.chosenSections()
+	_, basis := duration(l.spec, chosen)
+	res := Result{
+		ExamID: l.exam.ID, SpecID: l.spec.ID, Track: track.ID, Status: l.exam.Status,
+		Partial: len(chosen) < len(l.spec.Sections), DurationBasis: basis,
+	}
+	if l.exam.SubmittedAt != nil {
+		res.SubmittedAt = *l.exam.SubmittedAt
+	}
+	for _, sec := range chosen {
+		var rs []scoring.Response
+		answered := 0
+		for _, it := range l.items {
+			if it.Section != sec.ID {
+				continue
+			}
+			r, ok := byPos[it.Pos]
+			if ok {
+				answered++
+			}
+			rs = append(rs, scoring.Response{Section: sec.ID, Answered: ok, Correct: ok && r.Correct})
+		}
+		sr, err := scoring.ScoreSection(sec, track, rs)
+		if err != nil {
+			return Result{}, err
+		}
+		res.Sections = append(res.Sections, SectionResult{
+			ID: sr.ID, Items: sec.Items, Answered: answered, Score: sr.Score, Max: sr.Max, Min: sr.Min, Met: sr.Met,
+		})
+		res.Total += sr.Score
+		res.MaxTotal += sr.Max
+	}
+	return res, nil
+}

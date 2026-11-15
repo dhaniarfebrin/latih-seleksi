@@ -39,6 +39,22 @@ type Item struct {
 	Pos      int
 	Seed     int64
 	Snapshot json.RawMessage
+	// Section and PatternID are set for simulation items only.
+	Section   string
+	PatternID string
+}
+
+// Exam is a simulation attempt. SpecBody is the frozen exam spec JSON.
+type Exam struct {
+	ID          string
+	SpecID      string
+	SpecBody    json.RawMessage
+	Track       string
+	Sections    []string
+	StartedAt   time.Time
+	DeadlineAt  time.Time
+	SubmittedAt *time.Time
+	Status      string
 }
 
 type Response struct {
@@ -48,6 +64,9 @@ type Response struct {
 	TimeMS          int
 	MisconceptionID string
 	AnsweredAt      time.Time
+	// Seq and Flagged are used by simulation responses only.
+	Seq     int
+	Flagged bool
 }
 
 // Open connects to the database. Neon needs sslmode=require in the URL.
@@ -154,11 +173,11 @@ func (s *Store) CreateAttempt(ctx context.Context, a Attempt, items []Item) (Att
 	return a, nil
 }
 
-// GetAttempt returns the attempt with its items and responses, both ordered by pos.
+// GetAttempt returns the drill attempt (simulation attempts are not found) with its items and responses, both ordered by pos.
 func (s *Store) GetAttempt(ctx context.Context, id string) (Attempt, []Item, []Response, error) {
 	var a Attempt
 	err := s.pool.QueryRow(ctx,
-		`select id::text, mode, pattern_id, band, n, started_at, submitted_at from attempt where id = $1`, id).
+		`select id::text, mode, pattern_id, band, n, started_at, submitted_at from attempt where id = $1 and mode = 'drill'`, id).
 		Scan(&a.ID, &a.Mode, &a.PatternID, &a.Band, &a.N, &a.StartedAt, &a.SubmittedAt)
 	if errors.Is(err, pgx.ErrNoRows) || (err != nil && isInvalidUUID(err)) {
 		return Attempt{}, nil, nil, ErrNotFound
@@ -236,4 +255,127 @@ func (s *Store) MarkSubmitted(ctx context.Context, id string) (time.Time, error)
 		return time.Time{}, ErrNotFound
 	}
 	return t, err
+}
+
+const (
+	StatusInProgress = "in_progress"
+	StatusSubmitted  = "submitted"
+	StatusExpired    = "expired"
+)
+
+// CreateExam inserts a simulation attempt and its frozen items in one
+// transaction. StartedAt and DeadlineAt come from the caller's clock.
+func (s *Store) CreateExam(ctx context.Context, e Exam, items []Item) (Exam, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Exam{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	err = tx.QueryRow(ctx,
+		`insert into attempt (mode, spec_id, spec_body, track, sections, started_at, deadline_at, status)
+		 values ('simulasi', $1, $2, $3, $4, $5, $6, 'in_progress') returning id::text`,
+		e.SpecID, []byte(e.SpecBody), e.Track, e.Sections, e.StartedAt, e.DeadlineAt).Scan(&e.ID)
+	if err != nil {
+		return Exam{}, fmt.Errorf("insert exam: %w", err)
+	}
+	e.Status = StatusInProgress
+	for _, it := range items {
+		if _, err := tx.Exec(ctx,
+			`insert into attempt_item (attempt_id, pos, seed, item_snapshot, section, pattern_id) values ($1, $2, $3, $4, $5, $6)`,
+			e.ID, it.Pos, it.Seed, []byte(it.Snapshot), it.Section, it.PatternID); err != nil {
+			return Exam{}, fmt.Errorf("insert item %d: %w", it.Pos, err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Exam{}, err
+	}
+	return e, nil
+}
+
+// GetExam returns the simulation attempt with its items and responses, both
+// ordered by pos. Drill attempts are not found here.
+func (s *Store) GetExam(ctx context.Context, id string) (Exam, []Item, []Response, error) {
+	var e Exam
+	var raw []byte
+	err := s.pool.QueryRow(ctx,
+		`select id::text, spec_id, spec_body, track, sections, started_at, deadline_at, submitted_at, status
+		 from attempt where id = $1 and mode = 'simulasi'`, id).
+		Scan(&e.ID, &e.SpecID, &raw, &e.Track, &e.Sections, &e.StartedAt, &e.DeadlineAt, &e.SubmittedAt, &e.Status)
+	if errors.Is(err, pgx.ErrNoRows) || (err != nil && isInvalidUUID(err)) {
+		return Exam{}, nil, nil, ErrNotFound
+	}
+	if err != nil {
+		return Exam{}, nil, nil, err
+	}
+	e.SpecBody = raw
+
+	rows, err := s.pool.Query(ctx,
+		`select pos, seed, item_snapshot, coalesce(section, ''), coalesce(pattern_id, '')
+		 from attempt_item where attempt_id = $1 order by pos`, id)
+	if err != nil {
+		return Exam{}, nil, nil, err
+	}
+	items, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Item, error) {
+		var it Item
+		var snap []byte
+		err := r.Scan(&it.Pos, &it.Seed, &snap, &it.Section, &it.PatternID)
+		it.Snapshot = snap
+		return it, err
+	})
+	if err != nil {
+		return Exam{}, nil, nil, err
+	}
+
+	rows, err = s.pool.Query(ctx,
+		`select pos, answer, correct, time_ms, coalesce(misconception_id, ''), answered_at, seq, flagged
+		 from response where attempt_id = $1 order by pos`, id)
+	if err != nil {
+		return Exam{}, nil, nil, err
+	}
+	resps, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Response, error) {
+		var x Response
+		err := r.Scan(&x.Pos, &x.Answer, &x.Correct, &x.TimeMS, &x.MisconceptionID, &x.AnsweredAt, &x.Seq, &x.Flagged)
+		return x, err
+	})
+	if err != nil {
+		return Exam{}, nil, nil, err
+	}
+	return e, items, resps, nil
+}
+
+// SaveExamResponse stores r unless a response with an equal or higher seq is
+// already stored for the position (highest seq wins). It returns the stored
+// response either way.
+func (s *Store) SaveExamResponse(ctx context.Context, id string, r Response) (Response, error) {
+	var mis any
+	if r.MisconceptionID != "" {
+		mis = r.MisconceptionID
+	}
+	if _, err := s.pool.Exec(ctx,
+		`insert into response (attempt_id, pos, answer, correct, time_ms, misconception_id, seq, flagged)
+		 values ($1, $2, $3, $4, $5, $6, $7, $8)
+		 on conflict (attempt_id, pos) do update set
+		   answer = excluded.answer, correct = excluded.correct, time_ms = excluded.time_ms,
+		   misconception_id = excluded.misconception_id, seq = excluded.seq,
+		   flagged = excluded.flagged, answered_at = now()
+		 where excluded.seq > response.seq`,
+		id, r.Pos, r.Answer, r.Correct, r.TimeMS, mis, r.Seq, r.Flagged); err != nil {
+		return Response{}, err
+	}
+	var out Response
+	err := s.pool.QueryRow(ctx,
+		`select pos, answer, correct, time_ms, coalesce(misconception_id, ''), answered_at, seq, flagged
+		 from response where attempt_id = $1 and pos = $2`, id, r.Pos).
+		Scan(&out.Pos, &out.Answer, &out.Correct, &out.TimeMS, &out.MisconceptionID, &out.AnsweredAt, &out.Seq, &out.Flagged)
+	return out, err
+}
+
+// CloseExam moves an in-progress exam to status (submitted or expired) at
+// time at. It does nothing if the exam is already closed.
+func (s *Store) CloseExam(ctx context.Context, id, status string, at time.Time) error {
+	_, err := s.pool.Exec(ctx,
+		`update attempt set status = $2, submitted_at = $3
+		 where id = $1 and mode = 'simulasi' and status = 'in_progress'`, id, status, at)
+	return err
 }

@@ -345,3 +345,40 @@ func TestSectionOrderFollowsSpec(t *testing.T) {
 		t.Errorf("section order %s", got)
 	}
 }
+
+func TestScoreSectionMatchesScore(t *testing.T) {
+	s := load(t, "skd-2024")
+	rs := attempt{twk: 14, tiu: 17, tkp: tkpSum(170)}.responses()
+	for _, trackID := range []string{"umum", "cumlaude"} {
+		full, err := Score(s, trackID, rs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		track, _ := s.Track(trackID)
+		for i, sec := range s.Sections {
+			var part []Response
+			for _, r := range rs {
+				if r.Section == sec.ID {
+					part = append(part, r)
+				}
+			}
+			got, err := ScoreSection(sec, track, part)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := full.Sections[i]
+			if got.ID != want.ID || got.Score != want.Score || got.Max != want.Max || got.Met != want.Met ||
+				(got.Min == nil) != (want.Min == nil) || (got.Min != nil && *got.Min != *want.Min) {
+				t.Errorf("%s %s: ScoreSection %+v, Score %+v", trackID, sec.ID, got, want)
+			}
+		}
+	}
+	tiu, _ := s.Section("TIU")
+	track, _ := s.Track("umum")
+	if _, err := ScoreSection(tiu, track, rs[:3]); err == nil {
+		t.Error("wrong response count accepted")
+	}
+	if _, err := ScoreSection(tiu, track, rs[:35]); err == nil {
+		t.Error("TWK responses accepted for TIU")
+	}
+}
