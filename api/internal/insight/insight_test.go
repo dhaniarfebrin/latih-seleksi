@@ -146,6 +146,26 @@ func TestSessionsNewestFirstAndCapped(t *testing.T) {
 	}
 }
 
+// A drill attempt has one pattern and names it; a simulation mixes patterns and names none.
+func TestSessionPatternOnlyForDrill(t *testing.T) {
+	sim := fact("sim", "p1", true, 1)
+	sim.Mode = "simulasi"
+	sim.StartedAt = t0.Add(time.Hour)
+	sim2 := fact("sim", "p2", false, 1)
+	sim2.Mode = "simulasi"
+	sim2.StartedAt = t0.Add(time.Hour)
+	d := Build([]Fact{fact("dr", "p1", true, 1), sim, sim2}, nil)
+	if len(d.Sessions) != 2 {
+		t.Fatalf("sessions = %+v", d.Sessions)
+	}
+	if d.Sessions[0].AttemptID != "sim" || d.Sessions[0].PatternID != "" {
+		t.Errorf("simulation session = %+v, want no pattern", d.Sessions[0])
+	}
+	if d.Sessions[1].AttemptID != "dr" || d.Sessions[1].PatternID != "p1" {
+		t.Errorf("drill session = %+v, want pattern p1", d.Sessions[1])
+	}
+}
+
 type fakeStore struct {
 	facts []Fact
 	limit int

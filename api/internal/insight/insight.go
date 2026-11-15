@@ -88,8 +88,10 @@ type PatternStat struct {
 
 // SessionStat is one attempt's result so far.
 type SessionStat struct {
-	AttemptID string    `json:"attempt_id"`
-	Mode      string    `json:"mode"`
+	AttemptID string `json:"attempt_id"`
+	Mode      string `json:"mode"`
+	// PatternID is set for drill attempts (one pattern each); empty for simulations.
+	PatternID string    `json:"pattern_id"`
 	StartedAt time.Time `json:"started_at"`
 	Answered  int       `json:"answered"`
 	Correct   int       `json:"correct"`
@@ -188,6 +190,9 @@ func Build(facts []Fact, catalog []string) Dashboard {
 		a := sess[f.AttemptID]
 		if a == nil {
 			a = &SessionStat{AttemptID: f.AttemptID, Mode: f.Mode, StartedAt: f.StartedAt}
+			if f.Mode == "drill" {
+				a.PatternID = f.PatternID
+			}
 			sess[f.AttemptID] = a
 		}
 		a.Answered++
