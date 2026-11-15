@@ -8,6 +8,7 @@ import (
 	"latihseleksi/api/internal/auth"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
+	"latihseleksi/api/internal/insight"
 )
 
 // Config holds the HTTP settings read from the environment.
@@ -20,10 +21,11 @@ type Config struct {
 }
 
 type api struct {
-	svc   *drill.Service
-	exam  *exam.Service
-	auth  *auth.Verifier
-	users userStore
+	svc     *drill.Service
+	exam    *exam.Service
+	insight *insight.Service
+	auth    *auth.Verifier
+	users   userStore
 }
 
 // userStore maps an auth subject to a local user id.
@@ -34,8 +36,8 @@ type userStore interface {
 }
 
 // NewHandler builds the router with request id, access log and CORS middleware.
-func NewHandler(svc *drill.Service, ex *exam.Service, users userStore, cfg Config) http.Handler {
-	a := &api{svc: svc, exam: ex, auth: cfg.Auth, users: users}
+func NewHandler(svc *drill.Service, ex *exam.Service, in *insight.Service, users userStore, cfg Config) http.Handler {
+	a := &api{svc: svc, exam: ex, insight: in, auth: cfg.Auth, users: users}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -52,6 +54,7 @@ func NewHandler(svc *drill.Service, ex *exam.Service, users userStore, cfg Confi
 	mux.HandleFunc("PUT /v1/exams/{id}/responses/{pos}", a.requireAuth(a.putExamResponse))
 	mux.HandleFunc("POST /v1/exams/{id}/submit", a.requireAuth(a.submitExam))
 	mux.HandleFunc("GET /v1/exams/{id}/result", a.requireAuth(a.examResult))
+	mux.HandleFunc("GET /v1/me/dashboard", a.requireAuth(a.dashboard))
 	mux.HandleFunc("DELETE /v1/me", a.requireAuth(a.deleteMe))
 	return requestID(cors(cfg.CORSOrigin, mux))
 }

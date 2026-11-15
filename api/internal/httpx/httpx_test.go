@@ -22,6 +22,7 @@ import (
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
+	"latihseleksi/api/internal/insight"
 	"latihseleksi/api/internal/spec"
 	"latihseleksi/api/internal/store"
 )
@@ -45,7 +46,7 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 		t.Fatal(err)
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
-	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, st, cfg))
+	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -372,6 +373,7 @@ func TestDrillRequiresAuth(t *testing.T) {
 		{"PUT", "/v1/attempts/" + zero + "/responses/1", `{"answer":"A","time_ms":1}`},
 		{"POST", "/v1/attempts/" + zero + "/submit", ""},
 		{"DELETE", "/v1/me", ""},
+		{"GET", "/v1/me/dashboard", ""},
 	} {
 		code, _, hdr := doToken(t, r.method, srv.URL+r.path, r.body, "")
 		if code != http.StatusUnauthorized || hdr.Get("WWW-Authenticate") != "Bearer" {
@@ -538,5 +540,83 @@ func TestCORSAllowsAuthorizationHeader(t *testing.T) {
 	_, _, hdr := do(t, "OPTIONS", srv.URL+"/v1/exams", "")
 	if !strings.Contains(hdr.Get("Access-Control-Allow-Headers"), "Authorization") {
 		t.Errorf("Allow-Headers = %q", hdr.Get("Access-Control-Allow-Headers"))
+	}
+}
+
+func TestDashboard(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tokA, tokB := mint("dash-a"), mint("dash-b")
+	type dash struct {
+		Sections []struct {
+			Section  string `json:"section"`
+			Answered int    `json:"answered"`
+		} `json:"sections"`
+		Patterns []struct {
+			PatternID string `json:"pattern_id"`
+			Section   string `json:"section"`
+			Answered  int    `json:"answered"`
+		} `json:"patterns"`
+		Sessions []struct {
+			Mode string `json:"mode"`
+		} `json:"sessions"`
+		Queue []struct {
+			Reason string `json:"reason"`
+		} `json:"queue"`
+	}
+	get := func(tok string) (string, dash) {
+		code, out, _ := doToken(t, "GET", srv.URL+"/v1/me/dashboard", "", tok)
+		if code != http.StatusOK {
+			t.Fatalf("dashboard = %d %s", code, out)
+		}
+		var d dash
+		if err := json.Unmarshal([]byte(out), &d); err != nil {
+			t.Fatal(err)
+		}
+		return out, d
+	}
+
+	// A new user gets empty arrays, not null, and a queue of untried patterns.
+	raw, d := get(tokB)
+	if !strings.Contains(raw, `"sections":[]`) || !strings.Contains(raw, `"patterns":[]`) || !strings.Contains(raw, `"sessions":[]`) {
+		t.Errorf("new user dashboard = %s", raw)
+	}
+	if len(d.Queue) != 3 || d.Queue[0].Reason != "belum_dicoba" {
+		t.Errorf("new user queue = %+v", d.Queue)
+	}
+
+	// A drill answer and a simulation answer both count; B's data stays out.
+	drill := create(t, srv, tokA, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	if code, out, _ := doToken(t, "PUT", srv.URL+"/v1/attempts/"+drill.ID+"/responses/1", `{"answer":"A","time_ms":5}`, tokA); code != http.StatusOK {
+		t.Fatalf("drill answer = %d %s", code, out)
+	}
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tokA)
+	if code != http.StatusCreated {
+		t.Fatalf("create exam = %d %s", code, out)
+	}
+	var ex createResp
+	if err := json.Unmarshal([]byte(out), &ex); err != nil {
+		t.Fatal(err)
+	}
+	if code, out, _ := doToken(t, "PUT", srv.URL+"/v1/exams/"+ex.ID+"/responses/1", `{"answer":"A","time_ms":7,"seq":1}`, tokA); code != http.StatusOK {
+		t.Fatalf("exam answer = %d %s", code, out)
+	}
+	_, d = get(tokA)
+	if len(d.Sections) != 1 || d.Sections[0].Section != "TIU" || d.Sections[0].Answered != 2 {
+		t.Errorf("sections = %+v, want TIU with 2 answers", d.Sections)
+	}
+	if len(d.Sessions) != 2 {
+		t.Errorf("sessions = %+v, want drill and simulasi", d.Sessions)
+	}
+	found := false
+	for _, p := range d.Patterns {
+		if p.PatternID == persentase.PatternID && p.Section == "TIU" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("patterns = %+v, want %s", d.Patterns, persentase.PatternID)
+	}
+	if _, db := get(tokB); len(db.Sections) != 0 {
+		t.Errorf("other user sees sections: %+v", db.Sections)
 	}
 }

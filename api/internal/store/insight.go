@@ -1,0 +1,33 @@
+package store
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+
+	"latihseleksi/api/internal/insight"
+)
+
+// ResponseFacts returns the user's latest answered responses across drill and
+// simulation attempts. Drill items have no section and count as TIU; drill
+// items without their own pattern use the attempt's.
+func (s *Store) ResponseFacts(ctx context.Context, userID string, limit int) ([]insight.Fact, error) {
+	rows, err := s.pool.Query(ctx,
+		`select a.id::text, a.mode, a.started_at,
+		        coalesce(i.section, 'TIU'), coalesce(i.pattern_id, a.pattern_id, ''),
+		        r.correct, r.time_ms, coalesce(r.misconception_id, '')
+		 from response r
+		 join attempt a on a.id = r.attempt_id
+		 left join attempt_item i on i.attempt_id = r.attempt_id and i.pos = r.pos
+		 where a.user_id = $1
+		 order by r.answered_at desc
+		 limit $2`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (insight.Fact, error) {
+		var f insight.Fact
+		err := r.Scan(&f.AttemptID, &f.Mode, &f.StartedAt, &f.Section, &f.PatternID, &f.Correct, &f.TimeMS, &f.MisconceptionID)
+		return f, err
+	})
+}
