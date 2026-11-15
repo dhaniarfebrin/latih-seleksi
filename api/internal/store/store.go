@@ -356,6 +356,17 @@ func (s *Store) GetExam(ctx context.Context, id string) (Exam, []Item, []Respons
 	return e, items, resps, nil
 }
 
+// ListExamIDs returns the ids of the user's simulation attempts, newest first.
+func (s *Store) ListExamIDs(ctx context.Context, userID string, limit int) ([]string, error) {
+	rows, err := s.pool.Query(ctx,
+		`select id::text from attempt where user_id = $1 and mode = 'simulasi'
+		 order by started_at desc, id limit $2`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
 // SaveExamResponse stores r unless a response with an equal or higher seq is
 // already stored for the position (highest seq wins). It returns the stored
 // response either way.

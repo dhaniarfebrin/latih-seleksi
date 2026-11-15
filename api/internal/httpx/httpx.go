@@ -58,6 +58,7 @@ func NewHandler(svc *drill.Service, ex *exam.Service, users userStore, cfg Confi
 	mux.HandleFunc("POST /v1/attempts/{id}/submit", a.submit)
 	mux.HandleFunc("GET /v1/specs", a.specs)
 	mux.HandleFunc("POST /v1/exams", a.requireAuth(a.createExam))
+	mux.HandleFunc("GET /v1/exams", a.requireAuth(a.listExams))
 	mux.HandleFunc("GET /v1/exams/{id}", a.requireAuth(a.getExam))
 	mux.HandleFunc("PUT /v1/exams/{id}/responses/{pos}", a.requireAuth(a.putExamResponse))
 	mux.HandleFunc("POST /v1/exams/{id}/submit", a.requireAuth(a.submitExam))
@@ -278,6 +279,24 @@ func (a *api) createExam(w http.ResponseWriter, r *http.Request, userID string) 
 	}
 	w.Header().Set("Location", "/v1/exams/"+v.ID)
 	writeJSON(w, http.StatusCreated, v)
+}
+
+func (a *api) listExams(w http.ResponseWriter, r *http.Request, userID string) {
+	limit := exam.DefaultListLimit
+	if q := r.URL.Query().Get("limit"); q != "" {
+		n, err := strconv.Atoi(q)
+		if err != nil {
+			writeError(w, r, errors.Join(exam.ErrInvalid, errors.New("limit must be a number")))
+			return
+		}
+		limit = n
+	}
+	list, err := a.exam.List(r.Context(), userID, limit)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"exams": list})
 }
 
 func (a *api) getExam(w http.ResponseWriter, r *http.Request, userID string) {

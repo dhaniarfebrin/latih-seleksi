@@ -379,6 +379,61 @@ func (s *Service) Get(ctx context.Context, userID, id string) (ExamView, error) 
 	return v, nil
 }
 
+// ExamSummary is an exam without items, for lists. Result is set once the exam
+// is closed; it carries no answer keys.
+type ExamSummary struct {
+	ID              string     `json:"id"`
+	SpecID          string     `json:"spec_id"`
+	Track           string     `json:"track"`
+	Sections        []string   `json:"sections"`
+	Status          string     `json:"status"`
+	StartedAt       time.Time  `json:"started_at"`
+	DeadlineAt      time.Time  `json:"deadline_at"`
+	DurationSeconds int        `json:"duration_seconds"`
+	DurationBasis   string     `json:"duration_basis"`
+	SubmittedAt     *time.Time `json:"submitted_at,omitempty"`
+	Result          *Result    `json:"result,omitempty"`
+}
+
+const (
+	DefaultListLimit = 20
+	MaxListLimit     = 50
+)
+
+// List returns the user's exams, newest first. Each is loaded through load, so
+// an overdue exam is closed (expired) before it is reported.
+func (s *Service) List(ctx context.Context, userID string, limit int) ([]ExamSummary, error) {
+	if limit < 1 || limit > MaxListLimit {
+		return nil, invalid("limit must be between 1 and %d", MaxListLimit)
+	}
+	ids, err := s.store.ListExamIDs(ctx, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ExamSummary, 0, len(ids))
+	for _, id := range ids {
+		l, err := s.load(ctx, userID, id)
+		if err != nil {
+			return nil, err
+		}
+		dur, basis := duration(l.spec, l.chosenSections())
+		sum := ExamSummary{
+			ID: l.exam.ID, SpecID: l.exam.SpecID, Track: l.exam.Track, Sections: l.exam.Sections,
+			Status: l.exam.Status, StartedAt: l.exam.StartedAt, DeadlineAt: l.exam.DeadlineAt,
+			DurationSeconds: int(dur / time.Second), DurationBasis: basis, SubmittedAt: l.exam.SubmittedAt,
+		}
+		if l.closed() {
+			res, err := s.Result(ctx, userID, id)
+			if err != nil {
+				return nil, err
+			}
+			sum.Result = &res
+		}
+		out = append(out, sum)
+	}
+	return out, nil
+}
+
 // Answer stores the answer for pos unless a response with an equal or higher
 // seq is already stored; either way it returns the stored response. The answer
 // may be changed while the exam is open. Accepted until deadline + grace.

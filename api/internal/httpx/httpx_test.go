@@ -321,6 +321,7 @@ func TestExamRoutesRequireAuth(t *testing.T) {
 	zero := "00000000-0000-0000-0000-000000000000"
 	routes := []struct{ method, path, body string }{
 		{"POST", "/v1/exams", body},
+		{"GET", "/v1/exams", ""},
 		{"GET", "/v1/exams/" + zero, ""},
 		{"PUT", "/v1/exams/" + zero + "/responses/1", `{"answer":"A","time_ms":1,"seq":1}`},
 		{"POST", "/v1/exams/" + zero + "/submit", ""},
@@ -358,6 +359,9 @@ func TestExamRoutesWithoutVerifierAre503(t *testing.T) {
 	if code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, "x"); code != http.StatusServiceUnavailable || !strings.Contains(out, "auth not configured") {
 		t.Errorf("exam without verifier = %d %s, want 503", code, out)
 	}
+	if code, _, _ := doToken(t, "GET", srv.URL+"/v1/exams", "", "x"); code != http.StatusServiceUnavailable {
+		t.Errorf("list without verifier = %d, want 503", code)
+	}
 	create(t, srv, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
 }
 
@@ -389,6 +393,35 @@ func TestExamOwnership(t *testing.T) {
 	// B's attempts did not touch A's exam.
 	if _, out, _ := doToken(t, "GET", base, "", tokA); !strings.Contains(out, `"status":"in_progress"`) {
 		t.Errorf("owner exam changed: %s", out)
+	}
+}
+
+func TestListExams(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tokA, tokB := mint("list-a"), mint("list-b")
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tokA)
+	if code != http.StatusCreated {
+		t.Fatalf("create = %d %s", code, out)
+	}
+	var c createResp
+	if err := json.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ = doToken(t, "GET", srv.URL+"/v1/exams?limit=5", "", tokA)
+	if code != http.StatusOK || !strings.Contains(out, c.ID) || !strings.Contains(out, `"status":"in_progress"`) {
+		t.Errorf("owner list = %d %s", code, out)
+	}
+	if strings.Contains(out, "answer_key") || strings.Contains(out, `"items"`) {
+		t.Errorf("list must not carry items or keys: %s", out)
+	}
+	code, out, _ = doToken(t, "GET", srv.URL+"/v1/exams", "", tokB)
+	if code != http.StatusOK || strings.Contains(out, c.ID) || !strings.Contains(out, `"exams":[]`) {
+		t.Errorf("other user list = %d %s", code, out)
+	}
+	for _, q := range []string{"?limit=0", "?limit=51", "?limit=abc"} {
+		if code, _, _ := doToken(t, "GET", srv.URL+"/v1/exams"+q, "", tokA); code != http.StatusBadRequest {
+			t.Errorf("GET /v1/exams%s = %d, want 400", q, code)
+		}
 	}
 }
 

@@ -451,3 +451,61 @@ func TestExamBelongsToItsUser(t *testing.T) {
 		t.Errorf("owner Get: %v status=%q", err, g.Status)
 	}
 }
+
+func TestListOwnOrderLimitAndExpiry(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	other := e.newUser(t)
+
+	base := e.clock
+	first := e.create(t) // oldest, will expire
+	e.clock = base.Add(10 * time.Minute)
+	second := e.create(t)
+	e.answerK(t, second, 10)
+	if _, err := e.svc.Submit(ctx, e.user, second.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.clock = base.Add(20 * time.Minute)
+	third := e.create(t) // newest, in progress
+	e.clock = base.Add(21 * time.Minute)
+	if _, err := e.svc.Create(ctx, other, "skd-2024", "umum", []string{"TIU"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Clock past the first exam's deadline + grace (prorated 35/110 of 100 min),
+	// but not past the third's.
+	e.clock = first.DeadlineAt.Add(time.Minute)
+	list, err := e.svc.List(ctx, e.user, DefaultListLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 3 || list[0].ID != third.ID || list[1].ID != second.ID || list[2].ID != first.ID {
+		t.Fatalf("order/ownership wrong: %+v", list)
+	}
+	if list[0].Status != store.StatusInProgress || list[0].Result != nil {
+		t.Errorf("in-progress exam must have no result: %+v", list[0])
+	}
+	if list[1].Status != store.StatusSubmitted || list[1].Result == nil || list[1].Result.Sections[0].Score != 50 {
+		t.Errorf("submitted exam result: %+v", list[1].Result)
+	}
+	if list[2].Status != store.StatusExpired || list[2].Result == nil || list[2].Result.Sections[0].Answered != 0 {
+		t.Errorf("overdue exam should be closed as expired with a result: %+v", list[2])
+	}
+	// The other user sees only their own.
+	if mine, err := e.svc.List(ctx, other, DefaultListLimit); err != nil || len(mine) != 1 {
+		t.Errorf("other user list: %v len=%d", err, len(mine))
+	}
+	// Limit.
+	if lim, err := e.svc.List(ctx, e.user, 2); err != nil || len(lim) != 2 || lim[0].ID != third.ID {
+		t.Errorf("limit 2: %v %+v", err, lim)
+	}
+	for _, bad := range []int{0, -1, MaxListLimit + 1} {
+		if _, err := e.svc.List(ctx, e.user, bad); !errors.Is(err, ErrInvalid) {
+			t.Errorf("limit %d: %v, want ErrInvalid", bad, err)
+		}
+	}
+	// No user: empty list, not someone else's exams.
+	if none, err := e.svc.List(ctx, "", 5); err == nil && len(none) != 0 {
+		t.Errorf("empty user got %d exams", len(none))
+	}
+}
