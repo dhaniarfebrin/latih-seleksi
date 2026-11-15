@@ -38,7 +38,7 @@ export function DashboardPage() {
       )}
       {data && data.dash.patterns.length > 0 && (
         <>
-          <p className="muted">Berdasarkan jawaban terakhir drill dan simulasi. Penyebab salah hanyalah perkiraan dari waktu menjawab.</p>
+          <p className="muted">Berdasarkan 2000 jawaban terakhir dari drill dan simulasi (sesi tertua bisa terpotong). Penyebab salah hanyalah perkiraan dari waktu menjawab.</p>
           <h2 className="sub">Per subtes</h2>
           <table className="tbl">
             <thead>
