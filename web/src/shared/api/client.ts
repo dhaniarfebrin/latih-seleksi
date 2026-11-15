@@ -42,5 +42,6 @@ export async function call<T>(method: string, path: string, body?: unknown): Pro
     else if (res.status === 403 && msg === 'email not verified') msg = 'Email belum diverifikasi. Cek kotak masuk lalu muat ulang status.'
     throw new ApiError(res.status, msg)
   }
+  if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }

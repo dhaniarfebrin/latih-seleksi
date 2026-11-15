@@ -33,7 +33,7 @@ export function App() {
   )
 }
 
-// The login gate is a UI convenience only: the drill API stays public.
+// The login gate is a UI convenience; the API enforces the token on drill and exams.
 function RequireAuth() {
   const { user, ready } = useAuth()
   const loc = useLocation()

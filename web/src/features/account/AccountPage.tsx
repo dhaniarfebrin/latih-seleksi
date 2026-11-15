@@ -1,8 +1,10 @@
-import { LogOut, MailCheck, MailWarning } from 'lucide-react'
+import { LogOut, MailCheck, MailWarning, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
-import { authErrorMessage, signOut } from '@/features/auth/auth'
+import { authErrorMessage, deleteAccount, signOut } from '@/features/auth/auth'
+import { errorMessage } from '@/shared/lib/error'
 import { useState } from 'react'
+import { deleteMyData } from './api'
 
 export function AccountPage() {
   const { user } = useAuth()
@@ -14,6 +16,27 @@ export function AccountPage() {
       navigate('/login', { replace: true })
     } catch (e) {
       setError(authErrorMessage(e))
+    }
+  }
+  const remove = async () => {
+    if (!window.confirm('Hapus akun dan semua data latihan? Tindakan ini tidak bisa dibatalkan.')) return
+    setError('')
+    try {
+      await deleteMyData()
+    } catch (e) {
+      setError(errorMessage(e) || 'Gagal menghapus data')
+      return
+    }
+    try {
+      await deleteAccount()
+      navigate('/login', { replace: true })
+    } catch (e) {
+      const code = (e as { code?: string }).code
+      setError(
+        code === 'auth/requires-recent-login'
+          ? authErrorMessage(e)
+          : 'Data latihan sudah dihapus, tetapi akun login belum. Coba tekan Hapus akun dan data sekali lagi.',
+      )
     }
   }
   return (
@@ -36,6 +59,9 @@ export function AccountPage() {
       )}
       <button className="btn" onClick={() => void out()}>
         <LogOut className="ic" aria-hidden="true" />&nbsp;Keluar
+      </button>
+      <button className="btn" onClick={() => void remove()}>
+        <Trash2 className="ic" aria-hidden="true" />&nbsp;Hapus akun dan data
       </button>
     </section>
   )

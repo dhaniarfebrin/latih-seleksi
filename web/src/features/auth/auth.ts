@@ -1,9 +1,10 @@
 // Firebase Authentication wrapper. The SDK is initialised lazily from the
-// VITE_FIREBASE_* values (public web config); without them auth is off and
-// the drill keeps working. Tokens are never stored or logged here.
+// VITE_FIREBASE_* values (public web config); without them auth is off and the
+// app shows "Login belum dikonfigurasi". Tokens are never stored or logged here.
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -71,6 +72,14 @@ export const refreshUser = async (): Promise<AuthUser | null> => {
 
 export const signOut = () => fbSignOut(auth())
 
+// Deletes the Firebase account of the signed-in user. Firebase rejects it with
+// auth/requires-recent-login when the last sign-in is too old.
+export const deleteAccount = async () => {
+  const u = auth().currentUser
+  if (!u) throw new Error('Belum login')
+  await deleteUser(u)
+}
+
 // Calls cb with null when signed out. Without config it reports null once.
 export function onAuth(cb: (u: AuthUser | null) => void): () => void {
   if (!authConfigured) {
@@ -106,6 +115,8 @@ export function authErrorMessage(e: unknown): string {
       return 'Login dibatalkan'
     case 'auth/too-many-requests':
       return 'Terlalu banyak percobaan, coba lagi nanti'
+    case 'auth/requires-recent-login':
+      return 'Data sudah dihapus, tetapi akun login belum. Keluar, masuk lagi, lalu tekan Hapus akun dan data sekali lagi.'
     case 'auth/network-request-failed':
       return 'Koneksi gagal'
     default:
