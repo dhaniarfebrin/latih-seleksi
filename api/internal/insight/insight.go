@@ -159,6 +159,9 @@ func Build(facts []Fact, catalog []string) Dashboard {
 	pats := map[string]*patternAcc{}
 	sess := map[string]*SessionStat{}
 	for _, f := range facts {
+		if f.PatternID == "" {
+			continue
+		}
 		s := secs[f.Section]
 		if s == nil {
 			s = &SectionStat{Section: f.Section}

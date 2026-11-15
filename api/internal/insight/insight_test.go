@@ -166,6 +166,14 @@ func TestSessionPatternOnlyForDrill(t *testing.T) {
 	}
 }
 
+// Answers without a pattern id cannot be placed anywhere; they must not show up as a pattern "".
+func TestFactsWithoutPatternAreSkipped(t *testing.T) {
+	d := Build([]Fact{fact("a", "", false, 1), fact("a", "p", true, 1)}, nil)
+	if len(d.Patterns) != 1 || d.Patterns[0].PatternID != "p" || d.Sections[0].Answered != 1 || d.Sessions[0].Answered != 1 {
+		t.Errorf("dashboard = %+v", d)
+	}
+}
+
 type fakeStore struct {
 	facts []Fact
 	limit int

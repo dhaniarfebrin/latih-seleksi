@@ -616,7 +616,7 @@ func TestDashboard(t *testing.T) {
 	if !found {
 		t.Errorf("patterns = %+v, want %s", d.Patterns, persentase.PatternID)
 	}
-	if _, db := get(tokB); len(db.Sections) != 0 {
-		t.Errorf("other user sees sections: %+v", db.Sections)
+	if _, db := get(tokB); len(db.Sections)+len(db.Patterns)+len(db.Sessions) != 0 {
+		t.Errorf("other user sees data: %+v", db)
 	}
 }
