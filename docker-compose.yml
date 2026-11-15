@@ -21,6 +21,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-latih}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-latih}?sslmode=disable
       PORT: "8080"
       CORS_ORIGIN: ${CORS_ORIGIN:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

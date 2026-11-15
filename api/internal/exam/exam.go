@@ -205,7 +205,7 @@ func randomSeed() (int64, error) {
 
 // Create picks and freezes the items of the chosen sections and starts the
 // timer. Items are numbered in spec section order.
-func (s *Service) Create(ctx context.Context, specID, trackID string, sectionIDs []string) (ExamView, error) {
+func (s *Service) Create(ctx context.Context, userID, specID, trackID string, sectionIDs []string) (ExamView, error) {
 	sp, ok := s.specs.Get(specID)
 	if !ok {
 		return ExamView{}, invalid("unknown spec_id %q", specID)
@@ -266,12 +266,12 @@ func (s *Service) Create(ctx context.Context, specID, trackID string, sectionIDs
 		ids = append(ids, sec.ID)
 	}
 	e, err := s.store.CreateExam(ctx, store.Exam{
-		SpecID: sp.ID, SpecBody: body, Track: trackID, Sections: ids, StartedAt: now, DeadlineAt: now.Add(dur),
+		UserID: userID, SpecID: sp.ID, SpecBody: body, Track: trackID, Sections: ids, StartedAt: now, DeadlineAt: now.Add(dur),
 	}, items)
 	if err != nil {
 		return ExamView{}, err
 	}
-	return s.Get(ctx, e.ID)
+	return s.Get(ctx, userID, e.ID)
 }
 
 func toSnapshot(d gen.Draft) snapshot {
@@ -292,15 +292,20 @@ type loaded struct {
 
 func (l loaded) closed() bool { return l.exam.Status != store.StatusInProgress }
 
-// load reads the exam and, if the deadline plus grace has passed, closes it as
-// expired first (lazy auto-submit: there is no background job).
-func (s *Service) load(ctx context.Context, id string) (loaded, error) {
+// load reads the exam owned by userID and, if the deadline plus grace has
+// passed, closes it as expired first (lazy auto-submit: there is no background
+// job). An exam of another user is ErrNotFound, the same as a missing one, so
+// ids cannot be probed.
+func (s *Service) load(ctx context.Context, userID, id string) (loaded, error) {
 	e, items, resps, err := s.store.GetExam(ctx, id)
 	if errors.Is(err, store.ErrNotFound) {
 		return loaded{}, ErrNotFound
 	}
 	if err != nil {
 		return loaded{}, err
+	}
+	if userID == "" || e.UserID != userID {
+		return loaded{}, ErrNotFound
 	}
 	if e.Status == store.StatusInProgress && s.now().After(e.DeadlineAt.Add(grace)) {
 		if err := s.store.CloseExam(ctx, id, store.StatusExpired, e.DeadlineAt); err != nil {
@@ -336,8 +341,8 @@ func (l loaded) chosenSections() []spec.Section {
 }
 
 // Get returns the exam. Keys and steps are included only once it is closed.
-func (s *Service) Get(ctx context.Context, id string) (ExamView, error) {
-	l, err := s.load(ctx, id)
+func (s *Service) Get(ctx context.Context, userID, id string) (ExamView, error) {
+	l, err := s.load(ctx, userID, id)
 	if err != nil {
 		return ExamView{}, err
 	}
@@ -377,7 +382,7 @@ func (s *Service) Get(ctx context.Context, id string) (ExamView, error) {
 // Answer stores the answer for pos unless a response with an equal or higher
 // seq is already stored; either way it returns the stored response. The answer
 // may be changed while the exam is open. Accepted until deadline + grace.
-func (s *Service) Answer(ctx context.Context, id string, pos int, answer string, timeMS int, flagged bool, seq int) (ResponseView, error) {
+func (s *Service) Answer(ctx context.Context, userID, id string, pos int, answer string, timeMS int, flagged bool, seq int) (ResponseView, error) {
 	if len(answer) != 1 || !containsByte(answerKeys, answer[0]) {
 		return ResponseView{}, invalid("answer must be one of A-E")
 	}
@@ -387,7 +392,7 @@ func (s *Service) Answer(ctx context.Context, id string, pos int, answer string,
 	if seq < 0 {
 		return ResponseView{}, invalid("seq must not be negative")
 	}
-	l, err := s.load(ctx, id)
+	l, err := s.load(ctx, userID, id)
 	if err != nil {
 		return ResponseView{}, err
 	}
@@ -428,8 +433,8 @@ func containsByte(s string, b byte) bool {
 
 // Submit closes the exam and returns the result. Repeating it, or submitting
 // an expired exam, returns the same result.
-func (s *Service) Submit(ctx context.Context, id string) (Result, error) {
-	l, err := s.load(ctx, id)
+func (s *Service) Submit(ctx context.Context, userID, id string) (Result, error) {
+	l, err := s.load(ctx, userID, id)
 	if err != nil {
 		return Result{}, err
 	}
@@ -438,12 +443,12 @@ func (s *Service) Submit(ctx context.Context, id string) (Result, error) {
 			return Result{}, err
 		}
 	}
-	return s.Result(ctx, id)
+	return s.Result(ctx, userID, id)
 }
 
 // Result scores a closed exam. An exam still in progress gives ErrInProgress.
-func (s *Service) Result(ctx context.Context, id string) (Result, error) {
-	l, err := s.load(ctx, id)
+func (s *Service) Result(ctx context.Context, userID, id string) (Result, error) {
+	l, err := s.load(ctx, userID, id)
 	if err != nil {
 		return Result{}, err
 	}

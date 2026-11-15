@@ -2,14 +2,22 @@ package httpx
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/base64"
 	"encoding/json"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+
+	"latihseleksi/api/internal/auth"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/gen/catalog"
@@ -37,16 +45,24 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 		t.Fatal(err)
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
-	srv := httptest.NewServer(NewHandler(drill.New(st), examSvc, cfg))
+	srv := httptest.NewServer(NewHandler(drill.New(st), examSvc, st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }
 
 func do(t *testing.T, method, url, body string) (int, string, http.Header) {
 	t.Helper()
+	return doToken(t, method, url, body, "")
+}
+
+func doToken(t *testing.T, method, url, body, token string) (int, string, http.Header) {
+	t.Helper()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -213,7 +229,12 @@ func TestCORS(t *testing.T) {
 }
 
 func TestExamFlowAndStatusCodes(t *testing.T) {
-	srv := newServer(t, Config{})
+	srv, tok := newAuthServer(t)
+	tokA := tok("user-a")
+	do := func(t *testing.T, method, url, body string) (int, string, http.Header) {
+		t.Helper()
+		return doToken(t, method, url, body, tokA)
+	}
 	if code, out, _ := do(t, "GET", srv.URL+"/v1/specs", ""); code != http.StatusOK || !strings.Contains(out, `"skd-2024"`) {
 		t.Fatalf("specs: %d %s", code, out)
 	}
@@ -252,5 +273,129 @@ func TestExamFlowAndStatusCodes(t *testing.T) {
 	}
 	if code, _, _ := do(t, "GET", srv.URL+"/v1/attempts/"+c.ID, ""); code != http.StatusNotFound {
 		t.Errorf("drill route on an exam = %d, want 404", code)
+	}
+}
+
+const testProject = "demo-project"
+
+// newAuthServer starts the API with a verifier backed by a fake JWKS and
+// returns a function that mints a valid ID token for a given sub.
+func newAuthServer(t *testing.T) (*httptest.Server, func(sub string) string) {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwks := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]string{{
+			"kid": "k1", "kty": "RSA", "alg": "RS256", "use": "sig",
+			"n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
+			"e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes()),
+		}}})
+	}))
+	t.Cleanup(jwks.Close)
+	v := auth.New(auth.Config{
+		Issuer: "https://securetoken.google.com/" + testProject, Audience: testProject, JWKSURL: jwks.URL,
+	})
+	mint := func(sub string) string {
+		now := time.Now()
+		tok := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+			"iss": "https://securetoken.google.com/" + testProject, "aud": testProject, "sub": sub,
+			"iat": now.Add(-time.Minute).Unix(), "auth_time": now.Add(-time.Minute).Unix(),
+			"exp": now.Add(time.Hour).Unix(),
+		})
+		tok.Header["kid"] = "k1"
+		s, err := tok.SignedString(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	return newServer(t, Config{Auth: v}), mint
+}
+
+func TestExamRoutesRequireAuth(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	body := `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`
+	zero := "00000000-0000-0000-0000-000000000000"
+	routes := []struct{ method, path, body string }{
+		{"POST", "/v1/exams", body},
+		{"GET", "/v1/exams/" + zero, ""},
+		{"PUT", "/v1/exams/" + zero + "/responses/1", `{"answer":"A","time_ms":1,"seq":1}`},
+		{"POST", "/v1/exams/" + zero + "/submit", ""},
+		{"GET", "/v1/exams/" + zero + "/result", ""},
+	}
+	for _, r := range routes {
+		code, _, hdr := doToken(t, r.method, srv.URL+r.path, r.body, "")
+		if code != http.StatusUnauthorized || hdr.Get("WWW-Authenticate") != "Bearer" {
+			t.Errorf("%s %s without token = %d (WWW-Authenticate %q), want 401", r.method, r.path, code, hdr.Get("WWW-Authenticate"))
+		}
+		if code, _, _ := doToken(t, r.method, srv.URL+r.path, r.body, "not.a.jwt"); code != http.StatusUnauthorized {
+			t.Errorf("%s %s with a bad token = %d, want 401", r.method, r.path, code)
+		}
+	}
+	// Wrong scheme with a valid token.
+	req, _ := http.NewRequest("POST", srv.URL+"/v1/exams", strings.NewReader(body))
+	req.Header.Set("Authorization", "Basic "+mint("user-a"))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Basic scheme = %d, want 401", resp.StatusCode)
+	}
+	// Public routes stay open.
+	if code, _, _ := do(t, "GET", srv.URL+"/v1/specs", ""); code != http.StatusOK {
+		t.Errorf("/v1/specs without token = %d, want 200", code)
+	}
+	create(t, srv, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+}
+
+func TestExamRoutesWithoutVerifierAre503(t *testing.T) {
+	srv := newServer(t, Config{})
+	if code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, "x"); code != http.StatusServiceUnavailable || !strings.Contains(out, "auth not configured") {
+		t.Errorf("exam without verifier = %d %s, want 503", code, out)
+	}
+	create(t, srv, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+}
+
+func TestExamOwnership(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tokA, tokB := mint("owner-a"), mint("owner-b")
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tokA)
+	if code != http.StatusCreated {
+		t.Fatalf("create = %d %s", code, out)
+	}
+	var c createResp
+	if err := json.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	base := srv.URL + "/v1/exams/" + c.ID
+	if code, _, _ := doToken(t, "GET", base, "", tokA); code != http.StatusOK {
+		t.Errorf("owner GET = %d, want 200", code)
+	}
+	for _, r := range []struct{ method, path, body string }{
+		{"GET", "", ""},
+		{"PUT", "/responses/1", `{"answer":"A","time_ms":1,"seq":1}`},
+		{"POST", "/submit", ""},
+		{"GET", "/result", ""},
+	} {
+		if code, _, _ := doToken(t, r.method, base+r.path, r.body, tokB); code != http.StatusNotFound {
+			t.Errorf("other user %s %s = %d, want 404", r.method, r.path, code)
+		}
+	}
+	// B's attempts did not touch A's exam.
+	if _, out, _ := doToken(t, "GET", base, "", tokA); !strings.Contains(out, `"status":"in_progress"`) {
+		t.Errorf("owner exam changed: %s", out)
+	}
+}
+
+func TestCORSAllowsAuthorizationHeader(t *testing.T) {
+	srv := newServer(t, Config{CORSOrigin: "http://localhost:5173"})
+	_, _, hdr := do(t, "OPTIONS", srv.URL+"/v1/exams", "")
+	if !strings.Contains(hdr.Get("Access-Control-Allow-Headers"), "Authorization") {
+		t.Errorf("Allow-Headers = %q", hdr.Get("Access-Control-Allow-Headers"))
 	}
 }

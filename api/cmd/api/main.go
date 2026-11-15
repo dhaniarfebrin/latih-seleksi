@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"latihseleksi/api/internal/auth"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/gen/catalog"
@@ -56,9 +57,17 @@ func run() error {
 	// wired in: it has too few reviewed items and TKP needs option weights.
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
 
+	// FIREBASE_PROJECT_ID is not a secret. Empty leaves /v1/exams* closed (503).
+	var verifier *auth.Verifier
+	if pid := os.Getenv("FIREBASE_PROJECT_ID"); pid != "" {
+		verifier = auth.NewFirebase(pid)
+	} else {
+		slog.Warn("FIREBASE_PROJECT_ID not set: /v1/exams* answers 503")
+	}
+
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpx.NewHandler(drill.New(st), examSvc, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN")}),
+		Handler:           httpx.NewHandler(drill.New(st), examSvc, st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

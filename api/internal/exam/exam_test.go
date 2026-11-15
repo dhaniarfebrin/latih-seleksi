@@ -2,6 +2,8 @@ package exam
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -47,6 +49,7 @@ func TestGeneratedSourceDistinctStemsAndDeterministic(t *testing.T) {
 }
 
 type env struct {
+	user  string
 	svc   *Service
 	st    *store.Store
 	clock time.Time
@@ -71,14 +74,27 @@ func newEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	e := &env{st: st, clock: time.Now().UTC().Truncate(time.Millisecond)}
+	e.user = e.newUser(t)
 	e.svc = New(st, specs, NewGeneratedSource(catalog.All()))
 	e.svc.now = func() time.Time { return e.clock }
 	return e
 }
 
+// newUser makes a fresh user so tests do not see each other's exams.
+func (e *env) newUser(t *testing.T) string {
+	t.Helper()
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	id, err := e.st.UpsertUser(context.Background(), "test-"+hex.EncodeToString(b[:]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
 func (e *env) create(t *testing.T) ExamView {
 	t.Helper()
-	v, err := e.svc.Create(context.Background(), "skd-2024", "umum", []string{"TIU"})
+	v, err := e.svc.Create(context.Background(), e.user, "skd-2024", "umum", []string{"TIU"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +137,7 @@ func (e *env) answerK(t *testing.T, v ExamView, k int) {
 		if it.Pos <= k {
 			ans = keys[it.Pos].AnswerKey
 		}
-		if _, err := e.svc.Answer(context.Background(), v.ID, it.Pos, ans, 1000, false, 1); err != nil {
+		if _, err := e.svc.Answer(context.Background(), e.user, v.ID, it.Pos, ans, 1000, false, 1); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -158,7 +174,7 @@ func TestGetHidesKeysAndSnapshotIsStable(t *testing.T) {
 	e.answerK(t, v, 3)
 	var raws [2]string
 	for i := range raws {
-		g, err := e.svc.Get(context.Background(), v.ID)
+		g, err := e.svc.Get(context.Background(), e.user, v.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -187,7 +203,7 @@ func TestScoreMatchesHandCountAndScoreSection(t *testing.T) {
 		e := newEnv(t)
 		v := e.create(t)
 		e.answerK(t, v, k)
-		res, err := e.svc.Submit(context.Background(), v.ID)
+		res, err := e.svc.Submit(context.Background(), e.user, v.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,26 +239,26 @@ func TestSeqHighestWins(t *testing.T) {
 	keys := e.keys(t, v.ID)
 	right, wrong := keys[1].AnswerKey, wrongKey(keys[1])
 
-	r, err := e.svc.Answer(ctx, v.ID, 1, right, 100, true, 2)
+	r, err := e.svc.Answer(ctx, e.user, v.ID, 1, right, 100, true, 2)
 	if err != nil || r.Answer != right || r.Seq != 2 || !r.Flagged {
 		t.Fatalf("seq 2: %+v %v", r, err)
 	}
 	// An older write that arrives late must not overwrite, and reports the stored value.
-	r, err = e.svc.Answer(ctx, v.ID, 1, wrong, 200, false, 1)
+	r, err = e.svc.Answer(ctx, e.user, v.ID, 1, wrong, 200, false, 1)
 	if err != nil || r.Answer != right || r.Seq != 2 || r.TimeMS != 100 || !r.Flagged {
 		t.Fatalf("seq 1 after 2: %+v %v", r, err)
 	}
 	// Same seq is a retry: ignored.
-	r, _ = e.svc.Answer(ctx, v.ID, 1, wrong, 200, false, 2)
+	r, _ = e.svc.Answer(ctx, e.user, v.ID, 1, wrong, 200, false, 2)
 	if r.Answer != right {
 		t.Errorf("equal seq replaced the answer: %+v", r)
 	}
 	// The answer can be changed with a higher seq.
-	r, _ = e.svc.Answer(ctx, v.ID, 1, wrong, 300, false, 3)
+	r, _ = e.svc.Answer(ctx, e.user, v.ID, 1, wrong, 300, false, 3)
 	if r.Answer != wrong || r.Seq != 3 || r.Flagged {
 		t.Errorf("seq 3: %+v", r)
 	}
-	res, err := e.svc.Submit(ctx, v.ID)
+	res, err := e.svc.Submit(ctx, e.user, v.ID)
 	if err != nil || res.Sections[0].Score != 0 {
 		t.Errorf("changed-to-wrong answer scored %+v %v", res, err)
 	}
@@ -255,14 +271,14 @@ func TestDeadlineGrace(t *testing.T) {
 	keys := e.keys(t, v.ID)
 
 	e.clock = v.DeadlineAt.Add(4 * time.Second)
-	if _, err := e.svc.Answer(ctx, v.ID, 1, keys[1].AnswerKey, 1, false, 1); err != nil {
+	if _, err := e.svc.Answer(ctx, e.user, v.ID, 1, keys[1].AnswerKey, 1, false, 1); err != nil {
 		t.Fatalf("PUT at deadline+4s: %v", err)
 	}
 	e.clock = v.DeadlineAt.Add(6 * time.Second)
-	if _, err := e.svc.Answer(ctx, v.ID, 2, keys[2].AnswerKey, 1, false, 1); !errors.Is(err, ErrClosed) {
+	if _, err := e.svc.Answer(ctx, e.user, v.ID, 2, keys[2].AnswerKey, 1, false, 1); !errors.Is(err, ErrClosed) {
 		t.Fatalf("PUT at deadline+6s: %v, want ErrClosed", err)
 	}
-	if _, err := e.svc.Submit(ctx, v.ID); err != nil {
+	if _, err := e.svc.Submit(ctx, e.user, v.ID); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -273,16 +289,16 @@ func TestExpiredOnReadScoresBlankAsZero(t *testing.T) {
 	v := e.create(t)
 	keys := e.keys(t, v.ID)
 	for pos := 1; pos <= 3; pos++ {
-		if _, err := e.svc.Answer(ctx, v.ID, pos, keys[pos].AnswerKey, 1, false, 1); err != nil {
+		if _, err := e.svc.Answer(ctx, e.user, v.ID, pos, keys[pos].AnswerKey, 1, false, 1); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := e.svc.Result(ctx, v.ID); !errors.Is(err, ErrInProgress) {
+	if _, err := e.svc.Result(ctx, e.user, v.ID); !errors.Is(err, ErrInProgress) {
 		t.Fatalf("result while open: %v", err)
 	}
 
 	e.clock = v.DeadlineAt.Add(time.Minute)
-	g, err := e.svc.Get(ctx, v.ID)
+	g, err := e.svc.Get(ctx, e.user, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +308,7 @@ func TestExpiredOnReadScoresBlankAsZero(t *testing.T) {
 	if g.Items[0].AnswerKey == "" || len(g.Items[0].Steps) == 0 || g.Items[0].Response == nil || g.Items[0].Response.Correct == nil {
 		t.Errorf("closed exam should reveal key, steps and correctness: %+v", g.Items[0])
 	}
-	res, err := e.svc.Result(ctx, v.ID)
+	res, err := e.svc.Result(ctx, e.user, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,12 +322,12 @@ func TestSubmitTwiceIsSafe(t *testing.T) {
 	ctx := context.Background()
 	v := e.create(t)
 	e.answerK(t, v, 10)
-	a, err := e.svc.Submit(ctx, v.ID)
+	a, err := e.svc.Submit(ctx, e.user, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	e.clock = e.clock.Add(time.Second)
-	b, err := e.svc.Submit(ctx, v.ID)
+	b, err := e.svc.Submit(ctx, e.user, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +335,7 @@ func TestSubmitTwiceIsSafe(t *testing.T) {
 		t.Errorf("first %+v second %+v", a, b)
 	}
 	keys := e.keys(t, v.ID)
-	if _, err := e.svc.Answer(ctx, v.ID, 1, keys[1].AnswerKey, 1, false, 9); !errors.Is(err, ErrClosed) {
+	if _, err := e.svc.Answer(ctx, e.user, v.ID, 1, keys[1].AnswerKey, 1, false, 9); !errors.Is(err, ErrClosed) {
 		t.Errorf("answer after submit: %v", err)
 	}
 }
@@ -341,7 +357,7 @@ func TestCreateValidation(t *testing.T) {
 		{"duplicate section", "skd-2024", "umum", []string{"TIU", "TIU"}},
 	}
 	for _, c := range cases {
-		if _, err := e.svc.Create(ctx, c.spec, c.track, c.sections); !errors.Is(err, ErrInvalid) {
+		if _, err := e.svc.Create(ctx, e.user, c.spec, c.track, c.sections); !errors.Is(err, ErrInvalid) {
 			t.Errorf("%s: err %v, want ErrInvalid", c.name, err)
 		}
 	}
@@ -366,11 +382,11 @@ func TestAnswerValidation(t *testing.T) {
 		{"pos out of range", 99, "A", 1, 1, ErrNotFound},
 	}
 	for _, c := range cases {
-		if _, err := e.svc.Answer(ctx, v.ID, c.pos, c.ans, c.ms, false, c.seq); !errors.Is(err, c.want) {
+		if _, err := e.svc.Answer(ctx, e.user, v.ID, c.pos, c.ans, c.ms, false, c.seq); !errors.Is(err, c.want) {
 			t.Errorf("%s: err %v, want %v", c.name, err, c.want)
 		}
 	}
-	if _, err := e.svc.Get(ctx, "not-a-uuid"); !errors.Is(err, ErrNotFound) {
+	if _, err := e.svc.Get(ctx, e.user, "not-a-uuid"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("bad id: %v", err)
 	}
 }
@@ -386,7 +402,7 @@ func TestExamAndDrillAttemptsAreSeparate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.svc.Get(ctx, d.ID); !errors.Is(err, ErrNotFound) {
+	if _, err := e.svc.Get(ctx, e.user, d.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("exam route sees a drill attempt: %v", err)
 	}
 }
@@ -404,5 +420,34 @@ func TestSpecsMarkAvailability(t *testing.T) {
 	}
 	if !got["TIU"] || got["TWK"] || got["TKP"] {
 		t.Errorf("availability %v", got)
+	}
+}
+
+func TestExamBelongsToItsUser(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	v := e.create(t)
+	other := e.newUser(t)
+	keys := e.keys(t, v.ID)
+
+	if _, err := e.svc.Get(ctx, other, v.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Get by another user: %v, want ErrNotFound", err)
+	}
+	if _, err := e.svc.Answer(ctx, other, v.ID, 1, keys[1].AnswerKey, 1, false, 1); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Answer by another user: %v, want ErrNotFound", err)
+	}
+	if _, err := e.svc.Submit(ctx, other, v.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Submit by another user: %v, want ErrNotFound", err)
+	}
+	if _, err := e.svc.Result(ctx, other, v.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Result by another user: %v, want ErrNotFound", err)
+	}
+	if _, err := e.svc.Get(ctx, "", v.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Get with empty user: %v, want ErrNotFound", err)
+	}
+	// The other user's attempts did not close or change the owner's exam.
+	g, err := e.svc.Get(ctx, e.user, v.ID)
+	if err != nil || g.Status != store.StatusInProgress {
+		t.Errorf("owner Get: %v status=%q", err, g.Status)
 	}
 }

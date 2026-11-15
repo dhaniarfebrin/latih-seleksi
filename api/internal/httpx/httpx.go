@@ -11,8 +11,10 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"latihseleksi/api/internal/auth"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 )
@@ -25,16 +27,26 @@ type ctxKey struct{}
 type Config struct {
 	// CORSOrigin is the single allowed origin; empty disables CORS headers.
 	CORSOrigin string
+	// Auth verifies ID tokens for /v1/exams*. Nil means auth is not
+	// configured: those routes answer 503 and drill routes keep working.
+	Auth *auth.Verifier
 }
 
 type api struct {
-	svc  *drill.Service
-	exam *exam.Service
+	svc   *drill.Service
+	exam  *exam.Service
+	auth  *auth.Verifier
+	users userStore
+}
+
+// userStore maps an auth subject to a local user id.
+type userStore interface {
+	UpsertUser(ctx context.Context, sub string) (string, error)
 }
 
 // NewHandler builds the router with request id, access log and CORS middleware.
-func NewHandler(svc *drill.Service, ex *exam.Service, cfg Config) http.Handler {
-	a := &api{svc: svc, exam: ex}
+func NewHandler(svc *drill.Service, ex *exam.Service, users userStore, cfg Config) http.Handler {
+	a := &api{svc: svc, exam: ex, auth: cfg.Auth, users: users}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -45,11 +57,11 @@ func NewHandler(svc *drill.Service, ex *exam.Service, cfg Config) http.Handler {
 	mux.HandleFunc("PUT /v1/attempts/{id}/responses/{pos}", a.putResponse)
 	mux.HandleFunc("POST /v1/attempts/{id}/submit", a.submit)
 	mux.HandleFunc("GET /v1/specs", a.specs)
-	mux.HandleFunc("POST /v1/exams", a.createExam)
-	mux.HandleFunc("GET /v1/exams/{id}", a.getExam)
-	mux.HandleFunc("PUT /v1/exams/{id}/responses/{pos}", a.putExamResponse)
-	mux.HandleFunc("POST /v1/exams/{id}/submit", a.submitExam)
-	mux.HandleFunc("GET /v1/exams/{id}/result", a.examResult)
+	mux.HandleFunc("POST /v1/exams", a.requireAuth(a.createExam))
+	mux.HandleFunc("GET /v1/exams/{id}", a.requireAuth(a.getExam))
+	mux.HandleFunc("PUT /v1/exams/{id}/responses/{pos}", a.requireAuth(a.putExamResponse))
+	mux.HandleFunc("POST /v1/exams/{id}/submit", a.requireAuth(a.submitExam))
+	mux.HandleFunc("GET /v1/exams/{id}/result", a.requireAuth(a.examResult))
 	return requestID(cors(cfg.CORSOrigin, mux))
 }
 
@@ -85,7 +97,7 @@ func cors(origin string, next http.Handler) http.Handler {
 			h.Add("Vary", "Origin")
 			if r.Method == http.MethodOptions {
 				h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-				h.Set("Access-Control-Allow-Headers", "Content-Type")
+				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 				h.Set("Access-Control-Max-Age", "600")
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -93,6 +105,48 @@ func cors(origin string, next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// requireAuth runs next for a caller with a valid Bearer ID token, passing the
+// local user id. The token itself is never logged.
+func (a *api) requireAuth(next func(w http.ResponseWriter, r *http.Request, userID string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if a.auth == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "auth not configured"})
+			return
+		}
+		scheme, token, _ := strings.Cut(r.Header.Get("Authorization"), " ")
+		token = strings.TrimSpace(token)
+		if !strings.EqualFold(scheme, "Bearer") || token == "" {
+			unauthorized(w)
+			return
+		}
+		claims, err := a.auth.Verify(r.Context(), token)
+		switch {
+		case errors.Is(err, auth.ErrEmailNotVerified):
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "email not verified"})
+			return
+		case errors.Is(err, auth.ErrKeysUnavailable):
+			id, _ := r.Context().Value(ctxKey{}).(string)
+			slog.Error("auth keys unavailable", "id", id, "err", err)
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "auth unavailable"})
+			return
+		case err != nil:
+			unauthorized(w)
+			return
+		}
+		userID, err := a.users.UpsertUser(r.Context(), claims.Sub)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		next(w, r, userID)
+	}
+}
+
+func unauthorized(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -207,7 +261,7 @@ func (a *api) specs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"specs": a.exam.Specs()})
 }
 
-func (a *api) createExam(w http.ResponseWriter, r *http.Request) {
+func (a *api) createExam(w http.ResponseWriter, r *http.Request, userID string) {
 	var body struct {
 		SpecID   string   `json:"spec_id"`
 		Track    string   `json:"track"`
@@ -217,7 +271,7 @@ func (a *api) createExam(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	v, err := a.exam.Create(r.Context(), body.SpecID, body.Track, body.Sections)
+	v, err := a.exam.Create(r.Context(), userID, body.SpecID, body.Track, body.Sections)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -226,8 +280,8 @@ func (a *api) createExam(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, v)
 }
 
-func (a *api) getExam(w http.ResponseWriter, r *http.Request) {
-	v, err := a.exam.Get(r.Context(), r.PathValue("id"))
+func (a *api) getExam(w http.ResponseWriter, r *http.Request, userID string) {
+	v, err := a.exam.Get(r.Context(), userID, r.PathValue("id"))
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -235,7 +289,7 @@ func (a *api) getExam(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, v)
 }
 
-func (a *api) putExamResponse(w http.ResponseWriter, r *http.Request) {
+func (a *api) putExamResponse(w http.ResponseWriter, r *http.Request, userID string) {
 	pos, err := strconv.Atoi(r.PathValue("pos"))
 	if err != nil {
 		writeError(w, r, exam.ErrNotFound)
@@ -251,7 +305,7 @@ func (a *api) putExamResponse(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	v, err := a.exam.Answer(r.Context(), r.PathValue("id"), pos, body.Answer, body.TimeMS, body.Flagged, body.Seq)
+	v, err := a.exam.Answer(r.Context(), userID, r.PathValue("id"), pos, body.Answer, body.TimeMS, body.Flagged, body.Seq)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -259,8 +313,8 @@ func (a *api) putExamResponse(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, v)
 }
 
-func (a *api) submitExam(w http.ResponseWriter, r *http.Request) {
-	res, err := a.exam.Submit(r.Context(), r.PathValue("id"))
+func (a *api) submitExam(w http.ResponseWriter, r *http.Request, userID string) {
+	res, err := a.exam.Submit(r.Context(), userID, r.PathValue("id"))
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -268,8 +322,8 @@ func (a *api) submitExam(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-func (a *api) examResult(w http.ResponseWriter, r *http.Request) {
-	res, err := a.exam.Result(r.Context(), r.PathValue("id"))
+func (a *api) examResult(w http.ResponseWriter, r *http.Request, userID string) {
+	res, err := a.exam.Result(r.Context(), userID, r.PathValue("id"))
 	if err != nil {
 		writeError(w, r, err)
 		return

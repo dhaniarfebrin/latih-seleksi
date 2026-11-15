@@ -47,6 +47,7 @@ type Item struct {
 // Exam is a simulation attempt. SpecBody is the frozen exam spec JSON.
 type Exam struct {
 	ID          string
+	UserID      string
 	SpecID      string
 	SpecBody    json.RawMessage
 	Track       string
@@ -257,6 +258,17 @@ func (s *Store) MarkSubmitted(ctx context.Context, id string) (time.Time, error)
 	return t, err
 }
 
+// UpsertUser returns the id of the app_user with this auth subject (the
+// provider's sub), creating it on first sight. Nothing else is stored.
+func (s *Store) UpsertUser(ctx context.Context, sub string) (string, error) {
+	var id string
+	err := s.pool.QueryRow(ctx,
+		`insert into app_user (auth_sub) values ($1)
+		 on conflict (auth_sub) do update set auth_sub = excluded.auth_sub
+		 returning id::text`, sub).Scan(&id)
+	return id, err
+}
+
 const (
 	StatusInProgress = "in_progress"
 	StatusSubmitted  = "submitted"
@@ -273,9 +285,9 @@ func (s *Store) CreateExam(ctx context.Context, e Exam, items []Item) (Exam, err
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	err = tx.QueryRow(ctx,
-		`insert into attempt (mode, spec_id, spec_body, track, sections, started_at, deadline_at, status)
-		 values ('simulasi', $1, $2, $3, $4, $5, $6, 'in_progress') returning id::text`,
-		e.SpecID, []byte(e.SpecBody), e.Track, e.Sections, e.StartedAt, e.DeadlineAt).Scan(&e.ID)
+		`insert into attempt (mode, user_id, spec_id, spec_body, track, sections, started_at, deadline_at, status)
+		 values ('simulasi', $7, $1, $2, $3, $4, $5, $6, 'in_progress') returning id::text`,
+		e.SpecID, []byte(e.SpecBody), e.Track, e.Sections, e.StartedAt, e.DeadlineAt, e.UserID).Scan(&e.ID)
 	if err != nil {
 		return Exam{}, fmt.Errorf("insert exam: %w", err)
 	}
@@ -299,9 +311,9 @@ func (s *Store) GetExam(ctx context.Context, id string) (Exam, []Item, []Respons
 	var e Exam
 	var raw []byte
 	err := s.pool.QueryRow(ctx,
-		`select id::text, spec_id, spec_body, track, sections, started_at, deadline_at, submitted_at, status
+		`select id::text, coalesce(user_id::text, ''), spec_id, spec_body, track, sections, started_at, deadline_at, submitted_at, status
 		 from attempt where id = $1 and mode = 'simulasi'`, id).
-		Scan(&e.ID, &e.SpecID, &raw, &e.Track, &e.Sections, &e.StartedAt, &e.DeadlineAt, &e.SubmittedAt, &e.Status)
+		Scan(&e.ID, &e.UserID, &e.SpecID, &raw, &e.Track, &e.Sections, &e.StartedAt, &e.DeadlineAt, &e.SubmittedAt, &e.Status)
 	if errors.Is(err, pgx.ErrNoRows) || (err != nil && isInvalidUUID(err)) {
 		return Exam{}, nil, nil, ErrNotFound
 	}
