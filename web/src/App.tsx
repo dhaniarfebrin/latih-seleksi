@@ -81,11 +81,13 @@ function Shell() {
         <Outlet />
       </main>
       <footer className="foot">
-        Aplikasi latihan independen, bukan produk resmi penyelenggara seleksi. Soal buatan sendiri dan tidak menjamin kelulusan.{' '}
-        <Link to="/about">Tentang</Link>{' '}
-        <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
-          Simulasi resmi (cat.bkn.go.id)
-        </a>
+        <div className="in">
+          Aplikasi latihan independen, bukan produk resmi penyelenggara seleksi. Soal buatan sendiri dan tidak menjamin kelulusan.{' '}
+          <Link to="/about">Tentang</Link>{' '}
+          <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
+            Simulasi resmi (cat.bkn.go.id)
+          </a>
+        </div>
       </footer>
     </div>
   )

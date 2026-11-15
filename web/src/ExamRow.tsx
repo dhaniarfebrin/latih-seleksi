@@ -26,7 +26,7 @@ export function ExamRow({ e, specs }: { e: ExamSummary; specs: Spec[] }) {
         {e.result?.sections.map((x) => (
           <span key={x.id} className="num">
             {x.id} {x.score}/{x.max}
-            {x.min !== undefined ? ` (ambang ${x.min}, ${x.met ? 'tercapai' : 'belum'})` : ''}
+            {x.min !== undefined ? ` (ambang ${x.min}) ${x.met ? 'tercapai' : 'belum tercapai'}` : ''}
           </span>
         ))}
       </Link>
