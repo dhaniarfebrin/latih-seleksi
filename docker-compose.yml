@@ -31,7 +31,12 @@ services:
   # nginx serves the SPA and proxies /v1 to api:8080; this is the only service
   # published to the LAN.
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
     ports:
       - "${WEB_PORT:-8081}:80"
     depends_on:
