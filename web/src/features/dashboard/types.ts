@@ -26,6 +26,7 @@ export interface PatternStat {
 export interface SessionStat {
   attempt_id: string
   mode: string
+  pattern_id: string
   started_at: string
   answered: number
   correct: number

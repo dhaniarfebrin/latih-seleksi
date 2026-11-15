@@ -91,7 +91,7 @@ export function DashboardPage() {
           <ul className="list" role="list">
             {data.dash.sessions.map((s) => (
               <li key={s.attempt_id} className="panel">
-                {s.mode === 'simulasi' ? 'Simulasi' : 'Drill'},{' '}
+                {s.mode === 'simulasi' ? 'Simulasi' : `Drill ${label(s.pattern_id)}`},{' '}
                 {new Date(s.started_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}: benar{' '}
                 {s.correct} dari {s.answered} ({fmtPct(s.correct, s.answered)})
               </li>
