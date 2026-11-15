@@ -29,8 +29,8 @@ export function Home() {
           </Link>
         </div>
       )}
-      <div className="cards">
-        <div className="panel">
+      <div className="panel choices">
+        <div>
           <h2 className="sub">
             <Target className="ic" aria-hidden="true" /> Drill
           </h2>
@@ -39,7 +39,7 @@ export function Home() {
             Mulai drill
           </Link>
         </div>
-        <div className="panel">
+        <div>
           <h2 className="sub">
             <Timer className="ic" aria-hidden="true" /> Simulasi
           </h2>
