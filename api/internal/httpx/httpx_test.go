@@ -83,9 +83,9 @@ type createResp struct {
 	} `json:"items"`
 }
 
-func create(t *testing.T, srv *httptest.Server, body string) createResp {
+func create(t *testing.T, srv *httptest.Server, token, body string) createResp {
 	t.Helper()
-	code, out, _ := do(t, "POST", srv.URL+"/v1/attempts", body)
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/attempts", body, token)
 	if code != http.StatusCreated {
 		t.Fatalf("create status = %d body=%s", code, out)
 	}
@@ -127,8 +127,13 @@ func TestHealthAndPatterns(t *testing.T) {
 }
 
 func TestFlowHidesAndRevealsKey(t *testing.T) {
-	srv := newServer(t, Config{})
-	c := create(t, srv, `{"pattern_id":"`+persentase.PatternID+`"}`) // defaults n=8 band=2
+	srv, mint := newAuthServer(t)
+	tok := mint("flow-user")
+	do := func(t *testing.T, method, url, body string) (int, string, http.Header) {
+		t.Helper()
+		return doToken(t, method, url, body, tok)
+	}
+	c := create(t, srv, tok, `{"pattern_id":"`+persentase.PatternID+`"}`) // defaults n=8 band=2
 	if len(c.Items) != 8 {
 		t.Fatalf("default n: items = %d, want 8", len(c.Items))
 	}
@@ -173,7 +178,12 @@ func TestFlowHidesAndRevealsKey(t *testing.T) {
 }
 
 func TestBadRequestsAndNotFound(t *testing.T) {
-	srv := newServer(t, Config{})
+	srv, mint := newAuthServer(t)
+	tok := mint("bad-requests-user")
+	do := func(t *testing.T, method, url, body string) (int, string, http.Header) {
+		t.Helper()
+		return doToken(t, method, url, body, tok)
+	}
 	p := persentase.PatternID
 	for _, body := range []string{
 		`{"pattern_id":"` + p + `","n":0}`,
@@ -189,7 +199,7 @@ func TestBadRequestsAndNotFound(t *testing.T) {
 		}
 	}
 
-	c := create(t, srv, `{"pattern_id":"`+p+`","n":2,"band":1}`)
+	c := create(t, srv, tok, `{"pattern_id":"`+p+`","n":2,"band":1}`)
 	base := srv.URL + "/v1/attempts/" + c.ID
 	for _, body := range []string{`{"answer":"F","time_ms":1}`, `{"answer":"","time_ms":1}`, `{"answer":"A","time_ms":-5}`} {
 		if code, out, _ := do(t, "PUT", base+"/responses/1", body); code != 400 {
@@ -351,7 +361,32 @@ func TestExamRoutesRequireAuth(t *testing.T) {
 	if code, _, _ := do(t, "GET", srv.URL+"/v1/specs", ""); code != http.StatusOK {
 		t.Errorf("/v1/specs without token = %d, want 200", code)
 	}
-	create(t, srv, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+}
+
+func TestDrillRequiresAuth(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	zero := "00000000-0000-0000-0000-000000000000"
+	for _, r := range []struct{ method, path, body string }{
+		{"POST", "/v1/attempts", `{"pattern_id":"` + persentase.PatternID + `"}`},
+		{"GET", "/v1/attempts/" + zero, ""},
+		{"PUT", "/v1/attempts/" + zero + "/responses/1", `{"answer":"A","time_ms":1}`},
+		{"POST", "/v1/attempts/" + zero + "/submit", ""},
+		{"DELETE", "/v1/me", ""},
+	} {
+		code, _, hdr := doToken(t, r.method, srv.URL+r.path, r.body, "")
+		if code != http.StatusUnauthorized || hdr.Get("WWW-Authenticate") != "Bearer" {
+			t.Errorf("%s %s without token = %d (WWW-Authenticate %q), want 401", r.method, r.path, code, hdr.Get("WWW-Authenticate"))
+		}
+		if code, _, _ := doToken(t, r.method, srv.URL+r.path, r.body, "not.a.jwt"); code != http.StatusUnauthorized {
+			t.Errorf("%s %s with a bad token = %d, want 401", r.method, r.path, code)
+		}
+	}
+	// The pattern list stays public.
+	if code, _, _ := do(t, "GET", srv.URL+"/v1/patterns", ""); code != http.StatusOK {
+		t.Errorf("/v1/patterns without token = %d, want 200", code)
+	}
+	// A valid token works.
+	create(t, srv, mint("drill-auth-user"), `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
 }
 
 func TestExamRoutesWithoutVerifierAre503(t *testing.T) {
@@ -362,7 +397,9 @@ func TestExamRoutesWithoutVerifierAre503(t *testing.T) {
 	if code, _, _ := doToken(t, "GET", srv.URL+"/v1/exams", "", "x"); code != http.StatusServiceUnavailable {
 		t.Errorf("list without verifier = %d, want 503", code)
 	}
-	create(t, srv, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	if code, _, _ := doToken(t, "POST", srv.URL+"/v1/attempts", `{"pattern_id":"`+persentase.PatternID+`"}`, "x"); code != http.StatusServiceUnavailable {
+		t.Errorf("drill without verifier = %d, want 503", code)
+	}
 }
 
 func TestExamOwnership(t *testing.T) {
@@ -396,6 +433,69 @@ func TestExamOwnership(t *testing.T) {
 	}
 }
 
+func TestDrillOwnership(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tokA, tokB := mint("drill-owner-a"), mint("drill-owner-b")
+	c := create(t, srv, tokA, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	base := srv.URL + "/v1/attempts/" + c.ID
+	if code, _, _ := doToken(t, "GET", base, "", tokA); code != http.StatusOK {
+		t.Errorf("owner GET = %d, want 200", code)
+	}
+	for _, r := range []struct{ method, path, body string }{
+		{"GET", "", ""},
+		{"PUT", "/responses/1", `{"answer":"A","time_ms":1}`},
+		{"POST", "/submit", ""},
+	} {
+		if code, _, _ := doToken(t, r.method, base+r.path, r.body, tokB); code != http.StatusNotFound {
+			t.Errorf("other user %s %s = %d, want 404", r.method, r.path, code)
+		}
+	}
+	// B's calls changed nothing for A.
+	if _, out, _ := doToken(t, "GET", base, "", tokA); strings.Contains(out, "answer_key") || strings.Contains(out, "submitted_at") {
+		t.Errorf("owner attempt changed: %s", out)
+	}
+}
+
+func TestDeleteMe(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tokA, tokB := mint("delete-a"), mint("delete-b")
+	drillA := create(t, srv, tokA, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	if code, out, _ := doToken(t, "PUT", srv.URL+"/v1/attempts/"+drillA.ID+"/responses/1", `{"answer":"A","time_ms":5}`, tokA); code != http.StatusOK {
+		t.Fatalf("answer = %d %s", code, out)
+	}
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tokA)
+	if code != http.StatusCreated {
+		t.Fatalf("create exam = %d %s", code, out)
+	}
+	var examA createResp
+	if err := json.Unmarshal([]byte(out), &examA); err != nil {
+		t.Fatal(err)
+	}
+	drillB := create(t, srv, tokB, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+
+	if code, _, _ := doToken(t, "DELETE", srv.URL+"/v1/me", "", tokA); code != http.StatusNoContent {
+		t.Fatalf("DELETE /v1/me = %d, want 204", code)
+	}
+	// The same token recreates an empty user: A's old data is gone.
+	if code, _, _ := doToken(t, "GET", srv.URL+"/v1/attempts/"+drillA.ID, "", tokA); code != http.StatusNotFound {
+		t.Errorf("deleted drill attempt = %d, want 404", code)
+	}
+	if code, _, _ := doToken(t, "GET", srv.URL+"/v1/exams/"+examA.ID, "", tokA); code != http.StatusNotFound {
+		t.Errorf("deleted exam = %d, want 404", code)
+	}
+	if _, out, _ := doToken(t, "GET", srv.URL+"/v1/exams", "", tokA); !strings.Contains(out, `"exams":[]`) {
+		t.Errorf("exam list after delete = %s", out)
+	}
+	// Repeating the call is idempotent.
+	if code, _, _ := doToken(t, "DELETE", srv.URL+"/v1/me", "", tokA); code != http.StatusNoContent {
+		t.Errorf("second DELETE /v1/me = %d, want 204", code)
+	}
+	// B is untouched.
+	if code, _, _ := doToken(t, "GET", srv.URL+"/v1/attempts/"+drillB.ID, "", tokB); code != http.StatusOK {
+		t.Errorf("other user's attempt = %d, want 200", code)
+	}
+}
+
 func TestListExams(t *testing.T) {
 	srv, mint := newAuthServer(t)
 	tokA, tokB := mint("list-a"), mint("list-b")
@@ -422,6 +522,14 @@ func TestListExams(t *testing.T) {
 		if code, _, _ := doToken(t, "GET", srv.URL+"/v1/exams"+q, "", tokA); code != http.StatusBadRequest {
 			t.Errorf("GET /v1/exams%s = %d, want 400", q, code)
 		}
+	}
+}
+
+func TestCORSAllowsDelete(t *testing.T) {
+	srv := newServer(t, Config{CORSOrigin: "http://localhost:5173"})
+	_, _, hdr := do(t, "OPTIONS", srv.URL+"/v1/me", "")
+	if !strings.Contains(hdr.Get("Access-Control-Allow-Methods"), "DELETE") {
+		t.Errorf("Allow-Methods = %q", hdr.Get("Access-Control-Allow-Methods"))
 	}
 }
 

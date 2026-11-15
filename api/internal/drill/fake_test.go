@@ -10,7 +10,7 @@ import (
 )
 
 // fakeStore is an in-memory Store with the same semantics as the PostgreSQL
-// one: unknown ids give ErrNotFound, the first response per position wins and
+// one: unknown ids and other users' attempts give ErrNotFound, the first response per position wins and
 // submitted_at is set once.
 type fakeStore struct {
 	attempts map[string]*fakeAttempt
@@ -35,9 +35,9 @@ func (f *fakeStore) CreateAttempt(_ context.Context, a question.Attempt, items [
 	return a, nil
 }
 
-func (f *fakeStore) GetAttempt(_ context.Context, id string) (question.Attempt, []question.Item, []question.Response, error) {
+func (f *fakeStore) GetAttempt(_ context.Context, userID, id string) (question.Attempt, []question.Item, []question.Response, error) {
 	fa, ok := f.attempts[id]
-	if !ok {
+	if !ok || fa.a.UserID != userID {
 		return question.Attempt{}, nil, nil, question.ErrNotFound
 	}
 	var resps []question.Response
@@ -49,9 +49,9 @@ func (f *fakeStore) GetAttempt(_ context.Context, id string) (question.Attempt, 
 	return fa.a, fa.items, resps, nil
 }
 
-func (f *fakeStore) SaveResponse(_ context.Context, id string, r question.Response) (question.Response, error) {
+func (f *fakeStore) SaveResponse(_ context.Context, userID, id string, r question.Response) (question.Response, error) {
 	fa, ok := f.attempts[id]
-	if !ok {
+	if !ok || fa.a.UserID != userID {
 		return question.Response{}, question.ErrNotFound
 	}
 	if old, ok := fa.resps[r.Pos]; ok {
@@ -62,9 +62,9 @@ func (f *fakeStore) SaveResponse(_ context.Context, id string, r question.Respon
 	return r, nil
 }
 
-func (f *fakeStore) MarkSubmitted(_ context.Context, id string) (time.Time, error) {
+func (f *fakeStore) MarkSubmitted(_ context.Context, userID, id string) (time.Time, error) {
 	fa, ok := f.attempts[id]
-	if !ok {
+	if !ok || fa.a.UserID != userID {
 		return time.Time{}, question.ErrNotFound
 	}
 	if fa.a.SubmittedAt == nil {

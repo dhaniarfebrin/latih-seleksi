@@ -11,6 +11,7 @@ import (
 // Attempt is a drill attempt.
 type Attempt struct {
 	ID          string
+	UserID      string
 	Mode        string
 	PatternID   string
 	Band        int

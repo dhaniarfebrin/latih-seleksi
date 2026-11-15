@@ -14,3 +14,10 @@ func (s *Store) UpsertUser(ctx context.Context, sub string) (string, error) {
 		 returning id::text`, sub).Scan(&id)
 	return id, err
 }
+
+// DeleteUser removes the app_user row; the user's attempts, items and
+// responses go with it through on delete cascade. An unknown id is not an error.
+func (s *Store) DeleteUser(ctx context.Context, id string) error {
+	_, err := s.pool.Exec(ctx, `delete from app_user where id = $1`, id)
+	return err
+}

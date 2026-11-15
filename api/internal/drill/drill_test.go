@@ -15,7 +15,7 @@ import (
 	"latihseleksi/api/internal/store"
 )
 
-func newService(t *testing.T) (*Service, *store.Store) {
+func newService(t *testing.T) (*Service, *store.Store, string) {
 	t.Helper()
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
@@ -29,13 +29,18 @@ func newService(t *testing.T) (*Service, *store.Store) {
 	if err := st.Migrate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	return New(st, catalog.All()), st
+	uid, err := st.UpsertUser(context.Background(), "drill-test-"+t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteUser(context.Background(), uid) })
+	return New(st, catalog.All()), st, uid
 }
 
 // frozenSnapshot reads the stored question.Snapshot of pos through the store.
-func frozenSnapshot(t *testing.T, st *store.Store, id string, pos int) question.Snapshot {
+func frozenSnapshot(t *testing.T, st *store.Store, uid, id string, pos int) question.Snapshot {
 	t.Helper()
-	_, items, _, err := st.GetAttempt(context.Background(), id)
+	_, items, _, err := st.GetAttempt(context.Background(), uid, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,8 +77,8 @@ func TestPatternsListAllFamiliesWithLabels(t *testing.T) {
 // kerja-sama band 1 has only a few hundred distinct stems, so 20 random items
 // would repeat one about half the time without the de-duplication in Create.
 func TestCreateAvoidsRepeatedStems(t *testing.T) {
-	svc, _ := newService(t)
-	v, err := svc.Create(context.Background(), kerjasama.PatternID, 20, 1)
+	svc, _, uid := newService(t)
+	v, err := svc.Create(context.Background(), uid, kerjasama.PatternID, 20, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,9 +92,9 @@ func TestCreateAvoidsRepeatedStems(t *testing.T) {
 }
 
 func TestCreateWorksForEveryPattern(t *testing.T) {
-	svc, _ := newService(t)
+	svc, _, uid := newService(t)
 	for _, p := range svc.Patterns() {
-		v, err := svc.Create(context.Background(), p.ID, 3, 3)
+		v, err := svc.Create(context.Background(), uid, p.ID, 3, 3)
 		if err != nil {
 			t.Fatalf("Create(%s): %v", p.ID, err)
 		}
@@ -100,8 +105,8 @@ func TestCreateWorksForEveryPattern(t *testing.T) {
 }
 
 func TestCreateHidesKey(t *testing.T) {
-	svc, _ := newService(t)
-	v, err := svc.Create(context.Background(), persentase.PatternID, 8, 2)
+	svc, _, uid := newService(t)
+	v, err := svc.Create(context.Background(), uid, persentase.PatternID, 8, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +119,7 @@ func TestCreateHidesKey(t *testing.T) {
 			t.Errorf("create response contains %q", banned)
 		}
 	}
-	got, err := svc.Get(context.Background(), v.ID)
+	got, err := svc.Get(context.Background(), uid, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,15 +132,15 @@ func TestCreateHidesKey(t *testing.T) {
 }
 
 func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
-	svc, st := newService(t)
+	svc, st, uid := newService(t)
 	ctx := context.Background()
-	v, err := svc.Create(ctx, persentase.PatternID, 3, 2)
+	v, err := svc.Create(ctx, uid, persentase.PatternID, 3, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sn := frozenSnapshot(t, st, v.ID, 1)
+	sn := frozenSnapshot(t, st, uid, v.ID, 1)
 
-	first, err := svc.Answer(ctx, v.ID, 1, sn.AnswerKey, 1200)
+	first, err := svc.Answer(ctx, uid, v.ID, 1, sn.AnswerKey, 1200)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +153,7 @@ func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
 	if sn.AnswerKey == "A" {
 		wrong = "B"
 	}
-	again, err := svc.Answer(ctx, v.ID, 1, wrong, 9999)
+	again, err := svc.Answer(ctx, uid, v.ID, 1, wrong, 9999)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +162,7 @@ func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
 	}
 
 	// A wrong answer at pos 2 carries its misconception id.
-	sn2 := frozenSnapshot(t, st, v.ID, 2)
+	sn2 := frozenSnapshot(t, st, uid, v.ID, 2)
 	var wrongOpt question.SnapshotOption
 	for _, o := range sn2.Options {
 		if o.Key != sn2.AnswerKey {
@@ -165,7 +170,7 @@ func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
 			break
 		}
 	}
-	r2, err := svc.Answer(ctx, v.ID, 2, wrongOpt.Key, 3000)
+	r2, err := svc.Answer(ctx, uid, v.ID, 2, wrongOpt.Key, 3000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +178,7 @@ func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
 		t.Fatalf("unexpected wrong reveal: %+v", r2)
 	}
 
-	got, err := svc.Get(ctx, v.ID)
+	got, err := svc.Get(ctx, uid, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,9 +188,9 @@ func TestAnswerRevealsAndIsIdempotent(t *testing.T) {
 }
 
 func TestSubmitScores(t *testing.T) {
-	svc, st := newService(t)
+	svc, st, uid := newService(t)
 	ctx := context.Background()
-	v, err := svc.Create(ctx, persentase.PatternID, 4, 2)
+	v, err := svc.Create(ctx, uid, persentase.PatternID, 4, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +198,7 @@ func TestSubmitScores(t *testing.T) {
 	wantScore := 0
 	// pos 1,2 correct (1000, 2000 ms); pos 3 wrong (3000 ms); pos 4 unanswered.
 	for pos, ms := range map[int]int{1: 1000, 2: 2000, 3: 3000} {
-		sn := frozenSnapshot(t, st, v.ID, pos)
+		sn := frozenSnapshot(t, st, uid, v.ID, pos)
 		ans := sn.AnswerKey
 		if pos == 3 {
 			for _, o := range sn.Options {
@@ -206,11 +211,11 @@ func TestSubmitScores(t *testing.T) {
 		} else {
 			wantScore++
 		}
-		if _, err := svc.Answer(ctx, v.ID, pos, ans, ms); err != nil {
+		if _, err := svc.Answer(ctx, uid, v.ID, pos, ans, ms); err != nil {
 			t.Fatal(err)
 		}
 	}
-	res, err := svc.Submit(ctx, v.ID)
+	res, err := svc.Submit(ctx, uid, v.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,18 +230,18 @@ func TestSubmitScores(t *testing.T) {
 			t.Fatalf("misconceptions = %v, want %v", res.Misconception, wantMis)
 		}
 	}
-	again, err := svc.Submit(ctx, v.ID)
+	again, err := svc.Submit(ctx, uid, v.ID)
 	if err != nil || !again.SubmittedAt.Equal(res.SubmittedAt) || again.Score != res.Score {
 		t.Fatalf("second submit differs: %+v err=%v", again, err)
 	}
 	// Unanswered position is closed after submit.
-	if _, err := svc.Answer(ctx, v.ID, 4, "A", 10); !errors.Is(err, ErrSubmitted) {
+	if _, err := svc.Answer(ctx, uid, v.ID, 4, "A", 10); !errors.Is(err, ErrSubmitted) {
 		t.Fatalf("answer after submit err = %v, want ErrSubmitted", err)
 	}
 }
 
 func TestValidation(t *testing.T) {
-	svc, _ := newService(t)
+	svc, _, uid := newService(t)
 	ctx := context.Background()
 	for _, c := range []struct {
 		pattern string
@@ -246,32 +251,32 @@ func TestValidation(t *testing.T) {
 		{persentase.PatternID, 8, 0}, {persentase.PatternID, 8, 4},
 		{"nope", 8, 2},
 	} {
-		if _, err := svc.Create(ctx, c.pattern, c.n, c.band); !errors.Is(err, ErrInvalid) {
+		if _, err := svc.Create(ctx, uid, c.pattern, c.n, c.band); !errors.Is(err, ErrInvalid) {
 			t.Errorf("Create(%q,%d,%d) err = %v, want ErrInvalid", c.pattern, c.n, c.band, err)
 		}
 	}
-	v, err := svc.Create(ctx, persentase.PatternID, 2, 1)
+	v, err := svc.Create(ctx, uid, persentase.PatternID, 2, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, ans := range []string{"", "F", "a", "AB"} {
-		if _, err := svc.Answer(ctx, v.ID, 1, ans, 100); !errors.Is(err, ErrInvalid) {
+		if _, err := svc.Answer(ctx, uid, v.ID, 1, ans, 100); !errors.Is(err, ErrInvalid) {
 			t.Errorf("answer %q err = %v, want ErrInvalid", ans, err)
 		}
 	}
-	if _, err := svc.Answer(ctx, v.ID, 1, "A", -1); !errors.Is(err, ErrInvalid) {
+	if _, err := svc.Answer(ctx, uid, v.ID, 1, "A", -1); !errors.Is(err, ErrInvalid) {
 		t.Errorf("negative time err = %v, want ErrInvalid", err)
 	}
 	for _, pos := range []int{0, 3, -1} {
-		if _, err := svc.Answer(ctx, v.ID, pos, "A", 100); !errors.Is(err, ErrNotFound) {
+		if _, err := svc.Answer(ctx, uid, v.ID, pos, "A", 100); !errors.Is(err, ErrNotFound) {
 			t.Errorf("pos %d err = %v, want ErrNotFound", pos, err)
 		}
 	}
 	for _, id := range []string{"not-a-uuid", "00000000-0000-0000-0000-000000000000"} {
-		if _, err := svc.Get(ctx, id); !errors.Is(err, ErrNotFound) {
+		if _, err := svc.Get(ctx, uid, id); !errors.Is(err, ErrNotFound) {
 			t.Errorf("Get(%q) err = %v, want ErrNotFound", id, err)
 		}
-		if _, err := svc.Submit(ctx, id); !errors.Is(err, ErrNotFound) {
+		if _, err := svc.Submit(ctx, uid, id); !errors.Is(err, ErrNotFound) {
 			t.Errorf("Submit(%q) err = %v, want ErrNotFound", id, err)
 		}
 	}

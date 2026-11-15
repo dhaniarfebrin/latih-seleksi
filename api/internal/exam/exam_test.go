@@ -397,10 +397,10 @@ func TestExamAndDrillAttemptsAreSeparate(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	v := e.create(t)
-	if _, err := drill.New(e.st, catalog.All()).Get(ctx, v.ID); !errors.Is(err, drill.ErrNotFound) {
+	if _, err := drill.New(e.st, catalog.All()).Get(ctx, e.user, v.ID); !errors.Is(err, drill.ErrNotFound) {
 		t.Errorf("drill route sees an exam: %v", err)
 	}
-	d, err := drill.New(e.st, catalog.All()).Create(ctx, persentase.PatternID, 2, 1)
+	d, err := drill.New(e.st, catalog.All()).Create(ctx, e.user, persentase.PatternID, 2, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

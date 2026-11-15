@@ -108,8 +108,8 @@ func (s *Service) Patterns() []Pattern {
 	return out
 }
 
-// Create generates n questions with random seeds and freezes them.
-func (s *Service) Create(ctx context.Context, patternID string, n, band int) (AttemptView, error) {
+// Create generates n questions with random seeds and freezes them for userID.
+func (s *Service) Create(ctx context.Context, userID, patternID string, n, band int) (AttemptView, error) {
 	fam, ok := s.families[patternID]
 	if !ok {
 		return AttemptView{}, invalid("unknown pattern_id %q", patternID)
@@ -155,15 +155,15 @@ func (s *Service) Create(ctx context.Context, patternID string, n, band int) (At
 		items = append(items, question.Item{Pos: pos, Seed: draft.Seed, Snapshot: raw})
 	}
 
-	a, err := s.store.CreateAttempt(ctx, question.Attempt{Mode: ModeDrill, PatternID: patternID, Band: band, N: n}, items)
+	a, err := s.store.CreateAttempt(ctx, question.Attempt{UserID: userID, Mode: ModeDrill, PatternID: patternID, Band: band, N: n}, items)
 	if err != nil {
 		return AttemptView{}, err
 	}
-	return s.Get(ctx, a.ID)
+	return s.Get(ctx, userID, a.ID)
 }
 
-func (s *Service) load(ctx context.Context, id string) (question.Attempt, map[int]question.Snapshot, []question.Item, []question.Response, error) {
-	a, items, resps, err := s.store.GetAttempt(ctx, id)
+func (s *Service) load(ctx context.Context, userID, id string) (question.Attempt, map[int]question.Snapshot, []question.Item, []question.Response, error) {
+	a, items, resps, err := s.store.GetAttempt(ctx, userID, id)
 	if err != nil {
 		return a, nil, nil, nil, err
 	}
@@ -191,8 +191,8 @@ func responseView(r question.Response, sn question.Snapshot) *ResponseView {
 }
 
 // Get returns the attempt; answer data is included only for answered positions.
-func (s *Service) Get(ctx context.Context, id string) (AttemptView, error) {
-	a, snaps, items, resps, err := s.load(ctx, id)
+func (s *Service) Get(ctx context.Context, userID, id string) (AttemptView, error) {
+	a, snaps, items, resps, err := s.load(ctx, userID, id)
 	if err != nil {
 		return AttemptView{}, err
 	}
@@ -220,14 +220,14 @@ func (s *Service) Get(ctx context.Context, id string) (AttemptView, error) {
 
 // Answer records the first answer for pos and returns the revealed result.
 // Repeating the call returns the stored result unchanged.
-func (s *Service) Answer(ctx context.Context, id string, pos int, answer string, timeMS int) (ResponseView, error) {
+func (s *Service) Answer(ctx context.Context, userID, id string, pos int, answer string, timeMS int) (ResponseView, error) {
 	if !question.ValidAnswer(answer) {
 		return ResponseView{}, invalid("answer must be one of A-E")
 	}
 	if timeMS < 0 || timeMS > maxTimeMS {
 		return ResponseView{}, invalid("time_ms must be between 0 and %d", maxTimeMS)
 	}
-	a, snaps, _, resps, err := s.load(ctx, id)
+	a, snaps, _, resps, err := s.load(ctx, userID, id)
 	if err != nil {
 		return ResponseView{}, err
 	}
@@ -247,7 +247,7 @@ func (s *Service) Answer(ctx context.Context, id string, pos int, answer string,
 	if !found {
 		return ResponseView{}, invalid("answer %s is not an option of this question", answer)
 	}
-	stored, err := s.store.SaveResponse(ctx, id, question.Response{
+	stored, err := s.store.SaveResponse(ctx, userID, id, question.Response{
 		Pos: pos, Answer: answer, Correct: answer == sn.AnswerKey, TimeMS: timeMS, MisconceptionID: chosen.MisconceptionID,
 	})
 	if err != nil {
@@ -258,12 +258,12 @@ func (s *Service) Answer(ctx context.Context, id string, pos int, answer string,
 
 // Submit closes the attempt and returns score, mean time and misconception tally.
 // Unanswered positions count as incorrect. Repeating the call is safe.
-func (s *Service) Submit(ctx context.Context, id string) (Result, error) {
-	submittedAt, err := s.store.MarkSubmitted(ctx, id)
+func (s *Service) Submit(ctx context.Context, userID, id string) (Result, error) {
+	submittedAt, err := s.store.MarkSubmitted(ctx, userID, id)
 	if err != nil {
 		return Result{}, err
 	}
-	a, _, resps, err := s.store.GetAttempt(ctx, id)
+	a, _, resps, err := s.store.GetAttempt(ctx, userID, id)
 	if err != nil {
 		return Result{}, err
 	}

@@ -20,9 +20,9 @@ func (s *Store) CreateAttempt(ctx context.Context, a question.Attempt, items []q
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	err = tx.QueryRow(ctx,
-		`insert into attempt (mode, pattern_id, band, n) values ($1, $2, $3, $4)
+		`insert into attempt (user_id, mode, pattern_id, band, n) values ($1, $2, $3, $4, $5)
 		 returning id::text, started_at`,
-		a.Mode, a.PatternID, a.Band, a.N).Scan(&a.ID, &a.StartedAt)
+		a.UserID, a.Mode, a.PatternID, a.Band, a.N).Scan(&a.ID, &a.StartedAt)
 	if err != nil {
 		return question.Attempt{}, fmt.Errorf("insert attempt: %w", err)
 	}
@@ -39,11 +39,11 @@ func (s *Store) CreateAttempt(ctx context.Context, a question.Attempt, items []q
 	return a, nil
 }
 
-// GetAttempt returns the drill attempt (simulation attempts are not found) with its items and responses, both ordered by pos.
-func (s *Store) GetAttempt(ctx context.Context, id string) (question.Attempt, []question.Item, []question.Response, error) {
+// GetAttempt returns the user's drill attempt (simulation attempts and other users' attempts are not found) with its items and responses, both ordered by pos.
+func (s *Store) GetAttempt(ctx context.Context, userID, id string) (question.Attempt, []question.Item, []question.Response, error) {
 	var a question.Attempt
 	err := s.pool.QueryRow(ctx,
-		`select id::text, mode, pattern_id, band, n, started_at, submitted_at from attempt where id = $1 and mode = 'drill'`, id).
+		`select id::text, mode, pattern_id, band, n, started_at, submitted_at from attempt where id = $1 and user_id = $2 and mode = 'drill'`, id, userID).
 		Scan(&a.ID, &a.Mode, &a.PatternID, &a.Band, &a.N, &a.StartedAt, &a.SubmittedAt)
 	if errors.Is(err, pgx.ErrNoRows) || (err != nil && isInvalidUUID(err)) {
 		return question.Attempt{}, nil, nil, question.ErrNotFound
@@ -89,33 +89,41 @@ func (s *Store) responses(ctx context.Context, id string) ([]question.Response, 
 	})
 }
 
-// SaveResponse stores the first response for a position; later calls keep the
-// stored one. It returns the stored response.
-func (s *Store) SaveResponse(ctx context.Context, id string, r question.Response) (question.Response, error) {
+// SaveResponse stores the first response for a position of the user's drill
+// attempt; later calls keep the stored one. It returns the stored response.
+func (s *Store) SaveResponse(ctx context.Context, userID, id string, r question.Response) (question.Response, error) {
 	var mis any
 	if r.MisconceptionID != "" {
 		mis = r.MisconceptionID
 	}
 	if _, err := s.pool.Exec(ctx,
 		`insert into response (attempt_id, pos, answer, correct, time_ms, misconception_id)
-		 values ($1, $2, $3, $4, $5, $6)
+		 select a.id, $3, $4, $5, $6, $7 from attempt a where a.id = $1 and a.user_id = $2 and a.mode = 'drill'
 		 on conflict (attempt_id, pos) do nothing`,
-		id, r.Pos, r.Answer, r.Correct, r.TimeMS, mis); err != nil {
+		id, userID, r.Pos, r.Answer, r.Correct, r.TimeMS, mis); err != nil {
+		if isInvalidUUID(err) {
+			return question.Response{}, question.ErrNotFound
+		}
 		return question.Response{}, err
 	}
 	var out question.Response
 	err := s.pool.QueryRow(ctx,
-		`select pos, answer, correct, time_ms, coalesce(misconception_id, ''), answered_at
-		 from response where attempt_id = $1 and pos = $2`, id, r.Pos).
+		`select r.pos, r.answer, r.correct, r.time_ms, coalesce(r.misconception_id, ''), r.answered_at
+		 from response r join attempt a on a.id = r.attempt_id
+		 where r.attempt_id = $1 and r.pos = $2 and a.user_id = $3 and a.mode = 'drill'`, id, r.Pos, userID).
 		Scan(&out.Pos, &out.Answer, &out.Correct, &out.TimeMS, &out.MisconceptionID, &out.AnsweredAt)
+	if errors.Is(err, pgx.ErrNoRows) || (err != nil && isInvalidUUID(err)) {
+		return question.Response{}, question.ErrNotFound
+	}
 	return out, err
 }
 
-// MarkSubmitted sets submitted_at once and returns the stored value.
-func (s *Store) MarkSubmitted(ctx context.Context, id string) (time.Time, error) {
+// MarkSubmitted sets submitted_at once on the user's drill attempt and returns the stored value.
+func (s *Store) MarkSubmitted(ctx context.Context, userID, id string) (time.Time, error) {
 	var t time.Time
 	err := s.pool.QueryRow(ctx,
-		`update attempt set submitted_at = coalesce(submitted_at, now()) where id = $1 returning submitted_at`, id).
+		`update attempt set submitted_at = coalesce(submitted_at, now())
+		 where id = $1 and user_id = $2 and mode = 'drill' returning submitted_at`, id, userID).
 		Scan(&t)
 	if errors.Is(err, pgx.ErrNoRows) || (err != nil && isInvalidUUID(err)) {
 		return time.Time{}, question.ErrNotFound
