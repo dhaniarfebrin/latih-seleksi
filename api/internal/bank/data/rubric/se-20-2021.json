@@ -1,0 +1,33 @@
+{
+  "source": "SE MenPANRB No. 20 Tahun 2021 angka 4",
+  "values": [
+    { "id": "berorientasi-pelayanan", "label": "Berorientasi Pelayanan", "butir": [
+      { "id": "a", "text": "Memahami dan memenuhi kebutuhan masyarakat" },
+      { "id": "b", "text": "Ramah, cekatan, solutif, dan dapat diandalkan" },
+      { "id": "c", "text": "Melakukan perbaikan tiada henti" } ] },
+    { "id": "akuntabel", "label": "Akuntabel", "butir": [
+      { "id": "a", "text": "Melaksanakan tugas dengan jujur, bertanggung jawab, cermat, disiplin dan berintegritas tinggi" },
+      { "id": "b", "text": "Menggunakan kekayaan dan barang milik negara secara bertanggung jawab, efektif, dan efisien" },
+      { "id": "c", "text": "Tidak menyalahgunakan kewenangan jabatan" } ] },
+    { "id": "kompeten", "label": "Kompeten", "butir": [
+      { "id": "a", "text": "Meningkatkan kompetensi diri untuk menjawab tantangan yang selalu berubah" },
+      { "id": "b", "text": "Membantu orang lain belajar" },
+      { "id": "c", "text": "Melaksanakan tugas dengan kualitas terbaik" } ] },
+    { "id": "harmonis", "label": "Harmonis", "butir": [
+      { "id": "a", "text": "Menghargai setiap orang apapun latar belakangnya" },
+      { "id": "b", "text": "Suka menolong orang lain" },
+      { "id": "c", "text": "Membangun lingkungan kerja yang kondusif" } ] },
+    { "id": "loyal", "label": "Loyal", "butir": [
+      { "id": "a", "text": "Memegang teguh ideologi Pancasila, Undang-Undang Dasar Negara Republik Indonesia tahun 1945, setia kepada Negara Kesatuan Republik Indonesia serta pemerintahan yang sah" },
+      { "id": "b", "text": "Menjaga nama baik sesama ASN, pimpinan, instansi, dan negara" },
+      { "id": "c", "text": "Menjaga rahasia jabatan dan negara" } ] },
+    { "id": "adaptif", "label": "Adaptif", "butir": [
+      { "id": "a", "text": "Cepat menyesuaikan diri menghadapi perubahan" },
+      { "id": "b", "text": "Terus berinovasi dan mengembangkan kreativitas" },
+      { "id": "c", "text": "Bertindak proaktif" } ] },
+    { "id": "kolaboratif", "label": "Kolaboratif", "butir": [
+      { "id": "a", "text": "Memberi kesempatan kepada berbagai pihak untuk berkontribusi" },
+      { "id": "b", "text": "Terbuka dalam bekerja sama untuk menghasilkan nilai tambah" },
+      { "id": "c", "text": "Menggerakkan pemanfaatan berbagai sumberdaya untuk tujuan bersama" } ] }
+  ]
+}

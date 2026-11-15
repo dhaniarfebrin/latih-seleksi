@@ -262,6 +262,15 @@ generate → verify → explain → check → review → publish
 - Pipeline memakai peran DB `content_writer` yang hanya bisa menulis `item`, `item_template`, `item_revision`. Peran ini tidak bisa membaca `attempt`, `response`, atau data pengguna.
 - Soal yang dilaporkan valid menurunkan status ke `verified` atau `retired`, dan tercatat di `item_revision` yang tampil di UI (tautan "Riwayat koreksi").
 
+### 9.x Bank TWK dan TKP (`api/internal/bank`)
+
+Data ter-embed (`go:embed`, tanpa tabel DB dulu), pola sama dengan `spec`. `bank.Load` memvalidasi semuanya; entri tidak valid membuat muat gagal.
+
+- **TWK:** `data/twk/*.json`, satu entri = aspek, rujukan pasal, kutipan, pertanyaan, kunci, 3-4 pengecoh. Kutipan wajib ada di korpus `data/corpus/<source_id>.txt` (salinan verbatim bunyi pasal, penanda catatan kaki dibuang); kunci wajib termuat dalam kutipan; pengecoh tidak boleh termuat dalam kutipan.
+- **TKP:** `data/tkp/*.json`, 5 opsi berbobot 1-5, wajib merujuk butir perilaku di `data/rubric/se-20-2021.json` (SE MenPANRB 20/2021 angka 4). Bobot adalah penilaian penyusun dan berstatus `draft` sampai ditinjau manusia. UI wajib melabeli: "bobot TKP = penilaian penyusun, bukan kunci resmi".
+- `status` `draft` atau `reviewed`; hanya `reviewed` dilayani `ItemSource.Pick`, yang mengembalikan `gen.Draft` sehingga drill dan simulasi tidak peduli asal soal.
+- CLI: `go run ./cmd/bank check` (validasi + cakupan per aspek) dan `go run ./cmd/bank review` (cetak entri `draft`).
+
 ## 10. Diagnosis dan drill
 
 ### 10.1 Pembaruan mastery
