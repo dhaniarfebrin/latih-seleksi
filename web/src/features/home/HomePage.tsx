@@ -1,4 +1,4 @@
-import { Play, Target, Timer } from 'lucide-react'
+import { ChartNoAxesColumn, Play, Target, Timer } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ExamRow, listExams, listSpecs } from '@/features/exam'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -46,6 +46,15 @@ export function HomePage() {
             Mulai simulasi
           </Link>
         </div>
+      </div>
+      <div className="panel">
+        <h2 className="sub">
+          <ChartNoAxesColumn className="ic" aria-hidden="true" /> Titik lemah
+        </h2>
+        <p className="muted">Akurasi dan waktu per pola soal, serta saran latihan berikutnya.</p>
+        <Link className="btn" to="/dashboard">
+          Lihat dasbor
+        </Link>
       </div>
       <section>
         <h2 className="sub">Hasil terakhir</h2>

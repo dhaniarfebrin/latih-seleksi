@@ -5,12 +5,14 @@ import { errorMessage } from '@/shared/lib/error'
 const N = 8
 
 export function DrillStart(props: {
+  // Preselected pattern from the dashboard queue; an unknown id falls back to the first pattern.
+  initialPatternId: string
   patterns: Pattern[]
   loadError: string
   onStart: (patternId: string, n: number, band: number) => Promise<void>
 }) {
-  const { patterns, loadError, onStart } = props
-  const [patternId, setPatternId] = useState('')
+  const { initialPatternId, patterns, loadError, onStart } = props
+  const [patternId, setPatternId] = useState(initialPatternId)
   const [band, setBand] = useState(2)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')

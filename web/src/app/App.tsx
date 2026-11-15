@@ -4,6 +4,7 @@ import { AboutPage } from '@/features/about/AboutPage'
 import { AccountPage } from '@/features/account/AccountPage'
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext'
 import { authConfigured } from '@/features/auth/auth'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DrillPage } from '@/features/drill/DrillPage'
 import { ExamRoute } from '@/features/exam/ExamPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
@@ -20,6 +21,7 @@ export function App() {
           <Route path="about" element={<AboutPage />} />
           <Route element={<RequireAuth />}>
             <Route index element={<HomePage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="drill" element={<DrillPage />} />
             <Route path="simulation" element={<StartPage />} />
             <Route path="simulation/:id" element={<ExamRoute />} />

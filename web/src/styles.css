@@ -43,6 +43,8 @@ a { color: var(--ink); text-underline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .nav a { transition: none; } }
 .row-link { display: grid; gap: 4px; padding: 12px 14px; border: 1.5px solid var(--edge); border-radius: 14px; background: var(--card); color: inherit; text-decoration: none; }
 .row-link:hover { border-color: var(--ink); }
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th, .tbl td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .panel > .btn, .choices .btn { margin-top: 8px; }
 .panel.choices { gap: 16px; }
