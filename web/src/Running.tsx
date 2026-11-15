@@ -1,3 +1,4 @@
+import { Check, ChevronLeft, ChevronRight, Clock, Flag } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ApiError,
@@ -94,7 +95,7 @@ export function Running(props: {
   const flagged = sections.reduce((n, x) => n + x.flagged, 0)
   const timer = (
     <span className={`num timer${left <= 60 ? ' low' : ''}`} role="timer" aria-label="Sisa waktu">
-      {fmtClock(left)}
+      <Clock className="ic" aria-hidden="true" /> {fmtClock(left)}
     </span>
   )
   const grid = (
@@ -108,6 +109,8 @@ export function Running(props: {
           onClick={() => goto(i)}
         >
           {it.pos}
+          {itemStatus(it) === 'flagged' && <Flag className="ic" aria-hidden="true" />}
+          {itemStatus(it) === 'answered' && <Check className="ic" aria-hidden="true" />}
         </button>
       ))}
     </div>
@@ -154,13 +157,15 @@ export function Running(props: {
         )}
         <div className="row">
           <button className="btn" disabled={idx === 0} onClick={() => goto(idx - 1)}>
+            <ChevronLeft className="ic" aria-hidden="true" />
             Sebelumnya
           </button>
           <button className="btn" disabled={!r || busy} onClick={() => r && void send(r.answer, !r.flagged)}>
-            {r?.flagged ? 'Batal ragu' : 'Tandai ragu'}
+            <Flag className="ic" aria-hidden="true" />&nbsp;{r?.flagged ? 'Batal ragu' : 'Tandai ragu'}
           </button>
           <button className="btn" disabled={idx === exam.items.length - 1} onClick={() => goto(idx + 1)}>
             Berikutnya
+            <ChevronRight className="ic" aria-hidden="true" />
           </button>
         </div>
       </div>

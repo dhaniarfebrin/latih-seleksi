@@ -1,3 +1,4 @@
+import { LogIn } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
@@ -79,7 +80,7 @@ export function Login() {
         </label>
         <div className="row">
           <button className="btn" type="submit" disabled={busy}>
-            Masuk
+            <LogIn className="ic" aria-hidden="true" />&nbsp;Masuk
           </button>
           <button className="btn" type="button" disabled={busy || !email || password.length < 6} onClick={(e) => submit(e, true)}>
             Daftar

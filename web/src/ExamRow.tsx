@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ExamSummary, Spec } from './api'
 
@@ -22,11 +23,20 @@ export function ExamRow({ e, specs }: { e: ExamSummary; specs: Spec[] }) {
         <span>
           {spec?.label ?? e.spec_id} | {track?.label ?? e.track}
         </span>
-        <span className={e.status === 'in_progress' ? 'chip warn' : 'muted'}>{STATUS[e.status]}</span>
+        <span className={e.status === 'in_progress' ? 'chip warn' : 'muted'}>
+          {e.status === 'in_progress' && <Clock className="ic" aria-hidden="true" />}
+          {STATUS[e.status]}
+        </span>
         {e.result?.sections.map((x) => (
           <span key={x.id} className="num">
             {x.id} {x.score}/{x.max}
-            {x.min !== undefined ? ` (ambang ${x.min}) ${x.met ? 'tercapai' : 'belum tercapai'}` : ''}
+            {x.min !== undefined && (
+              <>
+                {' '}
+                (ambang {x.min}) {x.met ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}{' '}
+                {x.met ? 'tercapai' : 'belum tercapai'}
+              </>
+            )}
           </span>
         ))}
       </Link>

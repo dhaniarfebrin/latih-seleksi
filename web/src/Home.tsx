@@ -1,3 +1,4 @@
+import { Play, Target, Timer } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { listExams, listSpecs } from './api'
 import { useAuth } from './AuthContext'
@@ -24,20 +25,24 @@ export function Home() {
           <h2 className="sub">Simulasi sedang berjalan</h2>
           <p className="muted">Waktu terus berjalan di server. Lanjutkan sebelum habis.</p>
           <Link className="btn hi" to={`/simulation/${running.id}`}>
-            Lanjutkan simulasi
+            <Play className="ic" aria-hidden="true" />&nbsp;Lanjutkan simulasi
           </Link>
         </div>
       )}
       <div className="cards">
         <div className="panel">
-          <h2 className="sub">Drill</h2>
+          <h2 className="sub">
+            <Target className="ic" aria-hidden="true" /> Drill
+          </h2>
           <p className="muted">Latihan 8 soal TIU dengan langkah dan jenis salah hitung.</p>
           <Link className="btn" to="/drill">
             Mulai drill
           </Link>
         </div>
         <div className="panel">
-          <h2 className="sub">Simulation</h2>
+          <h2 className="sub">
+            <Timer className="ic" aria-hidden="true" /> Simulasi
+          </h2>
           <p className="muted">Simulasi TIU berwaktu, dinilai server terhadap ambang.</p>
           <Link className="btn" to="/simulation">
             Mulai simulasi

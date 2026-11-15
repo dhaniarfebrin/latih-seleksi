@@ -1,3 +1,4 @@
+import { History as HistoryIcon, House, Target, Timer, UserRound } from 'lucide-react'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { About } from './About'
 import { Account } from './Account'
@@ -63,17 +64,26 @@ function Shell() {
           {signedIn && (
             <nav className="nav" aria-label="Menu utama">
               <NavLink to="/" end>
-                Home
+                <House className="ic" aria-hidden="true" />
+                Beranda
               </NavLink>
-              <NavLink to="/drill">Drill</NavLink>
-              <NavLink to="/simulation">Simulation</NavLink>
-              <NavLink to="/history">History</NavLink>
+              <NavLink to="/drill">
+                <Target className="ic" aria-hidden="true" />
+                Drill
+              </NavLink>
+              <NavLink to="/simulation">
+                <Timer className="ic" aria-hidden="true" />
+                Simulasi
+              </NavLink>
+              <NavLink to="/history">
+                <HistoryIcon className="ic" aria-hidden="true" />
+                Riwayat
+              </NavLink>
+              <NavLink to="/account">
+                <UserRound className="ic" aria-hidden="true" />
+                Akun
+              </NavLink>
             </nav>
-          )}
-          {signedIn && (
-            <NavLink to="/account" className="acct">
-              Akun
-            </NavLink>
           )}
         </div>
       </header>

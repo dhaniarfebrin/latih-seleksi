@@ -1,3 +1,4 @@
+import { LogOut, MailCheck, MailWarning } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { authErrorMessage, signOut } from './auth'
@@ -23,7 +24,10 @@ export function Account() {
         <p>
           Email: <strong>{user?.email ?? '-'}</strong>
         </p>
-        <p>Status email: {user?.emailVerified ? 'terverifikasi' : 'belum terverifikasi'}</p>
+        <p>
+          {user?.emailVerified ? <MailCheck className="ic" aria-hidden="true" /> : <MailWarning className="ic" aria-hidden="true" />} Status
+          email: {user?.emailVerified ? 'terverifikasi' : 'belum terverifikasi'}
+        </p>
       </div>
       {error && (
         <p role="alert" className="err">
@@ -31,7 +35,7 @@ export function Account() {
         </p>
       )}
       <button className="btn" onClick={() => void out()}>
-        Keluar
+        <LogOut className="ic" aria-hidden="true" />&nbsp;Keluar
       </button>
     </section>
   )

@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX, Minus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Exam, ExamItem, ExamResult } from './api'
 
@@ -26,7 +27,14 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
                 </span>
                 <span className="num">
                   {x.score}/{x.max}
-                  {x.min !== undefined ? ` (ambang ${x.min}) ${x.met ? 'tercapai' : 'belum tercapai'}` : ''}
+                  {x.min !== undefined && (
+                    <>
+                      {' '}
+                      (ambang {x.min}){' '}
+                      {x.met ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}{' '}
+                      {x.met ? 'tercapai' : 'belum tercapai'}
+                    </>
+                  )}
                 </span>
               </li>
             ))}
@@ -55,6 +63,15 @@ function Review({ items }: { items: ExamItem[] }) {
             <summary>
               <span className="num">{it.pos}.</span>{' '}
               <span className={r ? (r.correct ? 'okt' : 'badt') : 'muted'}>
+                {r ? (
+                  r.correct ? (
+                    <CircleCheck className="ic" aria-hidden="true" />
+                  ) : (
+                    <CircleX className="ic" aria-hidden="true" />
+                  )
+                ) : (
+                  <Minus className="ic" aria-hidden="true" />
+                )}{' '}
                 {r ? (r.correct ? 'Benar' : 'Salah') : 'Tidak dijawab'}
               </span>
             </summary>

@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX } from 'lucide-react'
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { createAttempt, listPatterns, putResponse, submitAttempt, type Item, type Pattern } from './api'
 import { initialSession, misconceptionLabel, reduce, summarize } from './session'
@@ -74,9 +75,9 @@ function Start(props: {
 
   return (
     <>
-      <p className="eyebrow">Drill {N} soal</p>
+      <p className="eyebrow">{N} soal</p>
       <h1 className="d">
-        Latih <mark>Seleksi</mark>
+        Drill <mark>TIU</mark>
       </h1>
       <p className="muted">{pattern ? pattern.label : 'Memuat pola soal...'} (TIU). Jawab, lalu lihat langkah dan jenis salah hitungnya.</p>
       <fieldset className="field">
@@ -189,8 +190,18 @@ function Question(props: {
               >
                 <span className="k num">{o.key}</span>
                 <span>{o.text}</span>
-                {r && isKey && <span className="tag">Kunci</span>}
-                {r && chosen && !isKey && <span className="tag">Pilihanmu</span>}
+                {r && isKey && (
+                  <span className="tag">
+                    <CircleCheck className="ic" aria-hidden="true" />
+                    Kunci
+                  </span>
+                )}
+                {r && chosen && !isKey && (
+                  <span className="tag">
+                    <CircleX className="ic" aria-hidden="true" />
+                    Pilihanmu
+                  </span>
+                )}
               </button>
             </li>
           )
@@ -203,7 +214,10 @@ function Question(props: {
       )}
       {r && (
         <section className="panel" aria-live="polite">
-          <p className={`verdict ${r.correct ? 'ok' : 'bad'}`}>{r.correct ? 'Benar' : `Salah. Kunci: ${r.answer_key}`}</p>
+          <p className={`verdict ${r.correct ? 'ok' : 'bad'}`}>
+            {r.correct ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}
+            {r.correct ? 'Benar' : `Salah. Kunci: ${r.answer_key}`}
+          </p>
           {r.misconception_id && <p className="chip warn">{misconceptionLabel(labels, r.misconception_id)}</p>}
           <h2 className="sub">Langkah</h2>
           <ol className="steps">
