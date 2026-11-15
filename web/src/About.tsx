@@ -35,17 +35,24 @@ export function About() {
       </div>
       <div className="panel">
         <h2 className="sub">Pembuat</h2>
-        <p>
-          Dibuat oleh{' '}
-          <a href="https://github.com/dhaniarfebrin" target="_blank" rel="noopener noreferrer">
-            Dhaniar
-          </a>
-          . Kode sumber ada di{' '}
-          <a href="https://github.com/dhaniarfebrin/latih-seleksi" target="_blank" rel="noopener noreferrer">
-            GitHub
-          </a>
-          .
-        </p>
+        <p>Dibuat oleh Dhaniar. Saran dan masukan boleh lewat:</p>
+        <ul className="steps">
+          <li>
+            <a href="https://dhaniar.pages.dev" target="_blank" rel="noopener noreferrer">
+              Web: dhaniar.pages.dev
+            </a>
+          </li>
+          <li>
+            <a href="https://www.linkedin.com/in/dhaniar" target="_blank" rel="noopener noreferrer">
+              LinkedIn: dhaniar
+            </a>
+          </li>
+          <li>
+            <a href="https://www.instagram.com/holyfebrn" target="_blank" rel="noopener noreferrer">
+              Instagram: @holyfebrn
+            </a>
+          </li>
+        </ul>
       </div>
       <p>
         <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
