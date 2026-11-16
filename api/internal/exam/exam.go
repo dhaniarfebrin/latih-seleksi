@@ -40,11 +40,6 @@ var (
 	ErrInProgress = errors.New("exam is still in progress")
 )
 
-// Report reasons accepted by Report, and the longest note.
-var reportReasons = map[string]bool{"kunci_salah": true, "soal_ambigu": true, "typo": true, "lainnya": true}
-
-const maxReportNote = 500
-
 func invalid(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, a...))
 }
@@ -493,11 +488,11 @@ func (s *Service) Answer(ctx context.Context, userID, id string, in AnswerInput)
 // replacing an earlier one for that position. The key and steps are visible
 // only after closing, so an exam in progress gives ErrInProgress.
 func (s *Service) Report(ctx context.Context, userID, id string, pos int, reason, note string) error {
-	if !reportReasons[reason] {
+	if !question.ReportReasons[reason] {
 		return invalid("reason must be one of kunci_salah, soal_ambigu, typo, lainnya")
 	}
-	if utf8.RuneCountInString(note) > maxReportNote {
-		return invalid("note must be at most %d characters", maxReportNote)
+	if utf8.RuneCountInString(note) > question.MaxReportNote {
+		return invalid("note must be at most %d characters", question.MaxReportNote)
 	}
 	l, err := s.load(ctx, userID, id)
 	if err != nil {
