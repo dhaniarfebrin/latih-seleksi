@@ -25,6 +25,7 @@ export function DrillPage() {
       )}
       {s.screen === 'summary' && attempt && (
         <Summary
+          attemptId={attempt.id}
           items={attempt.items}
           labels={labelsOf(attempt.pattern_id)}
           onSubmit={() => submit(attempt.id)}

@@ -1,4 +1,5 @@
 import { call } from '@/shared/api/client'
+import type { ReportReason } from '@/shared/lib/report'
 import type { Attempt, Pattern, ResponseView, Result } from './types'
 
 export const listPatterns = () => call<{ patterns: Pattern[] }>('GET', '/v1/patterns').then((r) => r.patterns)
@@ -14,3 +15,7 @@ export const putResponse = (id: string, pos: number, answer: string, time_ms: nu
   call<ResponseView>('PUT', `/v1/attempts/${id}/responses/${pos}`, { answer, time_ms })
 
 export const submitAttempt = (id: string) => call<Result>('POST', `/v1/attempts/${id}/submit`)
+
+// Only answered positions can be reported; the API answers 400 otherwise.
+export const reportItem = (id: string, pos: number, reason: ReportReason, note: string) =>
+  call<void>('POST', `/v1/attempts/${id}/items/${pos}/report`, { reason, note })
