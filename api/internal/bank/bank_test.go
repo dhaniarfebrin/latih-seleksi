@@ -1,6 +1,8 @@
 package bank
 
 import (
+	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
 	"testing"
@@ -63,11 +65,71 @@ func TestTWKKeysMatchCorpusIndependently(t *testing.T) {
 	}
 }
 
-func TestSeedTKPStaysDraft(t *testing.T) {
+func TestTKPReviewedOnlyByHuman(t *testing.T) {
 	for _, e := range loadBank(t).TKP {
-		if e.Status != StatusDraft {
-			t.Errorf("%s: seed TKP weights need a human, status must be draft, got %q", e.ID, e.Status)
+		if e.Status == StatusReviewed && e.ReviewedBy != ReviewerHuman {
+			t.Errorf("%s: TKP weights need a human, reviewed_by must be %q, got %q", e.ID, ReviewerHuman, e.ReviewedBy)
 		}
+	}
+}
+
+func TestTKPBankShape(t *testing.T) {
+	b := loadBank(t)
+	if len(b.TKP) != 45 {
+		t.Errorf("want 45 TKP items, got %d", len(b.TKP))
+	}
+	perAspek := map[string]int{}
+	pos5 := map[int]int{}
+	for _, e := range b.TKP {
+		perAspek[e.Aspek]++
+		if e.Status != StatusDraft {
+			t.Errorf("%s: want draft, got %q", e.ID, e.Status)
+		}
+		w := map[int]bool{}
+		for i, o := range e.Options {
+			w[o.Weight] = true
+			if o.Weight == 5 {
+				pos5[i]++
+			}
+		}
+		if len(w) != 5 {
+			t.Errorf("%s: weights must be 1..5 once each, got %v", e.ID, e.Options)
+		}
+	}
+	for a, n := range perAspek {
+		if n < 7 || n > 8 {
+			t.Errorf("aspek %s: want 7-8 items, got %d", a, n)
+		}
+	}
+	if len(pos5) < 3 {
+		t.Errorf("weight-5 position too predictable in data: %v", pos5)
+	}
+}
+
+func TestTKPDraftShufflesAndKeepsKey(t *testing.T) {
+	e := validTKP()
+	keys := map[string]bool{}
+	for seed := int64(0); seed < 40; seed++ {
+		d := e.draft(rand.New(rand.NewSource(seed)), seed)
+		if len(d.Options) != 5 || len(d.Steps) != 6 {
+			t.Fatalf("want 5 options and 6 steps, got %d and %d", len(d.Options), len(d.Steps))
+		}
+		weight := map[string]int{}
+		for _, o := range e.Options {
+			weight[o.Text] = o.Weight
+		}
+		for i, o := range d.Options {
+			if want := fmt.Sprintf("%s: bobot %d", o.Key, weight[o.Text]); d.Steps[i] != want {
+				t.Fatalf("seed %d: step %q does not match option %+v", seed, d.Steps[i], o)
+			}
+			if o.Key == d.AnswerKey && weight[o.Text] != 5 {
+				t.Fatalf("seed %d: answer key %s is not the weight-5 option", seed, d.AnswerKey)
+			}
+		}
+		keys[d.AnswerKey] = true
+	}
+	if len(keys) < 3 {
+		t.Errorf("answer key position too predictable across seeds: %v", keys)
 	}
 }
 
@@ -156,7 +218,7 @@ func testRubric() Rubric {
 }
 
 func validTKP() TKPEntry {
-	return TKPEntry{ID: "k", Aspek: "tik", Scenario: "s", RubricRef: RubricRef{Value: "a1", Butir: "a"}, Status: StatusReviewed,
+	return TKPEntry{ID: "k", Aspek: "tik", Scenario: "s", RubricRef: RubricRef{Value: "a1", Butir: "a"}, Status: StatusReviewed, ReviewedBy: ReviewerHuman,
 		Options: []TKPOption{{"o1", 5}, {"o2", 4}, {"o3", 3}, {"o4", 2}, {"o5", 1}}}
 }
 
@@ -165,15 +227,18 @@ func TestTKPValidateRejects(t *testing.T) {
 		t.Fatalf("valid entry rejected: %v", err)
 	}
 	cases := map[string]func(*TKPEntry){
-		"no weight 5":   func(e *TKPEntry) { e.Options[0].Weight = 4 },
-		"no low weight": func(e *TKPEntry) { e.Options[3].Weight = 3; e.Options[4].Weight = 3 },
-		"weight 6":      func(e *TKPEntry) { e.Options[1].Weight = 6 },
-		"weight 0":      func(e *TKPEntry) { e.Options[1].Weight = 0 },
-		"four options":  func(e *TKPEntry) { e.Options = e.Options[:4] },
-		"same text":     func(e *TKPEntry) { e.Options[1].Text = "O1" },
-		"unknown value": func(e *TKPEntry) { e.RubricRef.Value = "zz" },
-		"unknown butir": func(e *TKPEntry) { e.RubricRef.Butir = "z" },
-		"bad aspek":     func(e *TKPEntry) { e.Aspek = "lain" },
+		"no weight 5":               func(e *TKPEntry) { e.Options[0].Weight = 4 },
+		"no low weight":             func(e *TKPEntry) { e.Options[3].Weight = 3; e.Options[4].Weight = 3 },
+		"weight 6":                  func(e *TKPEntry) { e.Options[1].Weight = 6 },
+		"weight 0":                  func(e *TKPEntry) { e.Options[1].Weight = 0 },
+		"four options":              func(e *TKPEntry) { e.Options = e.Options[:4] },
+		"same text":                 func(e *TKPEntry) { e.Options[1].Text = "O1" },
+		"unknown value":             func(e *TKPEntry) { e.RubricRef.Value = "zz" },
+		"unknown butir":             func(e *TKPEntry) { e.RubricRef.Butir = "z" },
+		"bad aspek":                 func(e *TKPEntry) { e.Aspek = "lain" },
+		"reviewed without reviewer": func(e *TKPEntry) { e.ReviewedBy = "" },
+		"reviewed by agent":         func(e *TKPEntry) { e.ReviewedBy = ReviewerAgent },
+		"draft with reviewer":       func(e *TKPEntry) { e.Status = StatusDraft },
 	}
 	for name, mut := range cases {
 		e := validTKP()
@@ -244,9 +309,13 @@ func TestPickAnswerKeys(t *testing.T) {
 	tkpDrafts, _ := b.Pick(SectionTKP, len(b.TKP), 3)
 	for _, d := range tkpDrafts {
 		e := byStem[d.Stem]
-		for i, o := range d.Options {
-			if o.Key == d.AnswerKey && e.Options[i].Weight != 5 {
-				t.Errorf("%s: key %s has weight %d", e.ID, o.Key, e.Options[i].Weight)
+		weight := map[string]int{}
+		for _, o := range e.Options {
+			weight[o.Text] = o.Weight
+		}
+		for _, o := range d.Options {
+			if o.Key == d.AnswerKey && weight[o.Text] != 5 {
+				t.Errorf("%s: key %s has weight %d", e.ID, o.Key, weight[o.Text])
 			}
 		}
 	}

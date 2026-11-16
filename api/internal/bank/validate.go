@@ -136,6 +136,12 @@ func (e TKPEntry) Validate(r Rubric, aspects []string) error {
 	if !validStatus(e.Status) {
 		fail("status %q must be draft or reviewed", e.Status)
 	}
+	switch {
+	case e.Status == StatusReviewed && e.ReviewedBy != ReviewerHuman:
+		fail("reviewed_by %q must be %q for a reviewed entry (TKP weights are never agent-reviewed)", e.ReviewedBy, ReviewerHuman)
+	case e.Status == StatusDraft && e.ReviewedBy != "":
+		fail("reviewed_by %q must be empty for a draft entry", e.ReviewedBy)
+	}
 	if len(e.Options) != 5 {
 		fail("want exactly 5 options, got %d", len(e.Options))
 	}

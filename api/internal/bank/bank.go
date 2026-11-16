@@ -77,6 +77,9 @@ type TKPEntry struct {
 	Options   []TKPOption `json:"options"`
 	RubricRef RubricRef   `json:"rubric_ref"`
 	Status    string      `json:"status"`
+	// ReviewedBy is "human" for a reviewed entry and empty for a draft: TKP
+	// weights are never agent-reviewed.
+	ReviewedBy string `json:"reviewed_by,omitempty"`
 }
 
 // Butir is one behaviour item (a, b, c) of a core value.

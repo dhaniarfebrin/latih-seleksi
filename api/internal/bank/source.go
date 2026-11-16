@@ -74,9 +74,13 @@ func (e TWKEntry) draft(rng *rand.Rand, seed int64) gen.Draft {
 	return d
 }
 
-func (e TKPEntry) draft(_ *rand.Rand, seed int64) gen.Draft {
+func (e TKPEntry) draft(rng *rand.Rand, seed int64) gen.Draft {
+	// Shuffle a copy so the key position is not the data order; keys and
+	// steps are built after the shuffle so they stay consistent.
+	opts := append([]TKPOption(nil), e.Options...)
+	rng.Shuffle(len(opts), func(i, j int) { opts[i], opts[j] = opts[j], opts[i] })
 	d := gen.Draft{PatternID: "tkp-" + e.Aspek, Stem: e.Scenario, Seed: seed}
-	for i, o := range e.Options {
+	for i, o := range opts {
 		key := optionKeys[i]
 		if o.Weight == 5 && d.AnswerKey == "" {
 			d.AnswerKey = key
