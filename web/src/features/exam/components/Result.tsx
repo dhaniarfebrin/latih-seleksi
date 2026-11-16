@@ -1,8 +1,9 @@
 import { CircleCheck, CircleX, Minus, Scale } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ReportForm } from '@/shared/components/ReportForm'
 import { timeLine, WEIGHTED_SECTION } from '../exam'
+import { reportItem } from '../api'
 import type { Exam, ExamItem, ExamResult } from '../types'
-import { ReportForm } from './ReportForm'
 
 export function Result(props: { result: ExamResult; exam: Exam | null }) {
   const { result, exam } = props
@@ -99,7 +100,7 @@ function Review({ examId, items }: { examId: string; items: ExamItem[] }) {
                 ))}
               </ol>
             )}
-            <ReportForm examId={examId} pos={it.pos} />
+            <ReportForm onSend={(reason, note) => reportItem(examId, it.pos, reason, note)} />
           </details>
         )
       })}

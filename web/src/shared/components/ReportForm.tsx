@@ -1,19 +1,10 @@
 import { CircleAlert, CircleCheck } from 'lucide-react'
 import { useState } from 'react'
-import { reportItem } from '../api'
-import { MAX_REPORT_NOTE } from '../exam'
-import type { ReportReason } from '../types'
-
-const REASONS: { id: ReportReason; label: string }[] = [
-  { id: 'kunci_salah', label: 'Kunci jawaban salah' },
-  { id: 'soal_ambigu', label: 'Soal ambigu' },
-  { id: 'typo', label: 'Salah ketik' },
-  { id: 'lainnya', label: 'Lainnya' },
-]
+import { MAX_REPORT_NOTE, REASONS, type ReportReason } from '../lib/report'
 
 type Status = { kind: 'idle' } | { kind: 'sending' } | { kind: 'sent' } | { kind: 'failed'; message: string }
 
-export function ReportForm({ examId, pos }: { examId: string; pos: number }) {
+export function ReportForm({ onSend }: { onSend: (reason: ReportReason, note: string) => Promise<unknown> }) {
   const [reason, setReason] = useState<ReportReason>('kunci_salah')
   const [note, setNote] = useState('')
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
@@ -21,7 +12,7 @@ export function ReportForm({ examId, pos }: { examId: string; pos: number }) {
   const send = async () => {
     setStatus({ kind: 'sending' })
     try {
-      await reportItem(examId, pos, reason, note.trim())
+      await onSend(reason, note.trim())
       setStatus({ kind: 'sent' })
     } catch (e) {
       setStatus({ kind: 'failed', message: e instanceof Error ? e.message : 'Gagal mengirim laporan' })
