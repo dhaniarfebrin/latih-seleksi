@@ -3,8 +3,34 @@ package bank
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+// heading matches a corpus line that opens a block ("Pasal 25", "Angka 4").
+var heading = regexp.MustCompile(`^(Pasal|Angka) \S+$`)
+
+// block returns the normalised text of the Pasal/Angka block of the corpus
+// that contains quote, or "" when no block does. A corpus without headings is
+// one block.
+func block(text, quote string) string {
+	var blocks []string
+	var cur []string
+	for _, line := range strings.Split(text, "\n") {
+		if heading.MatchString(strings.TrimSpace(line)) && len(cur) > 0 {
+			blocks = append(blocks, strings.Join(cur, " "))
+			cur = nil
+		}
+		cur = append(cur, line)
+	}
+	blocks = append(blocks, strings.Join(cur, " "))
+	for _, b := range blocks {
+		if nb := norm(b); strings.Contains(nb, quote) {
+			return nb
+		}
+	}
+	return ""
+}
 
 // norm lowercases and collapses whitespace so quotes match the corpus
 // regardless of line wrapping.
@@ -45,6 +71,12 @@ func (e TWKEntry) Validate(corpus map[string]string, aspects []string) error {
 	if !validStatus(e.Status) {
 		fail("status %q must be draft or reviewed", e.Status)
 	}
+	switch {
+	case e.Status == StatusReviewed && e.ReviewedBy != ReviewerAgent && e.ReviewedBy != ReviewerHuman:
+		fail("reviewed_by %q must be %q or %q for a reviewed entry", e.ReviewedBy, ReviewerAgent, ReviewerHuman)
+	case e.Status == StatusDraft && e.ReviewedBy != "":
+		fail("reviewed_by %q must be empty for a draft entry", e.ReviewedBy)
+	}
 	text, ok := corpus[e.SourceID]
 	if !ok {
 		fail("source_id %q has no corpus file", e.SourceID)
@@ -63,14 +95,21 @@ func (e TWKEntry) Validate(corpus map[string]string, aspects []string) error {
 	if n := len(e.Distractors); n < 3 || n > 4 {
 		fail("want 3-4 distractors, got %d", n)
 	}
+	// A distractor must be wrong in the whole pasal, not only in the quote.
+	whole := quote
+	if ok && quote != "" {
+		if b := block(text, quote); b != "" {
+			whole = b
+		}
+	}
 	seen := map[string]bool{correct: true}
 	for _, d := range e.Distractors {
 		nd := norm(d)
 		switch {
 		case nd == "":
 			fail("empty distractor")
-		case strings.Contains(quote, nd):
-			fail("distractor %q is contained in the quote", d)
+		case strings.Contains(whole, nd):
+			fail("distractor %q appears in the same pasal as the quote", d)
 		case seen[nd]:
 			fail("duplicate option %q", d)
 		}

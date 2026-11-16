@@ -91,7 +91,32 @@ var (
 func validTWK() TWKEntry {
 	return TWKEntry{ID: "x", Aspek: "bahasa-negara", SourceID: "src", Ref: "Pasal 1",
 		Quote: "Bahasa Negara ialah Bahasa Indonesia.", Question: "Bahasa negara ialah ...",
-		Correct: "Bahasa Indonesia", Distractors: []string{"Bahasa Jawa", "Bahasa Melayu", "Bahasa Inggris"}, Status: StatusReviewed}
+		Correct: "Bahasa Indonesia", Distractors: []string{"Bahasa Jawa", "Bahasa Melayu", "Bahasa Inggris"}, Status: StatusReviewed, ReviewedBy: ReviewerAgent}
+}
+
+// blockCorpus has two ayat in one pasal and a second pasal.
+var blockCorpus = map[string]string{"src": "Pasal 2\n(1) Warna bendera ialah merah dan putih.\n(2) Ukuran bendera ialah dua pertiga dari panjang.\n\nPasal 3\nBendera dikibarkan setiap hari."}
+
+func blockTWK() TWKEntry {
+	return TWKEntry{ID: "b", Aspek: "bahasa-negara", SourceID: "src", Ref: "Pasal 2 ayat (1)",
+		Quote: "Warna bendera ialah merah dan putih.", Question: "Warna bendera ialah ...",
+		Correct: "merah dan putih", Distractors: []string{"hijau dan kuning", "biru dan hitam", "ungu dan jingga"}, Status: StatusReviewed, ReviewedBy: ReviewerAgent}
+}
+
+func TestTWKValidateRejectsDistractorFromSamePasal(t *testing.T) {
+	if err := blockTWK().Validate(blockCorpus, testAspect); err != nil {
+		t.Fatalf("valid entry rejected: %v", err)
+	}
+	e := blockTWK()
+	e.Distractors = []string{"hijau dan kuning", "dua pertiga dari panjang", "ungu dan jingga"}
+	if err := e.Validate(blockCorpus, testAspect); err == nil {
+		t.Error("distractor taken from ayat (2) of the same pasal must be rejected")
+	}
+	e = blockTWK()
+	e.Distractors = []string{"hijau dan kuning", "dikibarkan setiap hari", "ungu dan jingga"}
+	if err := e.Validate(blockCorpus, testAspect); err != nil {
+		t.Errorf("text from another pasal is not a same-pasal conflict: %v", err)
+	}
 }
 
 func TestTWKValidateRejects(t *testing.T) {
@@ -99,15 +124,18 @@ func TestTWKValidateRejects(t *testing.T) {
 		t.Fatalf("valid entry rejected (line-wrapped quote must match): %v", err)
 	}
 	cases := map[string]func(*TWKEntry){
-		"quote not in corpus":  func(e *TWKEntry) { e.Quote = "Bahasa Negara ialah Bahasa Jawa." },
-		"correct not in quote": func(e *TWKEntry) { e.Correct = "Bahasa Jawa"; e.Distractors[0] = "Bahasa Bali" },
-		"distractor in quote":  func(e *TWKEntry) { e.Distractors[0] = "Bahasa Negara" },
-		"no ref":               func(e *TWKEntry) { e.Ref = "" },
-		"bad aspek":            func(e *TWKEntry) { e.Aspek = "lain" },
-		"unknown source":       func(e *TWKEntry) { e.SourceID = "none" },
-		"duplicate option":     func(e *TWKEntry) { e.Distractors[1] = e.Distractors[0] },
-		"too few distractors":  func(e *TWKEntry) { e.Distractors = e.Distractors[:2] },
-		"bad status":           func(e *TWKEntry) { e.Status = "ok" },
+		"quote not in corpus":   func(e *TWKEntry) { e.Quote = "Bahasa Negara ialah Bahasa Jawa." },
+		"correct not in quote":  func(e *TWKEntry) { e.Correct = "Bahasa Jawa"; e.Distractors[0] = "Bahasa Bali" },
+		"distractor in quote":   func(e *TWKEntry) { e.Distractors[0] = "Bahasa Negara" },
+		"no ref":                func(e *TWKEntry) { e.Ref = "" },
+		"bad aspek":             func(e *TWKEntry) { e.Aspek = "lain" },
+		"unknown source":        func(e *TWKEntry) { e.SourceID = "none" },
+		"duplicate option":      func(e *TWKEntry) { e.Distractors[1] = e.Distractors[0] },
+		"too few distractors":   func(e *TWKEntry) { e.Distractors = e.Distractors[:2] },
+		"bad status":            func(e *TWKEntry) { e.Status = "ok" },
+		"reviewed no reviewer":  func(e *TWKEntry) { e.ReviewedBy = "" },
+		"reviewed bad reviewer": func(e *TWKEntry) { e.ReviewedBy = "bot" },
+		"draft with reviewer":   func(e *TWKEntry) { e.Status = StatusDraft },
 	}
 	for name, mut := range cases {
 		e := validTWK()

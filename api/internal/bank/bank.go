@@ -47,7 +47,15 @@ type TWKEntry struct {
 	Correct     string   `json:"correct"`
 	Distractors []string `json:"distractors"`
 	Status      string   `json:"status"`
+	ReviewedBy  string   `json:"reviewed_by,omitempty"`
 }
+
+// Who reviewed a reviewed TWK entry. Agent review is a check against the
+// source text, not a human reading.
+const (
+	ReviewerAgent = "agent"
+	ReviewerHuman = "human"
+)
 
 // TKPOption is one TKP answer with its weight (1-5).
 type TKPOption struct {
