@@ -464,6 +464,40 @@ func TestDrillOwnership(t *testing.T) {
 	}
 }
 
+func TestReportAttemptItem(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
+	tokA, tokB := mint("drill-report-a-"+suffix), mint("drill-report-b-"+suffix)
+	c := create(t, srv, tokA, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	base := srv.URL + "/v1/attempts/" + c.ID
+	url := base + "/items/1/report"
+	body := `{"reason":"typo","note":"salah ketik"}`
+	if code, out, _ := doToken(t, "POST", url, body, tokA); code != http.StatusBadRequest {
+		t.Errorf("report on unanswered = %d %s, want 400", code, out)
+	}
+	if code, out, _ := doToken(t, "PUT", base+"/responses/1", `{"answer":"`+c.Items[0].Options[0].Key+`","time_ms":5}`, tokA); code != http.StatusOK {
+		t.Fatalf("answer = %d %s", code, out)
+	}
+	for _, tc := range []struct {
+		name, url, body, tok string
+		want                 int
+	}{
+		{"ok", url, body, tokA, http.StatusNoContent},
+		{"replace", url, `{"reason":"lainnya"}`, tokA, http.StatusNoContent},
+		{"bad reason", url, `{"reason":"x"}`, tokA, http.StatusBadRequest},
+		{"long note", url, `{"reason":"typo","note":"` + strings.Repeat("x", 501) + `"}`, tokA, http.StatusBadRequest},
+		{"unanswered pos", base + "/items/2/report", body, tokA, http.StatusBadRequest},
+		{"pos out of range", base + "/items/999/report", body, tokA, http.StatusNotFound},
+		{"pos not a number", base + "/items/x/report", body, tokA, http.StatusNotFound},
+		{"other user", url, body, tokB, http.StatusNotFound},
+		{"no token", url, body, "", http.StatusUnauthorized},
+	} {
+		if code, out, _ := doToken(t, "POST", tc.url, tc.body, tc.tok); code != tc.want {
+			t.Errorf("%s = %d %s, want %d", tc.name, code, out, tc.want)
+		}
+	}
+}
+
 func TestDeleteMe(t *testing.T) {
 	srv, mint := newAuthServer(t)
 	tokA, tokB := mint("delete-a"), mint("delete-b")

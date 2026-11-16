@@ -47,6 +47,7 @@ func NewHandler(svc *drill.Service, ex *exam.Service, in *insight.Service, users
 	mux.HandleFunc("GET /v1/attempts/{id}", a.requireAuth(a.getAttempt))
 	mux.HandleFunc("PUT /v1/attempts/{id}/responses/{pos}", a.requireAuth(a.putResponse))
 	mux.HandleFunc("POST /v1/attempts/{id}/submit", a.requireAuth(a.submit))
+	mux.HandleFunc("POST /v1/attempts/{id}/items/{pos}/report", a.requireAuth(a.reportAttemptItem))
 	mux.HandleFunc("GET /v1/specs", a.specs)
 	mux.HandleFunc("POST /v1/exams", a.requireAuth(a.createExam))
 	mux.HandleFunc("GET /v1/exams", a.requireAuth(a.listExams))
