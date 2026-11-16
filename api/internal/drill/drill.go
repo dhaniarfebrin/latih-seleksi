@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"latihseleksi/api/internal/gen"
 	"latihseleksi/api/internal/question"
@@ -282,4 +283,29 @@ func (s *Service) Submit(ctx context.Context, userID, id string) (Result, error)
 		res.AvgTimeMS = total / len(resps)
 	}
 	return res, nil
+}
+
+// Report stores a user's report on the question at pos, replacing an earlier
+// one. Only answered positions can be reported, since only then the key is
+// visible to the user; an unanswered one is ErrInvalid.
+func (s *Service) Report(ctx context.Context, userID, id string, pos int, reason, note string) error {
+	if !question.ReportReasons[reason] {
+		return invalid("reason must be one of kunci_salah, soal_ambigu, typo, lainnya")
+	}
+	if utf8.RuneCountInString(note) > question.MaxReportNote {
+		return invalid("note must be at most %d characters", question.MaxReportNote)
+	}
+	_, snaps, _, resps, err := s.load(ctx, userID, id)
+	if err != nil {
+		return err
+	}
+	if _, ok := snaps[pos]; !ok {
+		return ErrNotFound
+	}
+	for _, r := range resps {
+		if r.Pos == pos {
+			return s.store.SaveReport(ctx, id, pos, reason, note)
+		}
+	}
+	return invalid("question %d has not been answered", pos)
 }

@@ -161,3 +161,39 @@ func TestFakeOwnership_otherUserSeesNotFound(t *testing.T) {
 		t.Errorf("owner view changed: %+v, %v", got, err)
 	}
 }
+
+func TestFakeReport(t *testing.T) {
+	svc, st := newFakeService()
+	ctx := context.Background()
+	v, err := svc.Create(ctx, fakeUser, persentase.PatternID, 2, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Report(ctx, fakeUser, v.ID, 1, "typo", ""); !errors.Is(err, ErrInvalid) {
+		t.Errorf("unanswered err = %v, want ErrInvalid", err)
+	}
+	if _, err := svc.Answer(ctx, fakeUser, v.ID, 1, "A", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Report(ctx, fakeUser, v.ID, 1, "nope", ""); !errors.Is(err, ErrInvalid) {
+		t.Errorf("bad reason err = %v, want ErrInvalid", err)
+	}
+	if err := svc.Report(ctx, fakeUser, v.ID, 1, "typo", strings.Repeat("x", question.MaxReportNote+1)); !errors.Is(err, ErrInvalid) {
+		t.Errorf("long note err = %v, want ErrInvalid", err)
+	}
+	if err := svc.Report(ctx, "user-2", v.ID, 1, "typo", ""); !errors.Is(err, ErrNotFound) {
+		t.Errorf("other user err = %v, want ErrNotFound", err)
+	}
+	if err := svc.Report(ctx, fakeUser, v.ID, 9, "typo", ""); !errors.Is(err, ErrNotFound) {
+		t.Errorf("pos 9 err = %v, want ErrNotFound", err)
+	}
+	if len(st.reports) != 0 {
+		t.Fatalf("rejected reports were stored: %v", st.reports)
+	}
+	if err := svc.Report(ctx, fakeUser, v.ID, 1, "typo", "salah ketik"); err != nil {
+		t.Fatal(err)
+	}
+	if got := st.reports[v.ID+"/1"]; got != (fakeReport{"typo", "salah ketik"}) {
+		t.Errorf("stored = %+v", got)
+	}
+}

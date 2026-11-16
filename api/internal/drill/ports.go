@@ -18,4 +18,7 @@ type Store interface {
 	SaveResponse(ctx context.Context, userID, id string, r question.Response) (question.Response, error)
 	// MarkSubmitted sets submitted_at once and returns the stored value.
 	MarkSubmitted(ctx context.Context, userID, id string) (time.Time, error)
+	// SaveReport stores the report for an item of the attempt, replacing an
+	// earlier one. The caller has already checked ownership.
+	SaveReport(ctx context.Context, id string, pos int, reason, note string) error
 }

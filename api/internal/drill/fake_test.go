@@ -15,6 +15,7 @@ import (
 type fakeStore struct {
 	attempts map[string]*fakeAttempt
 	order    []string
+	reports  map[string]fakeReport
 }
 
 type fakeAttempt struct {
@@ -22,6 +23,8 @@ type fakeAttempt struct {
 	items []question.Item
 	resps map[int]question.Response
 }
+
+type fakeReport struct{ reason, note string }
 
 func newFakeStore() *fakeStore { return &fakeStore{attempts: map[string]*fakeAttempt{}} }
 
@@ -72,6 +75,17 @@ func (f *fakeStore) MarkSubmitted(_ context.Context, userID, id string) (time.Ti
 		fa.a.SubmittedAt = &t
 	}
 	return *fa.a.SubmittedAt, nil
+}
+
+func (f *fakeStore) SaveReport(_ context.Context, id string, pos int, reason, note string) error {
+	if _, ok := f.attempts[id]; !ok {
+		return question.ErrNotFound
+	}
+	if f.reports == nil {
+		f.reports = map[string]fakeReport{}
+	}
+	f.reports[fmt.Sprintf("%s/%d", id, pos)] = fakeReport{reason, note}
+	return nil
 }
 
 // errFamilyBroken is what brokenFamily.Generate returns.
