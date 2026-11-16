@@ -47,12 +47,15 @@ const (
 
 // Fact is one answered response with the context needed for statistics.
 type Fact struct {
-	AttemptID       string
-	Mode            string
-	StartedAt       time.Time
-	Section         string
-	PatternID       string
-	Correct         bool
+	AttemptID string
+	Mode      string
+	StartedAt time.Time
+	Section   string
+	PatternID string
+	Correct   bool
+	// Weighted marks a weighted (TKP) answer: it has a weight, not right or
+	// wrong, so Build ignores it.
+	Weighted        bool
 	TimeMS          int
 	MisconceptionID string
 }
@@ -159,7 +162,7 @@ func Build(facts []Fact, catalog []string) Dashboard {
 	pats := map[string]*patternAcc{}
 	sess := map[string]*SessionStat{}
 	for _, f := range facts {
-		if f.PatternID == "" {
+		if f.PatternID == "" || f.Weighted {
 			continue
 		}
 		s := secs[f.Section]

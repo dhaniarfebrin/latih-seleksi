@@ -35,13 +35,14 @@ type SnapshotOption struct {
 	Key             string `json:"key"`
 	Text            string `json:"text"`
 	MisconceptionID string `json:"misconception_id,omitempty"`
+	Weight          int    `json:"weight,omitempty"`
 }
 
 // FromDraft freezes a generated or banked draft.
 func FromDraft(d gen.Draft) Snapshot {
 	sn := Snapshot{Stem: d.Stem, AnswerKey: d.AnswerKey, Steps: d.Steps}
 	for _, o := range d.Options {
-		sn.Options = append(sn.Options, SnapshotOption{Key: o.Key, Text: o.Text, MisconceptionID: o.MisconceptionID})
+		sn.Options = append(sn.Options, SnapshotOption{Key: o.Key, Text: o.Text, MisconceptionID: o.MisconceptionID, Weight: o.Weight})
 	}
 	return sn
 }

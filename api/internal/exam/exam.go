@@ -51,11 +51,14 @@ type OptionView struct {
 }
 
 type ResponseView struct {
-	Answer          string `json:"answer"`
-	TimeMS          int    `json:"time_ms"`
-	Flagged         bool   `json:"flagged"`
-	Seq             int    `json:"seq"`
-	Correct         *bool  `json:"correct,omitempty"`
+	Answer  string `json:"answer"`
+	TimeMS  int    `json:"time_ms"`
+	Flagged bool   `json:"flagged"`
+	Seq     int    `json:"seq"`
+	Correct *bool  `json:"correct,omitempty"`
+	// Weight is the weight of the chosen option; set only for a closed exam and
+	// a weighted section (TKP).
+	Weight          *int   `json:"weight,omitempty"`
 	MisconceptionID string `json:"misconception_id,omitempty"`
 }
 
@@ -144,12 +147,10 @@ func New(st Store, specs *spec.Registry, sources ...ItemSource) *Service {
 	return &Service{store: st, specs: specs, sources: by, now: time.Now}
 }
 
-// available reports whether a section can be taken: it has a source and is
-// right-wrong scored (weighted sections need per-option weights, which items
-// do not carry yet).
+// available reports whether a section can be taken: it has a source.
 func (s *Service) available(sec spec.Section) bool {
 	_, ok := s.sources[sec.ID]
-	return ok && sec.Scoring.Kind == spec.KindRightWrong
+	return ok
 }
 
 // Specs lists the exam specs with which sections can be taken now.
@@ -339,6 +340,12 @@ func (s *Service) Get(ctx context.Context, userID, id string) (ExamView, error) 
 				c := r.Correct
 				iv.Response.Correct = &c
 				iv.Response.MisconceptionID = r.MisconceptionID
+				if sec, ok := l.spec.Section(it.Section); ok && sec.Scoring.Kind == spec.KindWeighted {
+					if o, found := sn.Option(r.Answer); found {
+						w := o.Weight
+						iv.Response.Weight = &w
+					}
+				}
 			}
 		}
 		if l.closed() {
@@ -441,6 +448,8 @@ func (s *Service) Answer(ctx context.Context, userID, id string, in AnswerInput)
 	if !found {
 		return ResponseView{}, invalid("answer %s is not an option of this question", in.Answer)
 	}
+	// Correct means "chose the key option". For a weighted section (TKP) that is
+	// only "chose the top weight"; Result scores it by weight, not by Correct.
 	stored, err := s.store.SaveExamResponse(ctx, id, question.Response{
 		Pos: in.Pos, Answer: in.Answer, Correct: in.Answer == sn.AnswerKey, TimeMS: in.TimeMS,
 		MisconceptionID: chosen.MisconceptionID, Seq: in.Seq, Flagged: in.Flagged,
@@ -503,7 +512,15 @@ func (s *Service) Result(ctx context.Context, userID, id string) (Result, error)
 			if ok {
 				answered++
 			}
-			rs = append(rs, scoring.Response{Section: sec.ID, Answered: ok, Correct: ok && r.Correct})
+			sc := scoring.Response{Section: sec.ID, Answered: ok, Correct: ok && r.Correct}
+			if ok && sec.Scoring.Kind == spec.KindWeighted {
+				o, found := l.snaps[it.Pos].Option(r.Answer)
+				if !found {
+					return Result{}, fmt.Errorf("item %d: answer %s is not an option of the frozen question", it.Pos, r.Answer)
+				}
+				sc.Weight = o.Weight
+			}
+			rs = append(rs, sc)
 		}
 		sr, err := scoring.ScoreSection(sec, track, rs)
 		if err != nil {

@@ -1,35 +1,37 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createExam, listSpecs } from './api'
+import { availableSections, toggleSection } from './exam'
 import type { Spec } from './types'
 import { errorMessage } from '@/shared/lib/error'
-
-const SECTION = 'TIU'
 
 export function StartPage() {
   const navigate = useNavigate()
   const [specs, setSpecs] = useState<Spec[]>([])
   const [specId, setSpecId] = useState('')
   const [trackId, setTrackId] = useState('')
+  const [picked, setPicked] = useState<string[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     listSpecs()
-      .then((all) => setSpecs(all.filter((sp) => sp.sections.some((sec) => sec.id === SECTION && sec.available))))
+      .then((all) => setSpecs(all.filter((sp) => availableSections(sp).length > 0)))
       .catch((e) => setError(errorMessage(e)))
   }, [])
 
   const spec = specs.find((sp) => sp.id === specId) ?? specs[0]
   const track = spec?.tracks.find((t) => t.id === trackId) ?? spec?.tracks[0]
-  const sec = spec?.sections.find((x) => x.id === SECTION)
+  const open = spec ? availableSections(spec) : []
+  const chosen = picked ?? open
+  const partial = !!spec && chosen.length < spec.sections.length
 
   const start = async () => {
     if (!spec || !track) return
     setBusy(true)
     setError('')
     try {
-      const exam = await createExam(spec.id, track.id, [SECTION])
+      const exam = await createExam(spec.id, track.id, chosen)
       navigate(`/simulation/${exam.id}`)
     } catch (e) {
       setError(errorMessage(e))
@@ -39,12 +41,12 @@ export function StartPage() {
 
   return (
     <section className="screen narrow">
-      <p className="eyebrow">Simulasi parsial</p>
+      <p className="eyebrow">{partial ? 'Simulasi parsial' : 'Simulasi lengkap'}</p>
       <h1 className="d">
-        Simulasi <mark>TIU</mark>
+        Simulasi <mark>SKD</mark>
       </h1>
       <p className="muted">
-        TIU saja{sec ? `, ${sec.items} soal` : ''}, durasi prorata (bukan durasi resmi). Waktu dihitung server dan jalan terus walau halaman ditutup.
+        {partial ? 'Durasi prorata (bukan durasi resmi). ' : ''}Waktu dihitung server dan jalan terus walau halaman ditutup.
       </p>
       {specs.length > 1 && (
         <fieldset className="field">
@@ -59,9 +61,28 @@ export function StartPage() {
                   onChange={() => {
                     setSpecId(sp.id)
                     setTrackId('')
+                    setPicked(null)
                   }}
                 />
                 {sp.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {spec && (
+        <fieldset className="field">
+          <legend>Subtes</legend>
+          <div className="seg one">
+            {spec.sections.map((s) => (
+              <label key={s.id} className={chosen.includes(s.id) ? 'on' : ''}>
+                <input
+                  type="checkbox"
+                  checked={chosen.includes(s.id)}
+                  disabled={!s.available}
+                  onChange={() => setPicked(toggleSection(chosen, s.id))}
+                />
+                {s.label} ({s.items} soal)
               </label>
             ))}
           </div>

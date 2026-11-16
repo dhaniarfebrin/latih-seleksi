@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"latihseleksi/api/internal/auth"
+	"latihseleksi/api/internal/bank"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/gen/catalog"
@@ -54,9 +55,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Only TIU has a source that can be scored today. The TWK/TKP bank is not
-	// wired in: it has too few reviewed items and TKP needs option weights.
-	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
+	items, err := bank.Load()
+	if err != nil {
+		return err
+	}
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
 
 	// FIREBASE_PROJECT_ID is not a secret. Empty leaves /v1/exams* closed (503).
 	var verifier *auth.Verifier

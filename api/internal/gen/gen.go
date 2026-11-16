@@ -11,10 +11,12 @@ const (
 )
 
 // Option is one answer choice. MisconceptionID is empty for the correct option.
+// Weight is the score of a weighted (TKP) option; 0 for right-wrong sections.
 type Option struct {
 	Key             string
 	Text            string
 	MisconceptionID string
+	Weight          int
 }
 
 // Draft is a generated question with its key and solution steps.

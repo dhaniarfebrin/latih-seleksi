@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"latihseleksi/api/internal/auth"
+	"latihseleksi/api/internal/bank"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/gen/catalog"
@@ -45,7 +47,11 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()))
+	items, err := bank.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
 	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
@@ -249,9 +255,9 @@ func TestExamFlowAndStatusCodes(t *testing.T) {
 	if code, out, _ := do(t, "GET", srv.URL+"/v1/specs", ""); code != http.StatusOK || !strings.Contains(out, `"skd-2024"`) {
 		t.Fatalf("specs: %d %s", code, out)
 	}
-	code, out, _ := do(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TWK"]}`)
+	code, out, _ := do(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["XYZ"]}`)
 	if code != http.StatusBadRequest {
-		t.Fatalf("TWK exam = %d %s, want 400", code, out)
+		t.Fatalf("unknown section exam = %d %s, want 400", code, out)
 	}
 	code, out, _ = do(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`)
 	if code != http.StatusCreated {
@@ -607,6 +613,23 @@ func TestDashboard(t *testing.T) {
 	if len(d.Sessions) != 2 {
 		t.Errorf("sessions = %+v, want drill and simulasi", d.Sessions)
 	}
+
+	// A TKP answer has a weight, not right or wrong: the dashboard ignores it.
+	code, out, _ = doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TKP"]}`, tokA)
+	if code != http.StatusCreated {
+		t.Fatalf("create TKP exam = %d %s", code, out)
+	}
+	var tkp createResp
+	if err := json.Unmarshal([]byte(out), &tkp); err != nil {
+		t.Fatal(err)
+	}
+	if code, out, _ := doToken(t, "PUT", srv.URL+"/v1/exams/"+tkp.ID+"/responses/1", `{"answer":"A","time_ms":9,"seq":1}`, tokA); code != http.StatusOK {
+		t.Fatalf("TKP answer = %d %s", code, out)
+	}
+	raw, d = get(tokA)
+	if len(d.Sections) != 1 || d.Sections[0].Answered != 2 || len(d.Sessions) != 2 || strings.Contains(raw, "TKP") {
+		t.Errorf("TKP answer leaked into the dashboard: %s", raw)
+	}
 	found := false
 	for _, p := range d.Patterns {
 		if p.PatternID == persentase.PatternID && p.Section == "TIU" {
@@ -618,5 +641,78 @@ func TestDashboard(t *testing.T) {
 	}
 	if _, db := get(tokB); len(db.Sections)+len(db.Patterns)+len(db.Sessions) != 0 {
 		t.Errorf("other user sees data: %+v", db)
+	}
+}
+
+// A full SKD simulation: 110 items from the generator and the bank; TKP is
+// scored by the weight of the chosen option, shown once the exam is closed.
+func TestFullSimulationScoresTKPByWeight(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tok := mint("full-sim")
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TWK","TIU","TKP"]}`, tok)
+	if code != http.StatusCreated {
+		t.Fatalf("create = %d %s", code, out)
+	}
+	var ex struct {
+		ID    string `json:"id"`
+		Items []struct {
+			Pos     int    `json:"pos"`
+			Section string `json:"section"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(out), &ex); err != nil || len(ex.Items) != 110 {
+		t.Fatalf("exam body: %v items=%d", err, len(ex.Items))
+	}
+	if strings.Contains(out, `"weight"`) {
+		t.Error("open exam exposes weights")
+	}
+	for _, it := range ex.Items {
+		if it.Section != "TKP" {
+			continue
+		}
+		path := srv.URL + "/v1/exams/" + ex.ID + "/responses/" + strconv.Itoa(it.Pos)
+		if code, out, _ := doToken(t, "PUT", path, `{"answer":"A","time_ms":5,"seq":1}`, tok); code != http.StatusOK {
+			t.Fatalf("answer %d = %d %s", it.Pos, code, out)
+		}
+	}
+	code, out, _ = doToken(t, "POST", srv.URL+"/v1/exams/"+ex.ID+"/submit", "", tok)
+	if code != http.StatusOK {
+		t.Fatalf("submit = %d %s", code, out)
+	}
+	var res struct {
+		Partial  bool `json:"partial"`
+		Sections []struct {
+			ID       string `json:"id"`
+			Score    int    `json:"score"`
+			Answered int    `json:"answered"`
+		} `json:"sections"`
+	}
+	if err := json.Unmarshal([]byte(out), &res); err != nil || res.Partial || len(res.Sections) != 3 {
+		t.Fatalf("result: %v %s", err, out)
+	}
+	code, out, _ = doToken(t, "GET", srv.URL+"/v1/exams/"+ex.ID, "", tok)
+	if code != http.StatusOK {
+		t.Fatalf("get = %d %s", code, out)
+	}
+	var closed struct {
+		Items []struct {
+			Section  string `json:"section"`
+			Response *struct {
+				Weight *int `json:"weight"`
+			} `json:"response"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(out), &closed); err != nil {
+		t.Fatal(err)
+	}
+	sum := 0
+	for _, it := range closed.Items {
+		if it.Section == "TKP" && it.Response != nil && it.Response.Weight != nil {
+			sum += *it.Response.Weight
+		}
+	}
+	tkp := res.Sections[2]
+	if tkp.ID != "TKP" || tkp.Answered != 45 || sum < 45 || tkp.Score != sum {
+		t.Errorf("TKP section = %+v, sum of shown weights = %d", tkp, sum)
 	}
 }

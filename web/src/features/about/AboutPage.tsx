@@ -33,7 +33,7 @@ export function AboutPage() {
           </li>
         </ul>
         <p className="muted">
-          Simulasi saat ini parsial (TIU saja) dengan durasi prorata, bukan durasi resmi. Ambang batas tiap jalur mengikuti sumber di atas;
+          Simulasi lengkap memakai durasi resmi; memilih sebagian subtes memakai durasi prorata, bukan durasi resmi. Bobot TKP adalah penilaian penyusun, bukan kunci resmi. Ambang batas tiap jalur mengikuti sumber di atas;
           ambang CPNS 2026 belum diumumkan.
         </p>
       </div>

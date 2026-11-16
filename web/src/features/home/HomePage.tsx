@@ -41,7 +41,7 @@ export function HomePage() {
           <h2 className="sub">
             <Timer className="ic" aria-hidden="true" /> Simulasi
           </h2>
-          <p className="muted">Simulasi TIU berwaktu, dinilai server terhadap ambang.</p>
+          <p className="muted">Simulasi SKD berwaktu (TWK, TIU, TKP atau sebagian), dinilai server terhadap ambang.</p>
           <Link className="btn" to="/simulation">
             Mulai simulasi
           </Link>

@@ -30,6 +30,8 @@ export interface ExamResponse {
   flagged: boolean
   seq: number
   correct?: boolean
+  // Weight of the chosen option; only for a closed exam and a weighted (TKP) item.
+  weight?: number
   misconception_id?: string
 }
 

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"latihseleksi/api/internal/bank"
+	"latihseleksi/api/internal/gen"
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/question"
 	"latihseleksi/api/internal/spec"
@@ -179,5 +181,140 @@ func TestFakeCreate_sourceFailureLeavesNoExam(t *testing.T) {
 	}
 	if len(f.st.exams) != 0 {
 		t.Errorf("%d exams stored after a failed create", len(f.st.exams))
+	}
+}
+
+// weightedSource serves 45 TKP items whose option A..E weigh 1..5; the key is
+// the weight-5 option E. badWeight, when set, gives option A that weight.
+type weightedSource struct{ badWeight int }
+
+func (weightedSource) Sections() []string { return []string{"TKP"} }
+func (w weightedSource) Pick(_ string, n int, _ int64) ([]gen.Draft, error) {
+	out := make([]gen.Draft, 0, n)
+	for i := 0; i < n; i++ {
+		d := gen.Draft{PatternID: "tkp-test", Stem: "s", AnswerKey: "E"}
+		for k, key := range []string{"A", "B", "C", "D", "E"} {
+			wt := k + 1
+			if key == "A" && w.badWeight != 0 {
+				wt = w.badWeight
+			}
+			d.Options = append(d.Options, gen.Option{Key: key, Text: key, Weight: wt})
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+func newWeightedEnv(t *testing.T, src ItemSource) *fakeEnv {
+	t.Helper()
+	f := newFakeEnv(t)
+	specs, _ := spec.Load()
+	f.svc = New(f.st, specs, src)
+	f.svc.now = func() time.Time { return f.clock }
+	return f
+}
+
+func TestFakeWeighted_availableAndScoresSumOfWeights(t *testing.T) {
+	f := newWeightedEnv(t, weightedSource{})
+	ctx := context.Background()
+	for _, sp := range f.svc.Specs() {
+		for _, sec := range sp.Sections {
+			if sec.ID == "TKP" && !sec.Available {
+				t.Errorf("%s TKP not available with a TKP source", sp.ID)
+			}
+		}
+	}
+	v, err := f.svc.Create(ctx, "u1", "skd-2024", "umum", []string{"TKP"})
+	if err != nil || len(v.Items) != 45 {
+		t.Fatalf("create = %d items, %v", len(v.Items), err)
+	}
+	// 3 x E (5), 2 x B (2), 1 x A (1), rest blank (blank = 0 in the spec).
+	answers := map[int]string{1: "E", 2: "E", 3: "E", 4: "B", 5: "B", 6: "A"}
+	for pos, a := range answers {
+		if _, err := f.svc.Answer(ctx, "u1", v.ID, AnswerInput{Pos: pos, Answer: a, Seq: 1}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	res, err := f.svc.Submit(ctx, "u1", v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := res.Sections[0]; got.Score != 15+4+1 || got.Answered != 6 || got.Max != 225 {
+		t.Errorf("section = %+v, want score 20 answered 6 max 225", got)
+	}
+	g, err := f.svc.Get(ctx, "u1", v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := g.Items[3].Response; r == nil || r.Weight == nil || *r.Weight != 2 {
+		t.Errorf("closed TKP response weight = %+v, want 2", r)
+	}
+	if r := g.Items[6].Response; r != nil {
+		t.Errorf("unanswered item has response %+v", r)
+	}
+}
+
+func TestFakeWeighted_openExamHidesWeightAndRightWrongHasNone(t *testing.T) {
+	f := newWeightedEnv(t, weightedSource{})
+	ctx := context.Background()
+	v, _ := f.svc.Create(ctx, "u1", "skd-2024", "umum", []string{"TKP"})
+	if _, err := f.svc.Answer(ctx, "u1", v.ID, AnswerInput{Pos: 1, Answer: "E", Seq: 1}); err != nil {
+		t.Fatal(err)
+	}
+	g, _ := f.svc.Get(ctx, "u1", v.ID)
+	raw, _ := json.Marshal(g)
+	if strings.Contains(string(raw), "weight") {
+		t.Errorf("open exam exposes weight: %s", raw)
+	}
+	tiu := newFakeEnv(t)
+	tv := tiu.create(t, "u1")
+	_, _ = tiu.svc.Answer(ctx, "u1", tv.ID, AnswerInput{Pos: 1, Answer: "A", Seq: 1})
+	_, _ = tiu.svc.Submit(ctx, "u1", tv.ID)
+	tg, _ := tiu.svc.Get(ctx, "u1", tv.ID)
+	if tg.Items[0].Response.Weight != nil {
+		t.Errorf("TIU response has weight %v", *tg.Items[0].Response.Weight)
+	}
+}
+
+func TestFakeWeighted_weightOutsideRangeIsError(t *testing.T) {
+	f := newWeightedEnv(t, weightedSource{badWeight: 9})
+	ctx := context.Background()
+	v, err := f.svc.Create(ctx, "u1", "skd-2024", "umum", []string{"TKP"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Answer(ctx, "u1", v.ID, AnswerInput{Pos: 1, Answer: "A", Seq: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Submit(ctx, "u1", v.ID); err == nil || !strings.Contains(err.Error(), "weight 9") {
+		t.Errorf("Submit err = %v, want a weight 9 error", err)
+	}
+}
+
+func TestFakeFullSpec_realBankAndGeneratedMake110(t *testing.T) {
+	b, err := bank.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := newFakeEnv(t)
+	specs, _ := spec.Load()
+	f.svc = New(f.st, specs, NewGeneratedSource(catalog.All()), b)
+	f.svc.now = func() time.Time { return f.clock }
+	ctx := context.Background()
+	v, err := f.svc.Create(ctx, "u1", "skd-2024", "umum", []string{"TWK", "TIU", "TKP"})
+	if err != nil || len(v.Items) != 110 {
+		t.Fatalf("create = %d items, %v", len(v.Items), err)
+	}
+	for pos := 1; pos <= 110; pos++ {
+		if _, err := f.svc.Answer(ctx, "u1", v.ID, AnswerInput{Pos: pos, Answer: "A", Seq: 1}); err != nil {
+			t.Fatalf("answer %d: %v", pos, err)
+		}
+	}
+	res, err := f.svc.Submit(ctx, "u1", v.ID)
+	if err != nil || res.Partial || len(res.Sections) != 3 {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+	if tkp := res.Sections[2]; tkp.ID != "TKP" || tkp.Score < 45 || tkp.Score > 225 {
+		t.Errorf("TKP section = %+v, want 45..225 for 45 answered items", tkp)
 	}
 }

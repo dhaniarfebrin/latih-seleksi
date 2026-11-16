@@ -1,5 +1,5 @@
 // Pure helpers for the exam simulation screen: timer, seq, screen reducer.
-import type { Exam, ExamItem, ExamResponse, ExamResult } from './types'
+import type { Exam, ExamItem, ExamResponse, ExamResult, Spec } from './types'
 
 // Whole seconds left until the deadline, never negative. offsetMs is server
 // clock minus client clock, so the client's clock error does not move the timer.
@@ -59,6 +59,18 @@ export function examReduce(s: ExamSession, a: ExamAction): ExamSession {
     case 'reset':
       return s.signedIn ? { ...s, screen: 'start', exam: null, result: null } : { ...initialExamSession }
   }
+}
+
+// The weighted subtest: scored by option weight (the authors' judgement), not right or wrong.
+export const WEIGHTED_SECTION = 'TKP'
+
+// Ids of the sections of spec that can be taken now, in spec order.
+export const availableSections = (sp: Spec): string[] => sp.sections.filter((s) => s.available).map((s) => s.id)
+
+// Toggles id in selected, never leaving it empty (an exam needs a section).
+export function toggleSection(selected: string[], id: string): string[] {
+  if (!selected.includes(id)) return [...selected, id]
+  return selected.length > 1 ? selected.filter((x) => x !== id) : selected
 }
 
 export type ItemStatus = 'empty' | 'answered' | 'flagged'

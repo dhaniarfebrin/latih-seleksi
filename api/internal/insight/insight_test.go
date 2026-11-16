@@ -191,3 +191,20 @@ func TestServiceUsesFactLimit(t *testing.T) {
 		t.Errorf("limit=%d err=%v d=%+v", st.limit, err, d)
 	}
 }
+
+// Weighted (TKP) answers have no right or wrong, so no statistic, session,
+// cause or queue entry may count them.
+func TestWeightedFactsAreExcluded(t *testing.T) {
+	w := fact("a", "TKP.x", false, 1000)
+	w.Section, w.Weighted = "TKP", true
+	d := Build([]Fact{w, fact("a", "p", true, 1000)}, []string{"TKP.x", "p"})
+	if len(d.Sections) != 1 || d.Sections[0].Section != "TIU" || d.Sections[0].Answered != 1 {
+		t.Errorf("sections = %+v", d.Sections)
+	}
+	if len(d.Patterns) != 1 || d.Patterns[0].PatternID != "p" {
+		t.Errorf("patterns = %+v", d.Patterns)
+	}
+	if len(d.Sessions) != 1 || d.Sessions[0].Answered != 1 {
+		t.Errorf("sessions = %+v", d.Sessions)
+	}
+}

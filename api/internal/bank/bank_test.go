@@ -119,6 +119,9 @@ func TestTKPDraftShufflesAndKeepsKey(t *testing.T) {
 			if want := fmt.Sprintf("%s: bobot %d", o.Key, weight[o.Text]); d.Steps[i] != want {
 				t.Fatalf("seed %d: step %q does not match option %+v", seed, d.Steps[i], o)
 			}
+			if o.Weight != weight[o.Text] {
+				t.Fatalf("seed %d: option %+v weight != %d", seed, o, weight[o.Text])
+			}
 			if o.Key == d.AnswerKey && weight[o.Text] != 5 {
 				t.Fatalf("seed %d: answer key %s is not the weight-5 option", seed, d.AnswerKey)
 			}
@@ -308,6 +311,9 @@ func TestPickAnswerKeys(t *testing.T) {
 			weight[o.Text] = o.Weight
 		}
 		for _, o := range d.Options {
+			if o.Weight != weight[o.Text] {
+				t.Fatalf("%s: option %+v weight != %d", e.ID, o, weight[o.Text])
+			}
 			if o.Key == d.AnswerKey && weight[o.Text] != 5 {
 				t.Errorf("%s: key %s has weight %d", e.ID, o.Key, weight[o.Text])
 			}

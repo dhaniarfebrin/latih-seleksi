@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Exam, ExamItem, ExamResult } from './types'
+import type { Exam, ExamItem, ExamResult, Spec } from './types'
 import {
   examReduce,
   initialExamSession,
@@ -7,6 +7,8 @@ import {
   nextSeq,
   remainingSeconds,
   summarizeSections,
+  availableSections,
+  toggleSection,
 } from './exam'
 
 const item = (pos: number, extra: Partial<ExamItem> = {}): ExamItem => ({
@@ -108,5 +110,28 @@ describe('summarizeSections', () => {
       { id: 'TWK', total: 1, answered: 0, flagged: 0 },
     ])
     expect(items.map(itemStatus)).toEqual(['answered', 'flagged', 'empty', 'empty'])
+  })
+})
+
+describe('section choice', () => {
+  const spec: Spec = {
+    id: 'sp',
+    label: 'sp',
+    scope: '',
+    duration_min: 100,
+    tracks: [],
+    sections: [
+      { id: 'TWK', label: 'TWK', items: 30, available: true },
+      { id: 'TIU', label: 'TIU', items: 35, available: true },
+      { id: 'TKP', label: 'TKP', items: 45, available: false },
+    ],
+  }
+  it('defaults to the available sections in spec order', () => {
+    expect(availableSections(spec)).toEqual(['TWK', 'TIU'])
+  })
+  it('toggles a section but keeps at least one', () => {
+    expect(toggleSection(['TWK', 'TIU'], 'TWK')).toEqual(['TIU'])
+    expect(toggleSection(['TIU'], 'TIU')).toEqual(['TIU'])
+    expect(toggleSection(['TIU'], 'TWK')).toEqual(['TIU', 'TWK'])
   })
 })

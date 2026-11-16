@@ -1,5 +1,6 @@
-import { CircleCheck, CircleX, Minus } from 'lucide-react'
+import { CircleCheck, CircleX, Minus, Scale } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { WEIGHTED_SECTION } from '../exam'
 import type { Exam, ExamItem, ExamResult } from '../types'
 
 export function Result(props: { result: ExamResult; exam: Exam | null }) {
@@ -16,6 +17,9 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
         )}
         {result.duration_basis === 'prorated' && (
           <p className="muted">Durasi dihitung prorata dari durasi resmi, jadi bukan durasi resmi ujian.</p>
+        )}
+        {result.sections.some((x) => x.id === WEIGHTED_SECTION) && (
+          <p className="chip warn">Bobot TKP adalah penilaian penyusun, bukan kunci resmi.</p>
         )}
         <section className="panel">
           <h2 className="sub">Per subtes</h2>
@@ -58,26 +62,33 @@ function Review({ items }: { items: ExamItem[] }) {
       <h2 className="sub">Tinjauan soal</h2>
       {items.map((it) => {
         const r = it.response
+        const weighted = it.section === WEIGHTED_SECTION
         return (
           <details key={it.pos}>
             <summary>
               <span className="num">{it.pos}.</span>{' '}
-              <span className={r ? (r.correct ? 'okt' : 'badt') : 'muted'}>
-                {r ? (
-                  r.correct ? (
-                    <CircleCheck className="ic" aria-hidden="true" />
+              {weighted && r ? (
+                <span>
+                  <Scale className="ic" aria-hidden="true" /> Bobot {r.weight ?? '-'} dari 5
+                </span>
+              ) : (
+                <span className={r ? (r.correct ? 'okt' : 'badt') : 'muted'}>
+                  {r ? (
+                    r.correct ? (
+                      <CircleCheck className="ic" aria-hidden="true" />
+                    ) : (
+                      <CircleX className="ic" aria-hidden="true" />
+                    )
                   ) : (
-                    <CircleX className="ic" aria-hidden="true" />
-                  )
-                ) : (
-                  <Minus className="ic" aria-hidden="true" />
-                )}{' '}
-                {r ? (r.correct ? 'Benar' : 'Salah') : 'Tidak dijawab'}
-              </span>
+                    <Minus className="ic" aria-hidden="true" />
+                  )}{' '}
+                  {r ? (r.correct ? 'Benar' : 'Salah') : 'Tidak dijawab'}
+                </span>
+              )}
             </summary>
             <p className="stem">{it.stem}</p>
             <p>
-              Jawabanmu: <span className="num">{r?.answer || '-'}</span> | Kunci: <span className="num">{it.answer_key ?? '-'}</span>
+              Jawabanmu: <span className="num">{r?.answer || '-'}</span> | {weighted ? 'Bobot tertinggi' : 'Kunci'}: <span className="num">{it.answer_key ?? '-'}</span>
             </p>
             {it.steps && it.steps.length > 0 && (
               <ol className="steps">

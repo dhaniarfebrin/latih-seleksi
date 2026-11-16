@@ -85,7 +85,7 @@ func (e TKPEntry) draft(rng *rand.Rand, seed int64) gen.Draft {
 		if o.Weight == 5 && d.AnswerKey == "" {
 			d.AnswerKey = key
 		}
-		d.Options = append(d.Options, gen.Option{Key: key, Text: o.Text})
+		d.Options = append(d.Options, gen.Option{Key: key, Text: o.Text, Weight: o.Weight})
 		d.Steps = append(d.Steps, fmt.Sprintf("%s: bobot %d", key, o.Weight))
 	}
 	d.Steps = append(d.Steps, fmt.Sprintf("Rujukan butir: %s/%s (bobot = penilaian penyusun, bukan kunci resmi)", e.RubricRef.Value, e.RubricRef.Butir))

@@ -27,10 +27,10 @@ func TestRandomSeedNonNegative(t *testing.T) {
 func TestFromDraftAndOption(t *testing.T) {
 	d := gen.Draft{
 		Stem: "q", AnswerKey: "B", Steps: []string{"s"},
-		Options: []gen.Option{{Key: "A", Text: "x", MisconceptionID: "m1"}, {Key: "B", Text: "y"}},
+		Options: []gen.Option{{Key: "A", Text: "x", MisconceptionID: "m1", Weight: 3}, {Key: "B", Text: "y"}},
 	}
 	sn := FromDraft(d)
-	if sn.Stem != "q" || sn.AnswerKey != "B" || len(sn.Options) != 2 || sn.Options[0].MisconceptionID != "m1" {
+	if sn.Stem != "q" || sn.AnswerKey != "B" || len(sn.Options) != 2 || sn.Options[0].MisconceptionID != "m1" || sn.Options[0].Weight != 3 || sn.Options[1].Weight != 0 {
 		t.Fatalf("snapshot = %+v", sn)
 	}
 	if o, ok := sn.Option("A"); !ok || o.Text != "x" {
