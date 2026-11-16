@@ -82,9 +82,6 @@ func TestTKPBankShape(t *testing.T) {
 	pos5 := map[int]int{}
 	for _, e := range b.TKP {
 		perAspek[e.Aspek]++
-		if e.Status != StatusDraft {
-			t.Errorf("%s: want draft, got %q", e.ID, e.Status)
-		}
 		w := map[int]bool{}
 		for i, o := range e.Options {
 			w[o.Weight] = true
@@ -252,10 +249,7 @@ func TestTKPValidateRejects(t *testing.T) {
 
 func TestPick(t *testing.T) {
 	b := loadBank(t)
-	// Fixtures: reviewed TKP (seed ones are draft) and one TWK left as draft.
-	for i := range b.TKP[:6] {
-		b.TKP[i].Status = StatusReviewed
-	}
+	// Fixture: one TWK item left as draft.
 	b.TWK[0].Status = StatusDraft
 	draftTWK := b.TWK[0].Question
 
@@ -285,7 +279,7 @@ func TestPick(t *testing.T) {
 			}
 		}
 	}
-	if _, err := b.Pick(SectionTKP, 7, 1); err == nil {
+	if _, err := b.Pick(SectionTKP, len(b.TKP)+1, 1); err == nil {
 		t.Error("asking for more reviewed items than exist must error")
 	}
 	if _, err := b.Pick("TIU", 1, 1); err == nil {
