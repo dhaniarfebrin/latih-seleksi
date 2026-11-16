@@ -1,7 +1,8 @@
 import { CircleCheck, CircleX, Minus, Scale } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { WEIGHTED_SECTION } from '../exam'
+import { timeLine, WEIGHTED_SECTION } from '../exam'
 import type { Exam, ExamItem, ExamResult } from '../types'
+import { ReportForm } from './ReportForm'
 
 export function Result(props: { result: ExamResult; exam: Exam | null }) {
   const { result, exam } = props
@@ -51,12 +52,12 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
           Riwayat
         </Link>
       </div>
-      <div className="col">{exam && <Review items={exam.items} />}</div>
+      <div className="col">{exam && <Review examId={exam.id} items={exam.items} />}</div>
     </div>
   )
 }
 
-function Review({ items }: { items: ExamItem[] }) {
+function Review({ examId, items }: { examId: string; items: ExamItem[] }) {
   return (
     <section className="panel">
       <h2 className="sub">Tinjauan soal</h2>
@@ -90,6 +91,7 @@ function Review({ items }: { items: ExamItem[] }) {
             <p>
               Jawabanmu: <span className="num">{r?.answer || '-'}</span> | {weighted ? 'Bobot tertinggi' : 'Kunci'}: <span className="num">{it.answer_key ?? '-'}</span>
             </p>
+            {r && <p className="muted">{timeLine(r.time_ms, it.median_ms)}</p>}
             {it.steps && it.steps.length > 0 && (
               <ol className="steps">
                 {it.steps.map((st, i) => (
@@ -97,6 +99,7 @@ function Review({ items }: { items: ExamItem[] }) {
                 ))}
               </ol>
             )}
+            <ReportForm examId={examId} pos={it.pos} />
           </details>
         )
       })}

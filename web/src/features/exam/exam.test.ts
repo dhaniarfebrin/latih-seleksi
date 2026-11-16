@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Exam, ExamItem, ExamResult, Spec } from './types'
 import {
   examReduce,
+  formatSeconds,
+  timeLine,
   initialExamSession,
   itemStatus,
   nextSeq,
@@ -133,5 +135,16 @@ describe('section choice', () => {
     expect(toggleSection(['TWK', 'TIU'], 'TWK')).toEqual(['TIU'])
     expect(toggleSection(['TIU'], 'TIU')).toEqual(['TIU'])
     expect(toggleSection(['TIU'], 'TWK')).toEqual(['TIU', 'TWK'])
+  })
+})
+
+describe('timeLine', () => {
+  it('rounds to whole seconds and never shows 0', () => {
+    expect(formatSeconds(42400)).toBe('42 dtk')
+    expect(formatSeconds(200)).toBe('1 dtk')
+  })
+  it('adds the median only when present', () => {
+    expect(timeLine(42000)).toBe('Waktu: 42 dtk')
+    expect(timeLine(42000, 30000)).toBe('Waktu: 42 dtk (median kamu 30 dtk)')
   })
 })

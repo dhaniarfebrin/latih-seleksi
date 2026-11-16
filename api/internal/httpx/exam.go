@@ -100,3 +100,24 @@ func (a *api) examResult(w http.ResponseWriter, r *http.Request, userID string) 
 	}
 	writeJSON(w, http.StatusOK, res)
 }
+
+func (a *api) reportItem(w http.ResponseWriter, r *http.Request, userID string) {
+	pos, err := strconv.Atoi(r.PathValue("pos"))
+	if err != nil {
+		writeError(w, r, question.ErrNotFound)
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+		Note   string `json:"note"`
+	}
+	if err := decode(w, r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if err := a.exam.Report(r.Context(), userID, r.PathValue("id"), pos, body.Reason, body.Note); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

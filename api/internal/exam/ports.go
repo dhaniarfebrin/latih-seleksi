@@ -21,4 +21,15 @@ type Store interface {
 	SaveExamResponse(ctx context.Context, id string, r question.Response) (question.Response, error)
 	// CloseExam moves an in-progress exam to status at time at; closed exams are left alone.
 	CloseExam(ctx context.Context, id, status string, at time.Time) error
+	// MedianCorrectMS returns, per pattern id, the median time_ms of the user's
+	// correct non-weighted answers; patterns with fewer than minCorrect correct
+	// answers are left out.
+	MedianCorrectMS(ctx context.Context, userID string, patternIDs []string, minCorrect int) (map[string]int, error)
+	// SaveReport stores the report for an item of the exam, replacing an earlier
+	// one for the same position. An unknown position is question.ErrNotFound.
+	SaveReport(ctx context.Context, id string, pos int, reason, note string) error
 }
+
+// MinCorrectForMedian is how many correct answers a pattern needs before a
+// median time is shown (same bar as the dashboard's cause labels).
+const MinCorrectForMedian = 3

@@ -2,7 +2,9 @@ package exam
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"latihseleksi/api/internal/question"
@@ -14,6 +16,8 @@ import (
 type fakeStore struct {
 	exams map[string]*fakeExam
 	order []string
+	// reports by "examID/pos".
+	reports map[string]fakeReport
 }
 
 type fakeExam struct {
@@ -76,5 +80,62 @@ func (f *fakeStore) CloseExam(_ context.Context, id, status string, at time.Time
 		return nil
 	}
 	fe.e.Status, fe.e.SubmittedAt = status, &at
+	return nil
+}
+
+// MedianCorrectMS mirrors the SQL: the user's correct answers per pattern,
+// weighted items skipped, upper-middle value for an even count is averaged.
+func (f *fakeStore) MedianCorrectMS(_ context.Context, userID string, patternIDs []string, minCorrect int) (map[string]int, error) {
+	want := map[string]bool{}
+	for _, p := range patternIDs {
+		want[p] = true
+	}
+	times := map[string][]int{}
+	for _, id := range f.order {
+		fe := f.exams[id]
+		if fe.e.UserID != userID {
+			continue
+		}
+		for _, it := range fe.items {
+			r, ok := fe.resps[it.Pos]
+			if !ok || !r.Correct || !want[it.PatternID] {
+				continue
+			}
+			var sn question.Snapshot
+			if err := json.Unmarshal(it.Snapshot, &sn); err != nil {
+				return nil, err
+			}
+			if len(sn.Options) > 0 && sn.Options[0].Weight != 0 {
+				continue
+			}
+			times[it.PatternID] = append(times[it.PatternID], r.TimeMS)
+		}
+	}
+	out := map[string]int{}
+	for p, ts := range times {
+		if len(ts) < minCorrect {
+			continue
+		}
+		sort.Ints(ts)
+		m := len(ts) / 2
+		if len(ts)%2 == 1 {
+			out[p] = ts[m]
+		} else {
+			out[p] = (ts[m-1] + ts[m] + 1) / 2
+		}
+	}
+	return out, nil
+}
+
+type fakeReport struct{ reason, note string }
+
+func (f *fakeStore) SaveReport(_ context.Context, id string, pos int, reason, note string) error {
+	if _, ok := f.exams[id]; !ok {
+		return question.ErrNotFound
+	}
+	if f.reports == nil {
+		f.reports = map[string]fakeReport{}
+	}
+	f.reports[fmt.Sprintf("%s/%d", id, pos)] = fakeReport{reason, note}
 	return nil
 }

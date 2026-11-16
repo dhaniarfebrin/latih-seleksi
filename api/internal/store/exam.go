@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"latihseleksi/api/internal/question"
 )
@@ -136,5 +137,50 @@ func (s *Store) CloseExam(ctx context.Context, id, status string, at time.Time) 
 	_, err := s.pool.Exec(ctx,
 		`update attempt set status = $2, submitted_at = $3
 		 where id = $1 and mode = 'simulasi' and status = 'in_progress'`, id, status, at)
+	return err
+}
+
+// MedianCorrectMS returns the median time_ms of the user's correct,
+// non-weighted answers per pattern id, for the given patterns that have at
+// least minCorrect such answers. Pattern id and weight test match ResponseFacts.
+func (s *Store) MedianCorrectMS(ctx context.Context, userID string, patternIDs []string, minCorrect int) (map[string]int, error) {
+	rows, err := s.pool.Query(ctx,
+		`select coalesce(i.pattern_id, a.pattern_id, '') as pid,
+		        round(percentile_cont(0.5) within group (order by r.time_ms))::int
+		 from response r
+		 join attempt a on a.id = r.attempt_id
+		 left join attempt_item i on i.attempt_id = r.attempt_id and i.pos = r.pos
+		 where a.user_id = $1 and r.correct
+		   and not coalesce(exists (select 1 from jsonb_array_elements(i.item_snapshot->'options') o where o ? 'weight'), false)
+		   and coalesce(i.pattern_id, a.pattern_id, '') = any($2)
+		 group by pid
+		 having count(*) >= $3`, userID, patternIDs, minCorrect)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var ms int
+		if err := rows.Scan(&id, &ms); err != nil {
+			return nil, err
+		}
+		out[id] = ms
+	}
+	return out, rows.Err()
+}
+
+// SaveReport stores a question report for an item of the exam, replacing an
+// earlier report for the same position. An unknown position (foreign key
+// violation) or malformed exam id is ErrNotFound.
+func (s *Store) SaveReport(ctx context.Context, id string, pos int, reason, note string) error {
+	_, err := s.pool.Exec(ctx,
+		`insert into question_report (attempt_id, pos, reason, note) values ($1, $2, $3, $4)
+		 on conflict (attempt_id, pos) do update set reason = excluded.reason, note = excluded.note, created_at = now()`,
+		id, pos, reason, note)
+	var pgErr *pgconn.PgError
+	if isInvalidUUID(err) || (errors.As(err, &pgErr) && pgErr.Code == "23503") {
+		return question.ErrNotFound
+	}
 	return err
 }

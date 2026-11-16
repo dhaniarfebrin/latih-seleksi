@@ -54,6 +54,7 @@ func NewHandler(svc *drill.Service, ex *exam.Service, in *insight.Service, users
 	mux.HandleFunc("PUT /v1/exams/{id}/responses/{pos}", a.requireAuth(a.putExamResponse))
 	mux.HandleFunc("POST /v1/exams/{id}/submit", a.requireAuth(a.submitExam))
 	mux.HandleFunc("GET /v1/exams/{id}/result", a.requireAuth(a.examResult))
+	mux.HandleFunc("POST /v1/exams/{id}/items/{pos}/report", a.requireAuth(a.reportItem))
 	mux.HandleFunc("GET /v1/me/dashboard", a.requireAuth(a.dashboard))
 	mux.HandleFunc("DELETE /v1/me", a.requireAuth(a.deleteMe))
 	return requestID(cors(cfg.CORSOrigin, mux))

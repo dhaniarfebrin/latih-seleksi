@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"latihseleksi/api/internal/question"
 	"latihseleksi/api/internal/scoring"
@@ -38,6 +39,11 @@ var (
 	ErrClosed     = errors.New("exam is closed")
 	ErrInProgress = errors.New("exam is still in progress")
 )
+
+// Report reasons accepted by Report, and the longest note.
+var reportReasons = map[string]bool{"kunci_salah": true, "soal_ambigu": true, "typo": true, "lainnya": true}
+
+const maxReportNote = 500
 
 func invalid(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, a...))
@@ -70,6 +76,10 @@ type ItemView struct {
 	Response  *ResponseView `json:"response,omitempty"`
 	AnswerKey string        `json:"answer_key,omitempty"`
 	Steps     []string      `json:"steps,omitempty"`
+	// MedianMS is the median time of the user's correct answers in the same
+	// pattern; set only for a closed exam, an answered item and a pattern with
+	// at least MinCorrectForMedian correct answers.
+	MedianMS *int `json:"median_ms,omitempty"`
 }
 
 type ExamView struct {
@@ -328,6 +338,20 @@ func (s *Service) Get(ctx context.Context, userID, id string) (ExamView, error) 
 	for _, r := range l.resps {
 		byPos[r.Pos] = r
 	}
+	var medians map[string]int
+	if l.closed() {
+		var pids []string
+		for _, it := range l.items {
+			if _, ok := byPos[it.Pos]; ok && it.PatternID != "" {
+				pids = append(pids, it.PatternID)
+			}
+		}
+		if len(pids) > 0 {
+			if medians, err = s.store.MedianCorrectMS(ctx, userID, pids, MinCorrectForMedian); err != nil {
+				return ExamView{}, err
+			}
+		}
+	}
 	for _, it := range l.items {
 		sn := l.snaps[it.Pos]
 		iv := ItemView{Pos: it.Pos, Section: it.Section, Stem: sn.Stem, Options: make([]OptionView, 0, len(sn.Options))}
@@ -350,6 +374,11 @@ func (s *Service) Get(ctx context.Context, userID, id string) (ExamView, error) 
 		}
 		if l.closed() {
 			iv.AnswerKey, iv.Steps = sn.AnswerKey, sn.Steps
+			if _, answered := byPos[it.Pos]; answered {
+				if m, ok := medians[it.PatternID]; ok {
+					iv.MedianMS = &m
+				}
+			}
 		}
 		v.Items = append(v.Items, iv)
 	}
@@ -458,6 +487,29 @@ func (s *Service) Answer(ctx context.Context, userID, id string, in AnswerInput)
 		return ResponseView{}, err
 	}
 	return ResponseView{Answer: stored.Answer, TimeMS: stored.TimeMS, Flagged: stored.Flagged, Seq: stored.Seq}, nil
+}
+
+// Report stores a user's report on the question at pos of a closed exam,
+// replacing an earlier one for that position. The key and steps are visible
+// only after closing, so an exam in progress gives ErrInProgress.
+func (s *Service) Report(ctx context.Context, userID, id string, pos int, reason, note string) error {
+	if !reportReasons[reason] {
+		return invalid("reason must be one of kunci_salah, soal_ambigu, typo, lainnya")
+	}
+	if utf8.RuneCountInString(note) > maxReportNote {
+		return invalid("note must be at most %d characters", maxReportNote)
+	}
+	l, err := s.load(ctx, userID, id)
+	if err != nil {
+		return err
+	}
+	if _, ok := l.snaps[pos]; !ok {
+		return ErrNotFound
+	}
+	if !l.closed() {
+		return ErrInProgress
+	}
+	return s.store.SaveReport(ctx, id, pos, reason, note)
 }
 
 // Submit closes the exam and returns the result. Repeating it, or submitting

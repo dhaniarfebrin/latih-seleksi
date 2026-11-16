@@ -716,3 +716,43 @@ func TestFullSimulationScoresTKPByWeight(t *testing.T) {
 		t.Errorf("TKP section = %+v, sum of shown weights = %d", tkp, sum)
 	}
 }
+
+func TestReportItem(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
+	tokA, tokB := mint("report-a-"+suffix), mint("report-b-"+suffix)
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tokA)
+	if code != http.StatusCreated {
+		t.Fatalf("create = %d %s", code, out)
+	}
+	var c createResp
+	if err := json.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	url := srv.URL + "/v1/exams/" + c.ID + "/items/1/report"
+	body := `{"reason":"typo","note":"salah ketik"}`
+	if code, _, _ := doToken(t, "POST", url, body, tokA); code != http.StatusConflict {
+		t.Errorf("report on open exam = %d, want 409", code)
+	}
+	if code, _, _ := doToken(t, "POST", srv.URL+"/v1/exams/"+c.ID+"/submit", "", tokA); code != http.StatusOK {
+		t.Fatalf("submit = %d", code)
+	}
+	for _, tc := range []struct {
+		name, url, body, tok string
+		want                 int
+	}{
+		{"ok", url, body, tokA, http.StatusNoContent},
+		{"replace", url, `{"reason":"lainnya"}`, tokA, http.StatusNoContent},
+		{"bad reason", url, `{"reason":"x"}`, tokA, http.StatusBadRequest},
+		{"long note", url, `{"reason":"typo","note":"` + strings.Repeat("x", 501) + `"}`, tokA, http.StatusBadRequest},
+		{"unknown field", url, `{"reason":"typo","extra":1}`, tokA, http.StatusBadRequest},
+		{"pos out of range", srv.URL + "/v1/exams/" + c.ID + "/items/999/report", body, tokA, http.StatusNotFound},
+		{"pos not a number", srv.URL + "/v1/exams/" + c.ID + "/items/x/report", body, tokA, http.StatusNotFound},
+		{"other user", url, body, tokB, http.StatusNotFound},
+		{"no token", url, body, "", http.StatusUnauthorized},
+	} {
+		if code, out, _ := doToken(t, "POST", tc.url, tc.body, tc.tok); code != tc.want {
+			t.Errorf("%s = %d %s, want %d", tc.name, code, out, tc.want)
+		}
+	}
+}

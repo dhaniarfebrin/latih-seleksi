@@ -43,6 +43,8 @@ export interface ExamItem {
   response?: ExamResponse
   answer_key?: string
   steps?: string[]
+  // Median time of the user's correct answers in the same pattern; closed exam only.
+  median_ms?: number
 }
 
 export interface Exam {
@@ -96,3 +98,5 @@ export interface ExamSummary {
   submitted_at?: string
   result?: ExamResult
 }
+
+export type ReportReason = 'kunci_salah' | 'soal_ambigu' | 'typo' | 'lainnya'

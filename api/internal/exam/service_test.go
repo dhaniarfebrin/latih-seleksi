@@ -318,3 +318,88 @@ func TestFakeFullSpec_realBankAndGeneratedMake110(t *testing.T) {
 		t.Errorf("TKP section = %+v, want 45..225 for 45 answered items", tkp)
 	}
 }
+
+// answerCorrect answers pos with the key option in the given time.
+func (f *fakeEnv) answerCorrect(t *testing.T, user, id string, pos, timeMS, seq int) {
+	t.Helper()
+	key := f.snapshot(t, id, pos).AnswerKey
+	if _, err := f.svc.Answer(context.Background(), user, id, AnswerInput{Pos: pos, Answer: key, TimeMS: timeMS, Seq: seq}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFakeGet_medianOnlyWhenClosedAndEnoughCorrect(t *testing.T) {
+	f := newFakeEnv(t)
+	ctx := context.Background()
+	v := f.create(t, "u1")
+	items := f.st.exams[v.ID].items
+	// Pos 1-3 share a pattern (3 correct: 100, 200, 400 -> median 200); pos 4-5
+	// share another with only 2 correct.
+	for i, p := range []string{"px", "px", "px", "py", "py"} {
+		items[i].PatternID = p
+	}
+	for i, ms := range []int{100, 400, 200, 50, 60} {
+		f.answerCorrect(t, "u1", v.ID, i+1, ms, i+1)
+	}
+	open, err := f.svc.Get(ctx, "u1", v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range open.Items {
+		if it.MedianMS != nil {
+			t.Fatalf("open exam shows median at pos %d", it.Pos)
+		}
+	}
+	if _, err := f.svc.Submit(ctx, "u1", v.ID); err != nil {
+		t.Fatal(err)
+	}
+	g, err := f.svc.Get(ctx, "u1", v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range g.Items[:3] {
+		if it.MedianMS == nil || *it.MedianMS != 200 {
+			t.Errorf("pos %d median = %v, want 200", it.Pos, it.MedianMS)
+		}
+	}
+	for _, it := range g.Items[3:] {
+		if it.MedianMS != nil {
+			t.Errorf("pos %d median = %d, want none (under 3 correct)", it.Pos, *it.MedianMS)
+		}
+	}
+}
+
+func TestFakeReport(t *testing.T) {
+	f := newFakeEnv(t)
+	ctx := context.Background()
+	v := f.create(t, "u1")
+	if err := f.svc.Report(ctx, "u1", v.ID, 1, "typo", ""); !errors.Is(err, ErrInProgress) {
+		t.Errorf("open exam err = %v, want ErrInProgress", err)
+	}
+	if _, err := f.svc.Submit(ctx, "u1", v.ID); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name   string
+		user   string
+		pos    int
+		reason string
+		note   string
+		want   error
+	}{
+		{"unknown reason", "u1", 1, "bosan", "", ErrInvalid},
+		{"empty reason", "u1", 1, "", "", ErrInvalid},
+		{"note too long", "u1", 1, "typo", strings.Repeat("x", 501), ErrInvalid},
+		{"pos out of range", "u1", 99, "typo", "", ErrNotFound},
+		{"other user", "u2", 1, "typo", "", ErrNotFound},
+		{"ok", "u1", 1, "kunci_salah", strings.Repeat("x", 500), nil},
+	}
+	for _, c := range cases {
+		if err := f.svc.Report(ctx, c.user, v.ID, c.pos, c.reason, c.note); !errors.Is(err, c.want) && (c.want != nil || err != nil) {
+			t.Errorf("%s: err %v, want %v", c.name, err, c.want)
+		}
+	}
+	if got := f.st.reports[v.ID+"/1"]; got.reason != "kunci_salah" {
+		t.Errorf("stored report = %+v", got)
+	}
+}
