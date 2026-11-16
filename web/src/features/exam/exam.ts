@@ -99,9 +99,6 @@ export function summarizeSections(items: ExamItem[]): SectionSummary[] {
   return [...by.values()]
 }
 
-// Longest note the API accepts for a question report.
-export const MAX_REPORT_NOTE = 500
-
 // Whole seconds from milliseconds, at least 1 so a quick answer never reads "0 dtk".
 export const formatSeconds = (ms: number): string => `${Math.max(1, Math.round(ms / 1000))} dtk`
 

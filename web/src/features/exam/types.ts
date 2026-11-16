@@ -98,5 +98,3 @@ export interface ExamSummary {
   submitted_at?: string
   result?: ExamResult
 }
-
-export type ReportReason = 'kunci_salah' | 'soal_ambigu' | 'typo' | 'lainnya'

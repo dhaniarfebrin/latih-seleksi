@@ -1,5 +1,6 @@
 import { call } from '@/shared/api/client'
-import type { Exam, ExamResponse, ExamResult, ExamSummary, ReportReason, Spec } from './types'
+import type { Exam, ExamResponse, ExamResult, ExamSummary, Spec } from './types'
+import type { ReportReason } from '@/shared/lib/report'
 
 export const listSpecs = () => call<{ specs: Spec[] }>('GET', '/v1/specs').then((r) => r.specs)
 
