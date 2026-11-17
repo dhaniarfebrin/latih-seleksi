@@ -166,11 +166,11 @@ components:
 
 Sistem ini terasa seperti buku catatan belajar yang rapi: kertas krem hangat, tinta arang pekat, dan satu stabilo kuning untuk hal yang sedang penting. Angka dan label memakai huruf mono seperti tulisan tangan teknis di margin. Kartu hanya dibatasi garis tipis. Tidak ada bayangan yang menghias, tidak ada gradien, tidak ada maskot. Suasananya tenang, padat, dan hangat, sejalan dengan suara informal "kamu" di PRODUCT.md.
 
-Kepadatan sedang: satu kolom sempit (480 px) untuk alur fokus seperti login dan drill, kolom lebar (1040 px) untuk beranda dan dasbor, dan dua kolom (soal + panel samping 300 px) saat ujian di desktop. Target sentuh besar (48–54 px) berlaku di ponsel dan laptop, karena keduanya pengguna utama.
+Kepadatan sedang: satu kolom sempit (480 px) untuk alur fokus seperti login dan drill, kolom lebar (1040 px) untuk beranda dan dasbor, kolom baca (640–720 px) untuk Tentang, kartu soal, dan ringkasan, dengan satu pita waktu di atas kartu soal saat ujian dan drill. Target sentuh besar (48–54 px) berlaku di ponsel dan laptop, karena keduanya pengguna utama.
 
 Penolakan visual yang dikonfirmasi pemilik (2026-11-17): bukan aplikasi edukasi yang ramai. Tidak ada maskot, gamifikasi mencolok, gradien ungu-biru ala startup edtech, maupun tampilan portal pemerintah.
 
-**Catatan implementasi:** `web/src/styles.css` mendeklarasikan Bricolage Grotesque, IBM Plex Sans, dan IBM Plex Mono, tetapi pencarian di `web/` (di luar `node_modules` dan `package-lock.json`) tidak menemukan `@font-face`, tautan font, atau paket fontsource. Selama pemuatan font belum ada, tampilan nyata jatuh ke Trebuchet MS dan system-ui. Token tipografi di sini mencatat niat desain. **Asumsi (belum pasti):** tampilan nyata memakai fallback; verifikasi dengan membaca `getComputedStyle` di browser.
+**Catatan implementasi:** `web/src/styles.css` mendeklarasikan Bricolage Grotesque, IBM Plex Sans, dan IBM Plex Mono, dan ketiganya dimuat self-host lewat paket fontsource di `web/src/main.tsx` (Bricolage Grotesque variabel `wght.css`; IBM Plex Sans latin 400/600/700; IBM Plex Mono latin 400/600; `font-display: swap`). Fallback (Trebuchet MS, system-ui) hanya tampil sesaat sebelum font siap. Belum ada preload atau penyesuaian metrik fallback.
 
 **Key Characteristics:**
 - Kertas krem dan tinta arang; satu aksen kuning stabilo.
@@ -220,7 +220,7 @@ Palet buku catatan: dua krem hangat, satu tinta, satu stabilo, dan tiga warna um
 - **Title** (700, 17 px; 22 px untuk judul dialog): judul panel dan subbagian (`.sub`, `.lp-feats h3`).
 - **Body** (400, 16 px, line-height 1,45): teks isi. Teks lead landing 18 px dengan lebar maksimum 56ch.
 - **Question** (400, 18 px): batang soal (`.stem`).
-- **Label** (mono 12 px, +0,06em, huruf kapital): eyebrow di atas judul. Teks bantu kecil 13–14 px bobot 600 untuk label field, badge, dan tag.
+- **Label** (mono 12 px, +0,06em, huruf kapital): label kelompok kecil (bukan di atas judul halaman). Teks bantu kecil 13–14 px bobot 600 untuk label field, badge, dan tag.
 - **Numeric** (mono 600, tabular-nums): skor, timer, persentase, nomor soal (`.num`).
 
 ### Named Rules
@@ -231,10 +231,10 @@ Palet buku catatan: dua krem hangat, satu tinta, satu stabilo, dan tiga warna um
 Satu stylesheet global (`web/src/styles.css`), tanpa framework CSS. Halaman adalah `.screen` kolom tunggal dengan gap 16 px dan padding 22 px 18 px; `.narrow` (480 px) untuk alur fokus, `.wide` (1040 px) untuk beranda, dasbor, dan riwayat. Satu breakpoint utama: **900 px**.
 
 - **Di bawah 900 px (ponsel):** navigasi berupa pil melayang di bawah (maks 420 px, 5 tab: Beranda, Drill, Simulasi, Riwayat, Akun), menyisakan padding bawah 96 px. Pil disembunyikan saat ujian berjalan (`.app:has(.exam)`) agar tidak tersentuh tak sengaja dan posisi soal tidak hilang.
-- **Mulai 900 px (laptop):** navigasi pindah ke bilah atas sticky (maks 1040 px), tab sejajar dengan Akun di kanan. Panel pilihan jadi dua kolom bergaris pemisah vertikal. Ujian jadi dua kolom (soal + panel samping 300 px sticky). Baris riwayat jadi grid empat kolom.
+- **Mulai 900 px (laptop):** navigasi pindah ke bilah atas sticky (maks 1040 px), tab sejajar dengan Akun di kanan. Panel pilihan jadi dua kolom bergaris pemisah vertikal. Saat ujian, pita waktu menempel di atas dengan tab subtes di baris jam. Baris riwayat jadi grid empat kolom.
 - Kelas `.mo` / `.dk` menampilkan elemen hanya di ponsel atau hanya di desktop.
 - Ritme jarak: 4, 8, 10, 12, 16, 24 px. Landing: gap bagian 40 px (56 px di desktop).
-- Target sentuh: tombol 54 px, segmen dan input 48 px, sel nomor soal 40 px, item nav 52 px.
+- Target sentuh: tombol 54 px, segmen dan input 48 px, sel penggaris nomor 34–36 px (di atas minimum WCAG 24 px), item nav 52 px.
 
 ## Elevation & Depth
 
@@ -290,8 +290,18 @@ Karakter: besar, tegas, mudah disentuh, dengan garis tinta yang jelas.
 - **Desktop:** bilah sticky dengan tab horizontal (ikon + teks), sudut 10 px, Akun didorong ke kanan; merek "Latih Seleksi" dalam display 800 20 px.
 - Hanya satu tab aktif; warna item tidak aktif abu tinta pudar.
 
-### Exam Question Grid
-- Sel nomor soal 40 px bergaya mono (`.cell`): terjawab = hijau + ikon, ditandai = cokelat + ikon, saat ini = kontur tinta 3 px.
+### Time Band and Ruler
+- **Pita (`.band`):** kartu bergaris di atas kartu soal, sticky saat ujian (`.pin`). Berisi jam mono besar (28 px ponsel, 44 px desktop; merah bila ≤60 detik), tab subtes (`.tab`, aktif = isi tinta), progress, dan penggaris nomor. Di ponsel tab dan penggaris masuk ke `details` "Nomor soal (x/y terjawab)". Drill memakai pita yang sama dengan jam berjalan dan target.
+- **Penggaris (`Ruler`, `shared/components/Ruler.tsx`):** satu sel mono 36 px per soal. Ujian: terjawab = isi tinta + centang, ditandai = garis putus-putus + ikon bendera, kosong = kartu. Drill dan ringkasan: benar = isi tinta + centang, salah = merah koreksi + ikon silang. Soal saat ini = stabilo kuning. Dengan `onPick` sel menjadi tombol; tanpa itu hanya penanda (`role="img"`).
+
+### Question Card
+- `.qcard`: kartu 720 px di tengah, sudut 18 px, berisi batang soal 19 px bobot 600, opsi, dan baris Sebelumnya / Tandai ragu / Berikutnya. Opsi terpilih = stabilo; setelah dijawab di drill, benar hijau dan salah merah, dengan panel langkah di bawah kartu.
+
+### Result Rows
+- `.sheet-rows` / `.sheet-row`: nama, batang isi tinta (lebar = persentase), angka mono, dan satu baris keterangan. Baris terlemah memakai `.weak`. Dipakai di Dasbor (per pola), hasil Ujian (per subtes), dan landing. Tren sesi memakai `TrendBars` (kolom per sesi, minimal 3 titik).
+
+### Reading Page
+- `.doc` (640 px): catatan penting sebagai blok stabilo, bagian dipisah garis 1 px, tanpa kartu bertumpuk. Dipakai Tentang.
 
 ### Dialog
 - `dialog.dlg`: lebar maksimum 440 px, sudut 18 px, kartu bergaris, backdrop gelap 55%. Judul display 22 px.
@@ -315,4 +325,4 @@ Karakter: besar, tegas, mudah disentuh, dengan garis tinta yang jelas.
 - **Don't** pakai teks terang di atas stabilo kuning; di mode gelap `mark` harus chip solid bergelap.
 - **Don't** menandai benar/salah hanya dengan warna.
 - **Don't** menampilkan testimoni, angka pengguna, atau jaminan kelulusan tanpa sumber (PRODUCT.md, Product Principles).
-- **Don't** mengira font bernama sudah tampil: sampai ada `@font-face` atau paket font, anggap tampilan nyata memakai fallback dan uji tata letak dengan Trebuchet MS/system-ui.
+- **Don't** menaruh eyebrow di atas judul halaman yang hanya mengulang judulnya; eyebrow hanya boleh jadi label kelompok (misalnya subtes di mulai drill).
