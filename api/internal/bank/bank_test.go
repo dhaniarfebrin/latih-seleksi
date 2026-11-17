@@ -75,13 +75,14 @@ func TestTKPReviewedOnlyByHuman(t *testing.T) {
 
 func TestTKPBankShape(t *testing.T) {
 	b := loadBank(t)
-	if len(b.TKP) != 45 {
-		t.Errorf("want 45 TKP items, got %d", len(b.TKP))
-	}
+	reviewed := 0
 	perAspek := map[string]int{}
 	pos5 := map[int]int{}
 	for _, e := range b.TKP {
-		perAspek[e.Aspek]++
+		if e.Status == StatusReviewed {
+			reviewed++
+			perAspek[e.Aspek]++
+		}
 		w := map[int]bool{}
 		for i, o := range e.Options {
 			w[o.Weight] = true
@@ -93,9 +94,12 @@ func TestTKPBankShape(t *testing.T) {
 			t.Errorf("%s: weights must be 1..5 once each, got %v", e.ID, e.Options)
 		}
 	}
+	if reviewed != 45 {
+		t.Errorf("want 45 reviewed TKP items, got %d", reviewed)
+	}
 	for a, n := range perAspek {
 		if n < 7 || n > 8 {
-			t.Errorf("aspek %s: want 7-8 items, got %d", a, n)
+			t.Errorf("aspek %s: want 7-8 reviewed items, got %d", a, n)
 		}
 	}
 	if len(pos5) < 3 {
