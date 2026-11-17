@@ -1,5 +1,8 @@
 import { ChartNoAxesColumn, Play, Target, Timer } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { getDashboard } from '@/features/dashboard/api'
+import { NextPractice } from '@/features/dashboard/NextPractice'
+import { listPatterns } from '@/features/drill'
 import { ExamRow, listExams, listSpecs } from '@/features/exam'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useLoad } from '@/shared/hooks/useLoad'
@@ -7,26 +10,33 @@ import { useLoad } from '@/shared/hooks/useLoad'
 export function HomePage() {
   const { user } = useAuth()
   const { data, error, loading } = useLoad(async () => {
-    const [exams, specs] = await Promise.all([listExams(5), listSpecs().catch(() => [])])
-    return { exams, specs }
+    const [exams, specs, dash, patterns] = await Promise.all([
+      listExams(5),
+      listSpecs().catch(() => []),
+      // The suggestion is a bonus: a dashboard failure must not break the home screen.
+      getDashboard().catch(() => null),
+      listPatterns().catch(() => []),
+    ])
+    return { exams, specs, dash, patterns }
   })
   const running = data?.exams[0]?.status === 'in_progress' ? data.exams[0] : undefined
   const lastDone = data?.exams.find((e) => e.status !== 'in_progress')
+  const label = (id: string) => data?.patterns.find((p) => p.id === id)?.label ?? id
   return (
     <section className="screen wide">
-      <p className="eyebrow">Beranda</p>
       <h1 className="d">
         Halo, <mark>{user?.email?.split('@')[0] ?? 'peserta'}</mark>
       </h1>
       {running && (
-        <div className="panel">
-          <h2 className="sub">Simulasi sedang berjalan</h2>
-          <p className="muted">Waktu terus berjalan di server. Lanjutkan sebelum habis.</p>
-          <Link className="btn hi" to={`/simulation/${running.id}`}>
+        <div className="panel next hi">
+          <h2>Simulasi sedang berjalan</h2>
+          <p>Waktu terus berjalan di server. Lanjutkan sebelum habis.</p>
+          <Link className="btn ink" to={`/simulation/${running.id}`}>
             <Play className="ic" aria-hidden="true" />&nbsp;Lanjutkan simulasi
           </Link>
         </div>
       )}
+      {data?.dash && <NextPractice queue={data.dash.queue} label={label} plain={!!running} firstOnly />}
       <div className="panel choices">
         <div>
           <h2 className="sub">

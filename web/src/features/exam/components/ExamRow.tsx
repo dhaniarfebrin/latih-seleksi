@@ -19,26 +19,33 @@ export function ExamRow({ e, specs }: { e: ExamSummary; specs: Spec[] }) {
   return (
     <li>
       <Link className="row-link" to={`/simulation/${e.id}`}>
-        <span className="num">{fmtDate(e.started_at)}</span>
-        <span>
-          {spec?.label ?? e.spec_id} | {track?.label ?? e.track}
-        </span>
-        <span className={e.status === 'in_progress' ? 'chip warn' : 'muted'}>
-          {e.status === 'in_progress' && <Clock className="ic" aria-hidden="true" />}
-          {STATUS[e.status]}
-        </span>
-        {e.result?.sections.map((x) => (
-          <span key={x.id} className="num">
-            {x.id} {x.score}/{x.max}
-            {x.min !== undefined && (
-              <>
-                {' '}
-                (ambang {x.min}) {x.met ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}{' '}
-                {x.met ? 'tercapai' : 'belum tercapai'}
-              </>
-            )}
+        <span className="exam-head">
+          <span className="num">{fmtDate(e.started_at)}</span>
+          <span>
+            {spec?.label ?? e.spec_id} | {track?.label ?? e.track}
           </span>
-        ))}
+          <span className={e.status === 'in_progress' ? 'chip warn' : 'muted'}>
+            {e.status === 'in_progress' && <Clock className="ic" aria-hidden="true" />}
+            {STATUS[e.status]}
+          </span>
+        </span>
+        {e.result && (
+          <span className="exam-scores">
+            {e.result.sections.map((x) => (
+              <span key={x.id} className="exam-score">
+                <span className="num">
+                  {x.id} {x.score}/{x.max}
+                </span>
+                {x.min !== undefined && (
+                  <span className={x.met ? 'met' : 'unmet'}>
+                    {x.met ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}
+                    ambang {x.min}, {x.met ? 'tercapai' : 'belum tercapai'}
+                  </span>
+                )}
+              </span>
+            ))}
+          </span>
+        )}
       </Link>
     </li>
   )
