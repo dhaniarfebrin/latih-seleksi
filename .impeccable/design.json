@@ -217,7 +217,7 @@
       "name": "Ghost Button",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "Aksi sekunder; transparan dengan garis tepi, hover menggelapkan garis.",
+      "description": "Aksi sekunder; transparan dengan garis tepi, hover menggelapkan garis. Dipakai agar satu aksi utama per layar tetap menonjol.",
       "html": "<button class=\"ds-btn ds-btn-ghost\">Batal</button>",
       "css": ".ds-btn{display:flex;align-items:center;justify-content:center;min-height:54px;padding:0 20px;border-radius:14px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;width:100%;border:1.5px solid var(--edge, #d8d2c4);} .ds-btn-ghost{background:transparent;color:var(--ink, #17191c);} .ds-btn-ghost:hover{border-color:var(--ink, #17191c);} .ds-btn:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:2px;}"
     },
@@ -257,9 +257,9 @@
       "name": "Segmented Choice",
       "kind": "custom",
       "refersTo": "segment",
-      "description": "Pilihan radio berbentuk kartu; terpilih = stabilo kuning.",
-      "html": "<div class=\"ds-seg\"><label class=\"ds-seg-l\">8 soal</label><label class=\"ds-seg-l ds-on\">12 soal</label><label class=\"ds-seg-l\">20 soal</label></div>",
-      "css": ".ds-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;} .ds-seg-l{display:grid;place-items:center;min-height:48px;padding:8px 12px;border:1.5px solid var(--edge, #d8d2c4);border-radius:12px;background:var(--card, #fbf9f4);color:var(--ink, #17191c);text-align:center;cursor:pointer;} .ds-seg-l.ds-on{border-color:var(--ink, #17191c);background:var(--hi, #f7d547);color:var(--on-hi, #17191c);}"
+      "description": "Pilihan radio berbentuk kartu; terpilih = stabilo kuning. Daftar `.seg.pick` menambah kotak (pilih banyak) atau titik (pilih satu) agar kuning bukan satu-satunya penanda.",
+      "html": "<div class=\"ds-seg\"><label class=\"ds-seg-l\">8 soal</label><label class=\"ds-seg-l ds-on\">12 soal</label><label class=\"ds-seg-l\">20 soal</label></div><div class=\"ds-seg ds-pick\"><label class=\"ds-seg-l\">TWK</label><label class=\"ds-seg-l ds-on\">TIU</label></div>",
+      "css": ".ds-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;} .ds-seg-l{display:grid;place-items:center;min-height:48px;padding:8px 12px;border:1.5px solid var(--edge, #d8d2c4);border-radius:12px;background:var(--card, #fbf9f4);color:var(--ink, #17191c);text-align:center;cursor:pointer;} .ds-seg-l.ds-on{border-color:var(--ink, #17191c);background:var(--hi, #f7d547);color:var(--on-hi, #17191c);} .ds-pick{grid-template-columns:1fr;margin-top:12px;} .ds-pick .ds-seg-l{display:flex;align-items:center;justify-content:flex-start;gap:12px;text-align:left;} .ds-pick .ds-seg-l::before{content:'';flex:none;width:20px;height:20px;border:1.5px solid var(--ink, #17191c);border-radius:5px;background:var(--card, #fbf9f4);} .ds-pick .ds-seg-l.ds-on::before{background:var(--ink, #17191c);}"
     },
     {
       "name": "Text Field",

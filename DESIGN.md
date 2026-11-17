@@ -260,6 +260,7 @@ Karakter: besar, tegas, mudah disentuh, dengan garis tinta yang jelas.
 - **Primary:** latar tinta, teks kertas (`.btn`).
 - **Highlight:** latar stabilo, teks tinta, garis tinta (`.btn.hi`), untuk aksi lanjut seperti "Lanjutkan simulasi".
 - **Ghost:** transparan, garis tepi; hover menggelapkan garis ke tinta.
+- **Hierarki:** satu aksi utama per layar (terisi: tinta atau stabilo); aksi lain memakai ghost (`.btn.ghost`) atau tautan (`.more`). Varian `.btn.sm` = lebar menyesuaikan, tinggi 44 px, untuk aksi bantu di dalam formulir seperti "Pola terlemah".
 - **Danger:** latar merah koreksi, dipakai untuk hapus akun.
 - **Disabled:** opacity 0,55, kursor `not-allowed`.
 - Tautan bisa memakai kelas `.btn` (`a.btn` tanpa garis bawah).
@@ -279,6 +280,8 @@ Karakter: besar, tegas, mudah disentuh, dengan garis tinta yang jelas.
 
 ### Segmented Choice
 - Grid radio berbentuk kartu 48 px (`.seg`), terpilih = stabilo kuning dengan garis tinta. Radio asli disembunyikan tetapi tetap fokus lewat `:focus-within`.
+- **Daftar yang bisa dipilih (`.seg.pick`):** kotak 20 px di kiri bila boleh pilih lebih dari satu (centang), titik bila hanya satu (`.seg.pick.radio`). Kuning saja bukan penanda; legend juga menyebut "pilih satu" atau "pilih satu atau lebih".
+- **Chip mengalir (`.seg.tags`):** lebar mengikuti teks dan membungkus, agar baris terakhir tidak meninggalkan sel yatim. `.seg.c4` = empat kolom sama lebar untuk empat opsi pendek.
 
 ### Inputs / Fields
 - **Style:** tinggi 48 px, garis 1,5 px, sudut 12 px, latar kartu, label di atas bobot 600 14 px.
