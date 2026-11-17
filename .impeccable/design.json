@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-17T14:14:26Z",
+  "generatedAt": "2026-11-17T17:32:52Z",
   "title": "Design System: Latih Seleksi",
   "extensions": {
     "colorMeta": {
@@ -163,11 +163,11 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Eyebrow mono huruf kapital."
+        "purpose": "Label kelompok kecil, bukan di atas judul halaman."
       },
       "numeric": {
         "displayName": "Numeric",
-        "purpose": "Skor, timer, persentase, nomor soal."
+        "purpose": "Skor, timer, persentase, nomor soal (jam pita 28/44 px)."
       }
     },
     "shadows": [
@@ -276,11 +276,43 @@
       "description": "Pil navigasi melayang ponsel: 5 tab, tab aktif berisi stabilo.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-a ds-active\">Beranda</a><a class=\"ds-a\">Drill</a><a class=\"ds-a\">Simulasi</a><a class=\"ds-a\">Riwayat</a><a class=\"ds-a\">Akun</a></nav>",
       "css": ".ds-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:6px;max-width:420px;border:1px solid var(--line, #d8d2c4);border-radius:28px;background:var(--card, #fbf9f4);box-shadow:0 6px 24px rgb(0 0 0/.18);font:600 11px 'IBM Plex Sans',system-ui,sans-serif;} .ds-a{display:flex;align-items:center;justify-content:center;min-height:52px;padding:6px 2px;border-radius:22px;color:var(--muted, #5a5e5b);white-space:nowrap;cursor:pointer;transition:background-color .15s;} .ds-a.ds-active{background:var(--hi, #f7d547);color:var(--on-hi, #17191c);} .ds-a:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:-3px;}"
+    },
+    {
+      "name": "Time Band",
+      "kind": "custom",
+      "refersTo": "time-band",
+      "description": "Pita di atas kartu soal: jam mono besar, tab subtes, penggaris nomor.",
+      "html": "<div class=\"ds-band\"><div class=\"ds-band-top\"><span class=\"ds-clock\">72:38</span><span class=\"ds-tab on\">TWK 14/30</span><span class=\"ds-tab\">TIU 6/35</span><button class=\"ds-end\">Selesai</button></div></div>",
+      "css": ".ds-band{display:grid;gap:10px;padding:16px 20px;background:var(--card,#fbf9f4);border:1px solid var(--line,#d8d2c4);border-radius:16px;color:var(--ink,#17191c);} .ds-band-top{display:flex;align-items:center;gap:12px 20px;} .ds-clock{font:800 44px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:-.02em;font-variant-numeric:tabular-nums;} .ds-tab{padding:0 12px;min-height:36px;display:inline-flex;align-items:center;border:1px solid var(--edge,#b9b3a4);border-radius:999px;font:600 14px 'IBM Plex Mono',ui-monospace,monospace;color:var(--muted,#5a5e5b);} .ds-tab.on{background:var(--ink,#17191c);border-color:var(--ink,#17191c);color:var(--on-ink,#f4f0e8);} .ds-end{margin-left:auto;min-height:44px;padding:0 22px;border-radius:14px;border:1.5px solid var(--ink,#17191c);background:var(--hi,#f7d547);color:var(--on-hi,#17191c);font:600 16px 'IBM Plex Sans',system-ui,sans-serif;} .ds-end:focus-visible{outline:3px solid var(--ink,#17191c);outline-offset:2px;}"
+    },
+    {
+      "name": "Number Ruler",
+      "kind": "custom",
+      "refersTo": "ruler",
+      "description": "Satu sel mono per soal: terjawab tinta, ditandai putus-putus, saat ini stabilo.",
+      "html": "<div class=\"ds-ruler\"><span class=\"ds-cell ans\">1</span><span class=\"ds-cell ans\">2</span><span class=\"ds-cell flag\">3</span><span class=\"ds-cell cur\">4</span><span class=\"ds-cell\">5</span><span class=\"ds-cell bad\">6</span></div>",
+      "css": ".ds-ruler{display:flex;gap:6px;flex-wrap:wrap;} .ds-cell{display:grid;place-items:center;min-width:36px;min-height:36px;border:1.5px solid var(--edge,#b9b3a4);border-radius:10px;background:var(--card,#fbf9f4);font:600 14px 'IBM Plex Mono',ui-monospace,monospace;color:var(--ink,#17191c);} .ds-cell.ans{background:var(--ink,#17191c);border-color:var(--ink,#17191c);color:var(--on-ink,#f4f0e8);} .ds-cell.flag{border:2px dashed var(--ink,#17191c);} .ds-cell.bad{background:var(--bad-bg,#f5d9d0);border-color:var(--bad,#ae2f1d);color:var(--bad,#ae2f1d);} .ds-cell.cur{background:var(--hi,#f7d547);border-color:var(--on-hi,#17191c);color:var(--on-hi,#17191c);}"
+    },
+    {
+      "name": "Question Card",
+      "kind": "card",
+      "refersTo": "qcard",
+      "description": "Kartu soal 720 px: batang soal, opsi, opsi terpilih berstabilo.",
+      "html": "<div class=\"ds-qcard\"><p class=\"ds-stem\">Berapa km yang ditempuh dalam 4 jam?</p><div class=\"ds-opt\">A  240 km</div><div class=\"ds-opt pick\">C  288 km</div></div>",
+      "css": ".ds-qcard{display:grid;gap:12px;max-width:720px;padding:20px;background:var(--card,#fbf9f4);border:1px solid var(--line,#d8d2c4);border-radius:18px;color:var(--ink,#17191c);} .ds-stem{margin:0;font:600 19px/1.5 'IBM Plex Sans',system-ui,sans-serif;} .ds-opt{min-height:54px;display:flex;align-items:center;padding:8px 14px;border:1.5px solid var(--edge,#b9b3a4);border-radius:14px;background:var(--paper,#f4f0e8);font:16px 'IBM Plex Sans',system-ui,sans-serif;} .ds-opt.pick{background:var(--hi,#f7d547);border-color:var(--on-hi,#17191c);color:var(--on-hi,#17191c);}"
+    },
+    {
+      "name": "Result Row",
+      "kind": "custom",
+      "refersTo": "sheet-row",
+      "description": "Nama, batang isi tinta, angka mono, satu baris keterangan.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-name\">TIU</span><span class=\"ds-bar\"><i style=\"width:57%\"></i></span><span class=\"ds-num\">100/175</span><span class=\"ds-why\">33/35 dijawab, ambang 80 tercapai</span></div>",
+      "css": ".ds-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;color:var(--ink,#17191c);} .ds-name{font:600 16px 'IBM Plex Mono',ui-monospace,monospace;} .ds-num{font:600 16px 'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;} .ds-bar{grid-column:1/-1;height:8px;border-radius:99px;background:var(--line,#d8d2c4);overflow:hidden;} .ds-bar i{display:block;height:100%;background:var(--ink,#17191c);} .ds-why{grid-column:1/-1;font-size:14px;color:var(--muted,#5a5e5b);}"
     }
   ],
   "narrative": {
     "northStar": "The Study Notebook",
-    "overview": "Sistem ini terasa seperti buku catatan belajar yang rapi: kertas krem hangat, tinta arang pekat, dan satu stabilo kuning untuk hal yang sedang penting. Angka dan label memakai huruf mono seperti tulisan tangan teknis di margin. Kartu hanya dibatasi garis tipis. Tidak ada bayangan yang menghias, tidak ada gradien, tidak ada maskot. Suasananya tenang, padat, dan hangat, sejalan dengan suara informal \"kamu\" di PRODUCT.md.\n\nKepadatan sedang: satu kolom sempit (480 px) untuk alur fokus seperti login dan drill, kolom lebar (1040 px) untuk beranda dan dasbor, dan dua kolom (soal + panel samping 300 px) saat ujian di desktop. Target sentuh besar (48–54 px) berlaku di ponsel dan laptop, karena keduanya pengguna utama.\n\nPenolakan visual yang dikonfirmasi pemilik (2026-11-17): bukan aplikasi edukasi yang ramai. Tidak ada maskot, gamifikasi mencolok, gradien ungu-biru ala startup edtech, maupun tampilan portal pemerintah.",
+    "overview": "Sistem ini terasa seperti buku catatan belajar yang rapi: kertas krem hangat, tinta arang pekat, dan satu stabilo kuning untuk hal yang sedang penting. Angka dan label memakai huruf mono seperti tulisan tangan teknis di margin. Kartu hanya dibatasi garis tipis. Tidak ada bayangan yang menghias, tidak ada gradien, tidak ada maskot. Suasananya tenang, padat, dan hangat, sejalan dengan suara informal \"kamu\" di PRODUCT.md.\n\nKepadatan sedang: satu kolom sempit (480 px) untuk alur fokus seperti login dan drill, kolom lebar (1040 px) untuk beranda dan dasbor, kolom baca (640–720 px) untuk Tentang, kartu soal, dan ringkasan, dengan satu pita waktu di atas kartu soal saat ujian dan drill. Target sentuh besar (48–54 px) berlaku di ponsel dan laptop, karena keduanya pengguna utama.\n\nPenolakan visual yang dikonfirmasi pemilik (2026-11-17): bukan aplikasi edukasi yang ramai. Tidak ada maskot, gamifikasi mencolok, gradien ungu-biru ala startup edtech, maupun tampilan portal pemerintah.",
     "keyCharacteristics": [
       "Kertas krem dan tinta arang; satu aksen kuning stabilo.",
       "Datar: garis 1–1,5 px menggantikan bayangan.",
@@ -312,23 +344,23 @@
       }
     ],
     "dos": [
-      "Do pakai custom property di `:root` untuk warna, jangan menulis hex baru di komponen; set gelap menimpa lewat `prefers-color-scheme`.",
-      "Do tampilkan status dengan ikon + teks, bukan hanya warna; ikon dekoratif `aria-hidden` dan setiap kontrol punya label teks.",
-      "Do pakai stabilo kuning untuk satu hal aktif per area, dengan teks tinta di atasnya.",
-      "Do set angka dalam mono tabular (`.num`).",
-      "Do jaga target sentuh ≥48 px, tombol utama 54 px, di ponsel maupun laptop.",
-      "Do hormati `prefers-reduced-motion`; gerak hanya transisi latar 0,15 detik pada tab nav.",
-      "Do sembunyikan navigasi melayang saat ujian berjalan di ponsel.",
-      "Do tampilkan disclaimer independen di footer dan jaga bahasa informal \"kamu\"."
+      "**Do** pakai custom property di `:root` untuk warna, jangan menulis hex baru di komponen; set gelap menimpa lewat `prefers-color-scheme`.",
+      "**Do** tampilkan status dengan ikon + teks, bukan hanya warna; ikon dekoratif `aria-hidden` dan setiap kontrol punya label teks.",
+      "**Do** pakai stabilo kuning untuk satu hal aktif per area, dengan teks tinta di atasnya.",
+      "**Do** set angka dalam mono tabular (`.num`).",
+      "**Do** jaga target sentuh ≥48 px, tombol utama 54 px, di ponsel maupun laptop.",
+      "**Do** hormati `prefers-reduced-motion`; gerak hanya transisi latar 0,15 detik pada tab nav.",
+      "**Do** sembunyikan navigasi melayang saat ujian berjalan di ponsel.",
+      "**Do** tampilkan disclaimer independen di footer dan jaga bahasa informal \"kamu\"."
     ],
     "donts": [
-      "Don't pakai bayangan pada kartu, panel, opsi, atau input; kedalaman dari garis dan lapisan warna.",
-      "Don't tambahkan maskot, gamifikasi mencolok, atau gradien ungu-biru ala startup edtech.",
-      "Don't tiru tampilan portal pemerintah atau pakai nama/logo BKN, KemenPANRB, atau FHCI.",
-      "Don't pakai teks terang di atas stabilo kuning; di mode gelap `mark` harus chip solid bergelap.",
-      "Don't menandai benar/salah hanya dengan warna.",
-      "Don't menampilkan testimoni, angka pengguna, atau jaminan kelulusan tanpa sumber (PRODUCT.md, Product Principles).",
-      "Don't mengira font bernama sudah tampil: sampai ada `@font-face` atau paket font, anggap tampilan nyata memakai fallback dan uji tata letak dengan Trebuchet MS/system-ui."
+      "**Don't** pakai bayangan pada kartu, panel, opsi, atau input; kedalaman dari garis dan lapisan warna.",
+      "**Don't** tambahkan maskot, gamifikasi mencolok, atau gradien ungu-biru ala startup edtech.",
+      "**Don't** tiru tampilan portal pemerintah atau pakai nama/logo BKN, KemenPANRB, atau FHCI.",
+      "**Don't** pakai teks terang di atas stabilo kuning; di mode gelap `mark` harus chip solid bergelap.",
+      "**Don't** menandai benar/salah hanya dengan warna.",
+      "**Don't** menampilkan testimoni, angka pengguna, atau jaminan kelulusan tanpa sumber (PRODUCT.md, Product Principles).",
+      "**Don't** menaruh eyebrow di atas judul halaman yang hanya mengulang judulnya; eyebrow hanya boleh jadi label kelompok (misalnya subtes di mulai drill)."
     ]
   }
 }
