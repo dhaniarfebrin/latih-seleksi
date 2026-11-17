@@ -53,7 +53,7 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 		t.Fatal(err)
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
-	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), export.New(st), st, cfg))
+	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All(), items), examSvc, insight.New(st, catalog.All()), export.New(st), st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -132,6 +132,11 @@ func TestHealthAndPatterns(t *testing.T) {
 			t.Errorf("pattern %s missing or without misconceptions in %s", id, out)
 		}
 	}
+	for _, id := range []string{"TWK.nasionalisme", "TWK.integritas", "TWK.bela-negara", "TWK.pilar-negara", "TWK.bahasa-negara"} {
+		if have[id] == 0 {
+			t.Errorf("pattern %s missing in %s", id, out)
+		}
+	}
 }
 
 func TestFlowHidesAndRevealsKey(t *testing.T) {
@@ -185,6 +190,19 @@ func TestFlowHidesAndRevealsKey(t *testing.T) {
 	}
 }
 
+func TestTWKDrillFlow(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tok := mint("twk-flow-user")
+	c := create(t, srv, tok, `{"pattern_id":"TWK.bela-negara","band":2}`)
+	if len(c.Items) == 0 || len(c.Items) > 8 {
+		t.Fatalf("items = %d", len(c.Items))
+	}
+	code, out, _ := doToken(t, "PUT", srv.URL+"/v1/attempts/"+c.ID+"/responses/1", `{"answer":"A","time_ms":1500}`, tok)
+	if code != 200 || !strings.Contains(out, "answer_key") || !strings.Contains(out, "steps") {
+		t.Errorf("PUT status = %d body=%s", code, out)
+	}
+}
+
 func TestBadRequestsAndNotFound(t *testing.T) {
 	srv, mint := newAuthServer(t)
 	tok := mint("bad-requests-user")
@@ -199,6 +217,7 @@ func TestBadRequestsAndNotFound(t *testing.T) {
 		`{"pattern_id":"` + p + `","band":0}`,
 		`{"pattern_id":"` + p + `","band":4}`,
 		`{"pattern_id":"unknown"}`,
+		`{"pattern_id":"TWK.unknown"}`,
 		`{"pattern_id":"` + p + `","extra":1}`,
 		`not json`,
 	} {

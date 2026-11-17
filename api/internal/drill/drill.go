@@ -88,31 +88,43 @@ type Service struct {
 	store    Store
 	ordered  []gen.Family // catalog order, for listing
 	families map[string]gen.Family
+	facts    FactSource // may be nil
 }
 
 // New builds the service over st and the registered question families
-// (catalog order is the listing order).
-func New(st Store, ordered []gen.Family) *Service {
+// (catalog order is the listing order). facts adds banked patterns after them
+// and may be nil.
+func New(st Store, ordered []gen.Family, facts FactSource) *Service {
 	families := make(map[string]gen.Family, len(ordered))
 	for _, f := range ordered {
 		families[f.ID()] = f
 	}
-	return &Service{store: st, ordered: ordered, families: families}
+	return &Service{store: st, ordered: ordered, families: families, facts: facts}
 }
 
-// Patterns lists the registered families in catalog order.
+// Patterns lists the registered families in catalog order, then banked patterns.
 func (s *Service) Patterns() []Pattern {
 	out := make([]Pattern, 0, len(s.ordered))
 	for _, f := range s.ordered {
 		out = append(out, Pattern{ID: f.ID(), Label: f.Label(), Misconceptions: f.Misconceptions()})
+	}
+	if s.facts != nil {
+		for _, id := range s.facts.PatternIDs() {
+			label, _ := s.facts.PatternLabel(id)
+			out = append(out, Pattern{ID: id, Label: label, Misconceptions: s.facts.Misconceptions()})
+		}
 	}
 	return out
 }
 
 // Create generates n questions with random seeds and freezes them for userID.
 func (s *Service) Create(ctx context.Context, userID, patternID string, n, band int) (AttemptView, error) {
-	fam, ok := s.families[patternID]
-	if !ok {
+	fam, generated := s.families[patternID]
+	banked := false
+	if !generated && s.facts != nil {
+		_, banked = s.facts.PatternLabel(patternID)
+	}
+	if !generated && !banked {
 		return AttemptView{}, invalid("unknown pattern_id %q", patternID)
 	}
 	if n < 1 || n > maxN {
@@ -122,6 +134,51 @@ func (s *Service) Create(ctx context.Context, userID, patternID string, n, band 
 		return AttemptView{}, invalid("band must be between 1 and 3")
 	}
 
+	var items []question.Item
+	var err error
+	if banked {
+		items, err = s.drawFacts(patternID, n)
+		n = len(items) // a small pool gives fewer than asked
+	} else {
+		items, err = s.generate(fam, n, band)
+	}
+	if err != nil {
+		return AttemptView{}, err
+	}
+
+	a, err := s.store.CreateAttempt(ctx, question.Attempt{UserID: userID, Mode: ModeDrill, PatternID: patternID, Band: band, N: n}, items)
+	if err != nil {
+		return AttemptView{}, err
+	}
+	return s.Get(ctx, userID, a.ID)
+}
+
+// drawFacts freezes up to n banked questions of the pattern.
+func (s *Service) drawFacts(patternID string, n int) ([]question.Item, error) {
+	seed, err := question.RandomSeed()
+	if err != nil {
+		return nil, err
+	}
+	drafts, err := s.facts.Draw(patternID, n, seed)
+	if err != nil {
+		return nil, err
+	}
+	if len(drafts) == 0 {
+		return nil, fmt.Errorf("no questions for %s", patternID)
+	}
+	items := make([]question.Item, 0, len(drafts))
+	for i, d := range drafts {
+		raw, err := json.Marshal(question.FromDraft(d))
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, question.Item{Pos: i + 1, Seed: d.Seed, Snapshot: raw})
+	}
+	return items, nil
+}
+
+// generate builds n frozen questions of a family with random seeds.
+func (s *Service) generate(fam gen.Family, n, band int) ([]question.Item, error) {
 	items := make([]question.Item, 0, n)
 	seen := make(map[string]bool, n)
 	for pos := 1; pos <= n; pos++ {
@@ -133,7 +190,7 @@ func (s *Service) Create(ctx context.Context, userID, patternID string, n, band 
 		for try := 0; try < seedRetries; try++ {
 			var seed int64
 			if seed, err = question.RandomSeed(); err != nil {
-				return AttemptView{}, err
+				return nil, err
 			}
 			d, genErr := fam.Generate(seed, gen.Band(band))
 			if genErr != nil {
@@ -146,21 +203,16 @@ func (s *Service) Create(ctx context.Context, userID, patternID string, n, band 
 			}
 		}
 		if !got {
-			return AttemptView{}, fmt.Errorf("generate item %d: %w", pos, err)
+			return nil, fmt.Errorf("generate item %d: %w", pos, err)
 		}
 		seen[draft.Stem] = true
 		raw, err := json.Marshal(question.FromDraft(draft))
 		if err != nil {
-			return AttemptView{}, err
+			return nil, err
 		}
 		items = append(items, question.Item{Pos: pos, Seed: draft.Seed, Snapshot: raw})
 	}
-
-	a, err := s.store.CreateAttempt(ctx, question.Attempt{UserID: userID, Mode: ModeDrill, PatternID: patternID, Band: band, N: n}, items)
-	if err != nil {
-		return AttemptView{}, err
-	}
-	return s.Get(ctx, userID, a.ID)
+	return items, nil
 }
 
 func (s *Service) load(ctx context.Context, userID, id string) (question.Attempt, map[int]question.Snapshot, []question.Item, []question.Response, error) {

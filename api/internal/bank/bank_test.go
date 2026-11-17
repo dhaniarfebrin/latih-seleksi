@@ -329,3 +329,65 @@ func TestPickAnswerKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestDrawTWK(t *testing.T) {
+	b := loadBank(t)
+	ids := b.PatternIDs()
+	if len(ids) != 5 {
+		t.Fatalf("pattern ids = %v, want 5 aspects", ids)
+	}
+	byID := map[string]TWKEntry{}
+	pool := map[string]int{}
+	for _, e := range b.TWK {
+		byID[e.ID] = e
+		if e.Status == StatusReviewed {
+			pool[DrillPrefix+e.Aspek]++
+		}
+	}
+	for _, id := range ids {
+		if !strings.HasPrefix(id, "TWK.") {
+			t.Errorf("%s: want TWK. prefix", id)
+		}
+		if l, ok := b.PatternLabel(id); !ok || l == "" {
+			t.Errorf("%s: no label", id)
+		}
+		got, err := b.Draw(id, 5, 42)
+		if err != nil {
+			t.Fatal(err)
+		}
+		again, _ := b.Draw(id, 5, 42)
+		if len(got) != min(5, pool[id]) {
+			t.Errorf("%s: drew %d, pool %d", id, len(got), pool[id])
+		}
+		seen := map[string]bool{}
+		for i, d := range got {
+			e, ok := byID[d.FactID]
+			if !ok || e.Status != StatusReviewed || DrillPrefix+e.Aspek != id {
+				t.Errorf("%s: bad fact %q", id, d.FactID)
+			}
+			if seen[d.FactID] {
+				t.Errorf("%s: duplicate %s", id, d.FactID)
+			}
+			seen[d.FactID] = true
+			if d.Stem != again[i].Stem || d.AnswerKey != again[i].AnswerKey {
+				t.Errorf("%s: not deterministic", id)
+			}
+			var key string
+			for _, o := range d.Options {
+				if o.Key == d.AnswerKey {
+					key = o.Text
+				}
+			}
+			if !strings.Contains(squash(d.Steps[0]), squash(key)) {
+				t.Errorf("%s: key %q not in quote step", d.FactID, key)
+			}
+		}
+	}
+	all, _ := b.Draw(ids[0], 1000, 1)
+	if len(all) != pool[ids[0]] {
+		t.Errorf("small pool: drew %d, want whole pool %d", len(all), pool[ids[0]])
+	}
+	if _, err := b.Draw("TWK.nope", 3, 1); err == nil {
+		t.Error("unknown pattern accepted")
+	}
+}

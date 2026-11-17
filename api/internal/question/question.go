@@ -28,6 +28,8 @@ type Snapshot struct {
 	Options   []SnapshotOption `json:"options"`
 	AnswerKey string           `json:"answer_key"`
 	Steps     []string         `json:"steps"`
+	// FactID is the bank entry id, frozen so spaced repetition can key on it.
+	FactID string `json:"fact_id,omitempty"`
 }
 
 // SnapshotOption is one frozen answer option.
@@ -40,7 +42,7 @@ type SnapshotOption struct {
 
 // FromDraft freezes a generated or banked draft.
 func FromDraft(d gen.Draft) Snapshot {
-	sn := Snapshot{Stem: d.Stem, AnswerKey: d.AnswerKey, Steps: d.Steps}
+	sn := Snapshot{Stem: d.Stem, AnswerKey: d.AnswerKey, Steps: d.Steps, FactID: d.FactID}
 	for _, o := range d.Options {
 		sn.Options = append(sn.Options, SnapshotOption{Key: o.Key, Text: o.Text, MisconceptionID: o.MisconceptionID, Weight: o.Weight})
 	}

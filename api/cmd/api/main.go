@@ -72,7 +72,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpx.NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), export.New(st), st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
+		Handler:           httpx.NewHandler(drill.New(st, catalog.All(), items), examSvc, insight.New(st, catalog.All()), export.New(st), st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

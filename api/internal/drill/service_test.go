@@ -19,7 +19,7 @@ const fakeUser = "user-1"
 
 func newFakeService() (*Service, *fakeStore) {
 	st := newFakeStore()
-	return New(st, catalog.All()), st
+	return New(st, catalog.All(), nil), st
 }
 
 func fakeSnapshot(t *testing.T, st *fakeStore, id string, pos int) question.Snapshot {
@@ -78,7 +78,7 @@ func (brokenFamily) Generate(int64, gen.Band) (gen.Draft, error) {
 
 // A generator failure is a server fault, so it must not look like bad input.
 func TestFakeCreate_generatorFailureIsNotInvalid(t *testing.T) {
-	svc := New(newFakeStore(), []gen.Family{brokenFamily{}})
+	svc := New(newFakeStore(), []gen.Family{brokenFamily{}}, nil)
 	_, err := svc.Create(context.Background(), fakeUser, "broken", 3, 1)
 	if !errors.Is(err, errFamilyBroken) || errors.Is(err, ErrInvalid) {
 		t.Fatalf("err = %v, want errFamilyBroken and not ErrInvalid", err)
@@ -195,5 +195,54 @@ func TestFakeReport(t *testing.T) {
 	}
 	if got := st.reports[v.ID+"/1"]; got != (fakeReport{"typo", "salah ketik"}) {
 		t.Errorf("stored = %+v", got)
+	}
+}
+
+// fakeFacts serves two TWK drafts for one pattern.
+type fakeFacts struct{}
+
+func (fakeFacts) PatternIDs() []string { return []string{"TWK.x"} }
+func (fakeFacts) PatternLabel(id string) (string, bool) {
+	return "TWK: x", id == "TWK.x"
+}
+func (fakeFacts) Misconceptions() map[string]string { return map[string]string{"distraktor": "d"} }
+func (fakeFacts) Draw(_ string, n int, seed int64) ([]gen.Draft, error) {
+	var out []gen.Draft
+	for i := 0; i < min(n, 2); i++ {
+		out = append(out, gen.Draft{
+			Stem: "q" + string(rune('0'+i)), Seed: seed + int64(i), FactID: "fact-" + string(rune('0'+i)), AnswerKey: "A",
+			Options: []gen.Option{{Key: "A", Text: "ya"}, {Key: "B", Text: "tidak", MisconceptionID: "distraktor"}},
+			Steps:   []string{"Pasal 1: \"ya\""},
+		})
+	}
+	return out, nil
+}
+
+func TestFakeFactsPatternFlow(t *testing.T) {
+	st := newFakeStore()
+	svc := New(st, catalog.All(), fakeFacts{})
+	var last Pattern
+	for _, p := range svc.Patterns() {
+		last = p
+	}
+	if last.ID != "TWK.x" || last.Misconceptions["distraktor"] == "" {
+		t.Fatalf("last pattern = %+v", last)
+	}
+	v, err := svc.Create(context.Background(), fakeUser, "TWK.x", 8, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.N != 2 || len(v.Items) != 2 {
+		t.Fatalf("n = %d, items = %d, want the pool size 2", v.N, len(v.Items))
+	}
+	if sn := fakeSnapshot(t, st, v.ID, 1); sn.FactID != "fact-0" {
+		t.Errorf("fact id = %q", sn.FactID)
+	}
+	r, err := svc.Answer(context.Background(), fakeUser, v.ID, 1, "B", 1000)
+	if err != nil || r.Correct || r.AnswerKey != "A" || r.MisconceptionID != "distraktor" || len(r.Steps) != 1 {
+		t.Fatalf("answer = %+v, %v", r, err)
+	}
+	if _, err := svc.Create(context.Background(), fakeUser, "TWK.nope", 3, 2); !errors.Is(err, ErrInvalid) {
+		t.Errorf("unknown pattern err = %v", err)
 	}
 }

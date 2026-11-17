@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strings"
 
 	"latihseleksi/api/internal/gen"
 )
@@ -60,13 +61,13 @@ func (b *Bank) Pick(section string, n int, seed int64) ([]gen.Draft, error) {
 func (e TWKEntry) draft(rng *rand.Rand, seed int64) gen.Draft {
 	texts := append([]string{e.Correct}, e.Distractors...)
 	rng.Shuffle(len(texts), func(i, j int) { texts[i], texts[j] = texts[j], texts[i] })
-	d := gen.Draft{PatternID: "twk-" + e.Aspek, Stem: e.Question, Seed: seed}
+	d := gen.Draft{PatternID: "twk-" + e.Aspek, Stem: e.Question, Seed: seed, FactID: e.ID}
 	for i, t := range texts {
 		o := gen.Option{Key: optionKeys[i], Text: t}
 		if t == e.Correct {
 			d.AnswerKey = o.Key
 		} else {
-			o.MisconceptionID = "distraktor"
+			o.MisconceptionID = DistractorMisconception
 		}
 		d.Options = append(d.Options, o)
 	}
@@ -90,4 +91,65 @@ func (e TKPEntry) draft(rng *rand.Rand, seed int64) gen.Draft {
 	}
 	d.Steps = append(d.Steps, fmt.Sprintf("Rujukan butir: %s/%s (bobot = penilaian penyusun, bukan kunci resmi)", e.RubricRef.Value, e.RubricRef.Butir))
 	return d
+}
+
+// DrillPrefix starts the drill pattern ids of TWK aspects; the dashboard takes
+// the section from the segment before the first dot.
+const DrillPrefix = SectionTWK + "."
+
+// DistractorMisconception is the misconception id of every TWK wrong option.
+const DistractorMisconception = "distraktor"
+
+// PatternIDs lists one drill pattern id per TWK aspect that has reviewed items.
+func (b *Bank) PatternIDs() []string {
+	var ids []string
+	seen := map[string]bool{}
+	for _, e := range b.TWK {
+		id := DrillPrefix + e.Aspek
+		if e.Status == StatusReviewed && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// PatternLabel returns the label of a drill pattern id.
+func (b *Bank) PatternLabel(id string) (string, bool) {
+	for _, p := range b.PatternIDs() {
+		if p == id {
+			return "TWK: " + strings.ReplaceAll(strings.TrimPrefix(id, DrillPrefix), "-", " "), true
+		}
+	}
+	return "", false
+}
+
+// Misconceptions labels the only misconception TWK items emit.
+func (b *Bank) Misconceptions() map[string]string {
+	return map[string]string{DistractorMisconception: "Memilih pengecoh (fakta keliru)"}
+}
+
+// Draw returns up to n distinct reviewed items of the aspect behind the drill
+// pattern id, or the whole pool when it is smaller than n. Deterministic per seed.
+func (b *Bank) Draw(id string, n int, seed int64) ([]gen.Draft, error) {
+	if _, ok := b.PatternLabel(id); !ok {
+		return nil, fmt.Errorf("bank: unknown drill pattern %q", id)
+	}
+	aspek := strings.TrimPrefix(id, DrillPrefix)
+	var pool []TWKEntry
+	for _, e := range b.TWK {
+		if e.Aspek == aspek && e.Status == StatusReviewed {
+			pool = append(pool, e)
+		}
+	}
+	if n > len(pool) {
+		n = len(pool)
+	}
+	rng := rand.New(rand.NewSource(seed))
+	idx := rng.Perm(len(pool))[:n]
+	out := make([]gen.Draft, 0, n)
+	for i, k := range idx {
+		out = append(out, pool[k].draft(rng, seed+int64(i)))
+	}
+	return out, nil
 }

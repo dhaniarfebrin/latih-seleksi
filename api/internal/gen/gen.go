@@ -27,6 +27,9 @@ type Draft struct {
 	AnswerKey string
 	Steps     []string
 	Seed      int64
+	// FactID names the bank entry a banked question was drawn from; empty for
+	// generated questions.
+	FactID string
 }
 
 // Family generates questions of one pattern.

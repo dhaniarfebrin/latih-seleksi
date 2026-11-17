@@ -34,7 +34,7 @@ func newService(t *testing.T) (*Service, *store.Store, string) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.DeleteUser(context.Background(), uid) })
-	return New(st, catalog.All()), st, uid
+	return New(st, catalog.All(), nil), st, uid
 }
 
 // frozenSnapshot reads the stored question.Snapshot of pos through the store.
@@ -52,7 +52,7 @@ func frozenSnapshot(t *testing.T, st *store.Store, uid, id string, pos int) ques
 }
 
 func TestPatternsListAllFamiliesWithLabels(t *testing.T) {
-	got := New(nil, catalog.All()).Patterns() // Patterns does not touch the store
+	got := New(nil, catalog.All(), nil).Patterns() // Patterns does not touch the store
 	var ids []string
 	for _, p := range got {
 		ids = append(ids, p.ID)
