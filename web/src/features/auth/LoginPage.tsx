@@ -20,6 +20,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [mode, setMode] = useState<'in' | 'up'>('in')
 
   if (!authConfigured) {
     return (
@@ -47,51 +48,70 @@ export function LoginPage() {
       setBusy(false)
     }
   }
-  const submit = (e: FormEvent, signUp: boolean) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault()
-    void run(() => (signUp ? signUpEmail(email, password) : signInEmail(email, password)))
+    void run(() => (mode === 'up' ? signUpEmail(email, password) : signInEmail(email, password)))
   }
 
+  const label = mode === 'up' ? 'Daftar' : 'Masuk'
   return (
-    <section className="screen narrow">
-      <p className="eyebrow">Masuk</p>
-      <h1 className="d">
-        Masuk ke <mark>Latih Seleksi</mark>
-      </h1>
-      <p className="muted">Hasil simulasi disimpan per akun.</p>
-      <button className="btn hi" disabled={busy} onClick={() => void run(signInGoogle)}>
-        Masuk dengan Google
-      </button>
-      <form className="field" onSubmit={(e) => submit(e, false)}>
-        <label className="lbl">
-          Email
-          <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label className="lbl">
-          Kata sandi
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        <div className="row">
-          <button className="btn" type="submit" disabled={busy}>
-            <LogIn className="ic" aria-hidden="true" />&nbsp;Masuk
+    <section className="screen narrow login-wrap">
+      <div className="login-note">
+        <p className="eyebrow">Latih Seleksi</p>
+        <h2 className="sub">Kenapa perlu akun?</h2>
+        <ul>
+          <li>Riwayat drill dan simulasi tersimpan per akun.</li>
+          <li>Titik lemah dan jadwal ulangan dihitung dari jawaban Anda.</li>
+          <li>Data bisa diunduh atau dihapus kapan saja.</li>
+        </ul>
+      </div>
+      <div className="col">
+        <p className="eyebrow">{label}</p>
+        <h1 className="d">
+          {label} ke <mark>Latih Seleksi</mark>
+        </h1>
+        <p className="muted">Hasil simulasi disimpan per akun.</p>
+        <fieldset className="field">
+          <legend>Pilihan</legend>
+          <div className="seg" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            {(['in', 'up'] as const).map((m) => (
+              <label key={m} className={mode === m ? 'on' : ''}>
+                <input type="radio" name="mode" checked={mode === m} onChange={() => setMode(m)} />
+                {m === 'in' ? 'Masuk' : 'Daftar'}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <form className="field" onSubmit={submit}>
+          <label className="lbl">
+            Email
+            <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label className="lbl">
+            Kata sandi
+            <input
+              type="password"
+              autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <button className="btn hi" type="submit" disabled={busy}>
+            <LogIn className="ic" aria-hidden="true" />&nbsp;{label}
           </button>
-          <button className="btn" type="button" disabled={busy || !email || password.length < 6} onClick={(e) => submit(e, true)}>
-            Daftar
-          </button>
-        </div>
-      </form>
-      {error && (
-        <p role="alert" className="err">
-          {error}
-        </p>
-      )}
+        </form>
+        <div className="or">atau</div>
+        <button className="btn ghost" disabled={busy} onClick={() => void run(signInGoogle)}>
+          Masuk dengan Google
+        </button>
+        {error && (
+          <p role="alert" className="err">
+            {error}
+          </p>
+        )}
+      </div>
     </section>
   )
 }
@@ -129,7 +149,7 @@ export function Verify() {
         Saya sudah verifikasi
       </button>
       <button
-        className="btn"
+        className="btn ghost"
         disabled={busy}
         onClick={() =>
           void act(async () => {

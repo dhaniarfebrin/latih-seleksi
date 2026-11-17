@@ -8,7 +8,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DrillPage } from '@/features/drill/DrillPage'
 import { ExamRoute } from '@/features/exam/ExamPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
-import { HomePage } from '@/features/home/HomePage'
+import { LandingPage } from '@/features/landing/LandingPage'
 import { LoginPage, Verify } from '@/features/auth/LoginPage'
 import { StartPage } from '@/features/exam/StartPage'
 
@@ -19,8 +19,8 @@ export function App() {
         <Route element={<Shell />}>
           <Route path="login" element={<LoginPage />} />
           <Route path="about" element={<AboutPage />} />
+          <Route index element={<LandingPage />} />
           <Route element={<RequireAuth />}>
-            <Route index element={<HomePage />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="drill" element={<DrillPage />} />
             <Route path="simulation" element={<StartPage />} />
@@ -54,13 +54,13 @@ function RequireAuth() {
 }
 
 function Shell() {
-  const { user } = useAuth()
+  const { user, ready } = useAuth()
   const signedIn = !!user?.emailVerified
   return (
     <div className="app">
       <header className="top">
         <div className="in">
-          <Link to={signedIn ? '/' : '/login'} className="brand">
+          <Link to="/" className="brand">
             Latih <mark>Seleksi</mark>
           </Link>
           {signedIn && (
@@ -86,6 +86,11 @@ function Shell() {
                 Akun
               </NavLink>
             </nav>
+          )}
+          {!signedIn && ready && !user && (
+            <Link to="/login" className="login-link">
+              Masuk
+            </Link>
           )}
         </div>
       </header>
