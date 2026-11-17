@@ -22,8 +22,8 @@ export function useDrill() {
     }
   }, [])
 
-  const start = async (patternId: string, n: number, band: number) => {
-    dispatch({ type: 'started', attempt: await createAttempt(patternId, n, band) })
+  const start = async (patternId: string, n: number, band: number, targetSec: number | null) => {
+    dispatch({ type: 'started', attempt: await createAttempt(patternId, n, band), targetSec })
   }
 
   const answer = async (attemptId: string, pos: number, key: string, timeMs: number) => {

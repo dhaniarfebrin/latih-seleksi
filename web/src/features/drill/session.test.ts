@@ -28,7 +28,7 @@ const attempt = (n: number): Attempt => ({
 
 describe('session screens', () => {
   it('goes start -> question -> summary -> start', () => {
-    let s = reduce(initialSession, { type: 'started', attempt: attempt(2) })
+    let s = reduce(initialSession, { type: 'started', attempt: attempt(2), targetSec: null })
     expect(s.screen).toBe('question')
     expect(s.index).toBe(0)
     s = reduce(s, { type: 'next' })
@@ -40,7 +40,7 @@ describe('session screens', () => {
   })
 
   it('keeps the first response for a position', () => {
-    let s = reduce(initialSession, { type: 'started', attempt: attempt(1) })
+    let s = reduce(initialSession, { type: 'started', attempt: attempt(1), targetSec: null })
     s = reduce(s, { type: 'answered', pos: 1, response: resp(true, 1000) })
     s = reduce(s, { type: 'answered', pos: 1, response: resp(false, 2000) })
     expect(s.attempt?.items[0].response?.correct).toBe(true)
@@ -49,7 +49,7 @@ describe('session screens', () => {
 
 describe('summarize', () => {
   it('counts score, average time and misconceptions', () => {
-    let s = reduce(initialSession, { type: 'started', attempt: attempt(4) })
+    let s = reduce(initialSession, { type: 'started', attempt: attempt(4), targetSec: null })
     s = reduce(s, { type: 'answered', pos: 1, response: resp(true, 10000) })
     s = reduce(s, { type: 'answered', pos: 2, response: resp(false, 20000, 'tanda-terbalik') })
     s = reduce(s, { type: 'answered', pos: 3, response: resp(false, 30000, 'tanda-terbalik') })
@@ -60,7 +60,16 @@ describe('summarize', () => {
       score: 1,
       avgMs: 20000,
       misconceptions: { 'tanda-terbalik': 2 },
+      withinTarget: null,
     })
+  })
+
+  it('counts answers within the target', () => {
+    let s = reduce(initialSession, { type: 'started', attempt: attempt(3), targetSec: 30 })
+    expect(s.targetSec).toBe(30)
+    s = reduce(s, { type: 'answered', pos: 1, response: resp(true, 30000) })
+    s = reduce(s, { type: 'answered', pos: 2, response: resp(true, 30001) })
+    expect(summarize(s.attempt!.items, 30).withinTarget).toBe(1)
   })
 
   it('has zero average with no answers', () => {

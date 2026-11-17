@@ -8,11 +8,12 @@ import { errorMessage } from '@/shared/lib/error'
 export function Question(props: {
   item: Item
   total: number
+  targetSec: number | null
   labels: Record<string, string>
   onAnswer: (pos: number, key: string, timeMs: number) => Promise<void>
   onNext: () => void
 }) {
-  const { item, total, labels, onAnswer, onNext } = props
+  const { item, total, targetSec, labels, onAnswer, onNext } = props
   const startedAt = useRef(performance.now())
   const [elapsed, setElapsed] = useState(0)
   const [sending, setSending] = useState(false)
@@ -52,6 +53,11 @@ export function Question(props: {
         <span className="num timer" aria-label="Waktu berjalan">
           {fmtClock(r ? r.time_ms / 1000 : elapsed)}
         </span>
+        {targetSec !== null && (
+          <span className={`num timer${(r ? r.time_ms / 1000 : elapsed) > targetSec ? ' low' : ''}`}>
+            Target {targetSec} d{(r ? r.time_ms / 1000 : elapsed) > targetSec ? ' (lewat)' : ''}
+          </span>
+        )}
       </div>
       <progress max={total} value={item.pos - (r ? 0 : 1)} aria-label="Kemajuan" />
       <p className="stem">{item.stem}</p>

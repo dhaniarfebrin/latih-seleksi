@@ -6,20 +6,21 @@ export interface Session {
   screen: Screen
   attempt: Attempt | null
   index: number // 0-based position of the current question
+  targetSec: number | null // optional per-question target; never sent to the server
 }
 
 export type Action =
-  | { type: 'started'; attempt: Attempt }
+  | { type: 'started'; attempt: Attempt; targetSec: number | null }
   | { type: 'answered'; pos: number; response: ResponseView }
   | { type: 'next' }
   | { type: 'reset' }
 
-export const initialSession: Session = { screen: 'start', attempt: null, index: 0 }
+export const initialSession: Session = { screen: 'start', attempt: null, index: 0, targetSec: null }
 
 export function reduce(s: Session, a: Action): Session {
   switch (a.type) {
     case 'started':
-      return { screen: 'question', attempt: a.attempt, index: 0 }
+      return { screen: 'question', attempt: a.attempt, index: 0, targetSec: a.targetSec }
     case 'answered': {
       if (!s.attempt) return s
       const items = s.attempt.items.map((it) =>
@@ -44,22 +45,26 @@ export interface Summary {
   score: number
   avgMs: number
   misconceptions: Record<string, number>
+  // Answers within targetSec; null when no target was set.
+  withinTarget: number | null
 }
 
-export function summarize(items: Item[]): Summary {
+export function summarize(items: Item[], targetSec: number | null = null): Summary {
   let answered = 0
   let score = 0
   let totalMs = 0
+  let within = 0
   const misconceptions: Record<string, number> = {}
   for (const it of items) {
     const r = it.response
     if (!r) continue
     answered++
     totalMs += r.time_ms
+    if (targetSec !== null && r.time_ms <= targetSec * 1000) within++
     if (r.correct) score++
     if (r.misconception_id) misconceptions[r.misconception_id] = (misconceptions[r.misconception_id] ?? 0) + 1
   }
-  return { n: items.length, answered, score, avgMs: answered ? Math.round(totalMs / answered) : 0, misconceptions }
+  return { n: items.length, answered, score, avgMs: answered ? Math.round(totalMs / answered) : 0, misconceptions, withinTarget: targetSec === null ? null : within }
 }
 
 // labels is Pattern.misconceptions of the attempt's pattern; ids are only

@@ -3,17 +3,27 @@ import type { Pattern } from '../types'
 import { errorMessage } from '@/shared/lib/error'
 
 const N = 8
+const TARGETS: [number | null, string][] = [
+  [null, 'Mati'],
+  [30, '30 d'],
+  [60, '60 d'],
+  [90, '90 d'],
+]
 
 export function DrillStart(props: {
   // Preselected pattern from the dashboard queue; an unknown id falls back to the first pattern.
   initialPatternId: string
   patterns: Pattern[]
   loadError: string
-  onStart: (patternId: string, n: number, band: number) => Promise<void>
+  onStart: (patternId: string, n: number, band: number, targetSec: number | null) => Promise<void>
+  // Resolves to the weakest pattern id from the dashboard queue, or null when there is none yet.
+  onPickWeakest: () => Promise<string | null>
 }) {
-  const { initialPatternId, patterns, loadError, onStart } = props
+  const { initialPatternId, patterns, loadError, onStart, onPickWeakest } = props
   const [patternId, setPatternId] = useState(initialPatternId)
   const [band, setBand] = useState(2)
+  const [targetSec, setTargetSec] = useState<number | null>(null)
+  const [noWeakest, setNoWeakest] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,9 +33,23 @@ export function DrillStart(props: {
     setBusy(true)
     setError('')
     try {
-      await onStart(pattern.id, N, band)
+      await onStart(pattern.id, N, band, targetSec)
     } catch (e) {
       setError(errorMessage(e))
+      setBusy(false)
+    }
+  }
+
+  const pickWeakest = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const id = await onPickWeakest()
+      if (id === null) setNoWeakest(true)
+      else setPatternId(id)
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
       setBusy(false)
     }
   }
@@ -52,6 +76,10 @@ export function DrillStart(props: {
             </label>
           ))}
         </div>
+        <button className="btn" disabled={busy || noWeakest} onClick={pickWeakest}>
+          Pola terlemah
+        </button>
+        {noWeakest && <p className="muted">Belum ada data dasbor untuk menentukan pola terlemah.</p>}
       </fieldset>
       <fieldset className="field">
         <legend>Tingkat kesulitan</legend>
@@ -63,6 +91,17 @@ export function DrillStart(props: {
           ].map(([v, label]) => (
             <label key={v} className={band === v ? 'on' : ''}>
               <input type="radio" name="band" checked={band === v} onChange={() => setBand(v as number)} />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="field">
+        <legend>Target waktu per soal</legend>
+        <div className="seg">
+          {TARGETS.map(([v, label]) => (
+            <label key={label} className={targetSec === v ? 'on' : ''}>
+              <input type="radio" name="target" checked={targetSec === v} onChange={() => setTargetSec(v)} />
               {label}
             </label>
           ))}

@@ -9,12 +9,13 @@ import { errorMessage } from '@/shared/lib/error'
 export function Summary(props: {
   attemptId: string
   items: Item[]
+  targetSec: number | null
   labels: Record<string, string>
   onSubmit: () => Promise<unknown>
   onAgain: () => void
 }) {
-  const { attemptId, items, labels, onSubmit, onAgain } = props
-  const sum = summarize(items)
+  const { attemptId, items, targetSec, labels, onSubmit, onAgain } = props
+  const sum = summarize(items, targetSec)
   const [submitError, setSubmitError] = useState('')
   const sent = useRef(false)
 
@@ -34,6 +35,11 @@ export function Summary(props: {
       <p className="muted">
         Rata-rata <span className="num">{(sum.avgMs / 1000).toFixed(1)}</span> detik per soal.
       </p>
+      {sum.withinTarget !== null && (
+        <p className="muted">
+          <span className="num">{sum.withinTarget}</span> dari {sum.n} soal dalam target {targetSec} detik.
+        </p>
+      )}
       {submitError && (
         <p role="alert" className="err">
           Hasil belum tersimpan di server: {submitError}
