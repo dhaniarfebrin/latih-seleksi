@@ -4,16 +4,18 @@ import { fmtClock } from '@/shared/lib/time'
 import { misconceptionLabel } from '../session'
 import type { Item } from '../types'
 import { errorMessage } from '@/shared/lib/error'
+import { Ruler } from '@/shared/components/Ruler'
 
 export function Question(props: {
   item: Item
+  items: Item[]
   total: number
   targetSec: number | null
   labels: Record<string, string>
   onAnswer: (pos: number, key: string, timeMs: number) => Promise<void>
   onNext: () => void
 }) {
-  const { item, total, targetSec, labels, onAnswer, onNext } = props
+  const { item, items, total, targetSec, labels, onAnswer, onNext } = props
   const startedAt = useRef(performance.now())
   const [elapsed, setElapsed] = useState(0)
   const [sending, setSending] = useState(false)
@@ -44,60 +46,73 @@ export function Question(props: {
     }
   }
 
+  const shown = r ? r.time_ms / 1000 : elapsed
   return (
     <>
-      <div className="qhead">
-        <p className="eyebrow">
-          Soal {item.pos} / {total}
-        </p>
-        <span className="num timer" aria-label="Waktu berjalan">
-          {fmtClock(r ? r.time_ms / 1000 : elapsed)}
-        </span>
-        {targetSec !== null && (
-          <span className={`num timer${(r ? r.time_ms / 1000 : elapsed) > targetSec ? ' low' : ''}`}>
-            Target {targetSec} d{(r ? r.time_ms / 1000 : elapsed) > targetSec ? ' (lewat)' : ''}
+      <header className="band">
+        <div className="band-top">
+          <span className="num timer" aria-label="Waktu berjalan">
+            {fmtClock(shown)}
           </span>
+          {targetSec !== null && (
+            <span className={`num${shown > targetSec ? ' timer low' : ''}`}>
+              Target {targetSec} d{shown > targetSec ? ' (lewat)' : ''}
+            </span>
+          )}
+          <span className="muted band-end">
+            Soal {item.pos} dari {total}
+          </span>
+        </div>
+        <Ruler
+          label="Hasil tiap soal"
+          current={item.pos}
+          cells={items.map((it) => ({
+            pos: it.pos,
+            state: it.response ? (it.response.correct ? 'ok' : 'bad') : 'empty',
+            label: `Soal ${it.pos}, ${it.response ? (it.response.correct ? 'benar' : 'salah') : 'belum dijawab'}`,
+          }))}
+        />
+      </header>
+      <section className="qcard" aria-label={`Soal ${item.pos}`}>
+        <p className="stem">{item.stem}</p>
+        <ul className="opts" role="list">
+          {item.options.map((o) => {
+            const chosen = r?.answer === o.key
+            const isKey = r?.answer_key === o.key
+            const cls = r ? (isKey ? 'ok' : chosen ? 'bad' : '') : ''
+            return (
+              <li key={o.key}>
+                <button
+                  className={`opt ${cls}`}
+                  disabled={!!r || sending}
+                  aria-pressed={chosen}
+                  onClick={() => answer(o.key)}
+                >
+                  <span className="k num">{o.key}</span>
+                  <span>{o.text}</span>
+                  {r && isKey && (
+                    <span className="tag">
+                      <CircleCheck className="ic" aria-hidden="true" />
+                      Kunci
+                    </span>
+                  )}
+                  {r && chosen && !isKey && (
+                    <span className="tag">
+                      <CircleX className="ic" aria-hidden="true" />
+                      Pilihanmu
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        {error && (
+          <p role="alert" className="err">
+            {error}
+          </p>
         )}
-      </div>
-      <progress max={total} value={item.pos - (r ? 0 : 1)} aria-label="Kemajuan" />
-      <p className="stem">{item.stem}</p>
-      <ul className="opts" role="list">
-        {item.options.map((o) => {
-          const chosen = r?.answer === o.key
-          const isKey = r?.answer_key === o.key
-          const cls = r ? (isKey ? 'ok' : chosen ? 'bad' : '') : ''
-          return (
-            <li key={o.key}>
-              <button
-                className={`opt ${cls}`}
-                disabled={!!r || sending}
-                aria-pressed={chosen}
-                onClick={() => answer(o.key)}
-              >
-                <span className="k num">{o.key}</span>
-                <span>{o.text}</span>
-                {r && isKey && (
-                  <span className="tag">
-                    <CircleCheck className="ic" aria-hidden="true" />
-                    Kunci
-                  </span>
-                )}
-                {r && chosen && !isKey && (
-                  <span className="tag">
-                    <CircleX className="ic" aria-hidden="true" />
-                    Pilihanmu
-                  </span>
-                )}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-      {error && (
-        <p role="alert" className="err">
-          {error}
-        </p>
-      )}
+      </section>
       {r && (
         <section className="panel" aria-live="polite">
           <p className={`verdict ${r.correct ? 'ok' : 'bad'}`}>

@@ -5,6 +5,7 @@ import { misconceptionLabel, summarize } from '../session'
 import type { Item } from '../types'
 import { ReportForm } from '@/shared/components/ReportForm'
 import { errorMessage } from '@/shared/lib/error'
+import { Ruler } from '@/shared/components/Ruler'
 
 export function Summary(props: {
   attemptId: string
@@ -28,10 +29,20 @@ export function Summary(props: {
   const tally = Object.entries(sum.misconceptions).sort((a, b) => b[1] - a[1])
   return (
     <>
-      <p className="eyebrow">Ringkasan</p>
       <h1 className="d">
         Skor <mark className="num">{sum.score}</mark> / {sum.n}
       </h1>
+      <section className="band">
+        <Ruler
+          label="Hasil tiap soal"
+          current={0}
+          cells={items.map((it) => ({
+            pos: it.pos,
+            state: it.response ? (it.response.correct ? 'ok' : 'bad') : 'empty',
+            label: `Soal ${it.pos}, ${it.response ? (it.response.correct ? 'benar' : 'salah') : 'tidak dijawab'}`,
+          }))}
+        />
+      </section>
       <p className="muted">
         Rata-rata <span className="num">{(sum.avgMs / 1000).toFixed(1)}</span> detik per soal.
       </p>

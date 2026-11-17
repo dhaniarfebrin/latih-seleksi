@@ -10,10 +10,10 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
   return (
     <div className="wide split">
       <div className="col">
-        <p className="eyebrow">{result.status === 'expired' ? 'Waktu habis' : 'Selesai'}</p>
         <h1 className="d">
           Skor <mark className="num">{result.total}</mark> / {result.max_total}
         </h1>
+        {result.status === 'expired' && <p className="muted">Waktu habis.</p>}
         {result.partial && (
           <p className="chip warn">Simulasi parsial: tiap subtes dibandingkan dengan ambangnya, bukan status lulus.</p>
         )}
@@ -25,23 +25,31 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
         )}
         <section className="panel">
           <h2 className="sub">Per subtes</h2>
-          <ul className="tally" role="list">
+          <ul className="sheet-rows" role="list">
             {result.sections.map((x) => (
-              <li key={x.id}>
-                <span>
-                  {x.id}: {x.answered}/{x.items} dijawab
+              <li key={x.id} className="sheet-row">
+                <span className="sheet-name">{x.id}</span>
+                <span className="sheet-bar" aria-hidden="true">
+                  <i style={{ width: `${x.max > 0 ? Math.round((x.score * 100) / x.max) : 0}%` }} />
                 </span>
                 <span className="num">
                   {x.score}/{x.max}
-                  {x.min !== undefined && (
-                    <>
-                      {' '}
-                      (ambang {x.min}){' '}
-                      {x.met ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}{' '}
-                      {x.met ? 'tercapai' : 'belum tercapai'}
-                    </>
-                  )}
                 </span>
+                <div className="sheet-why">
+                  <span>
+                    {x.answered}/{x.items} dijawab
+                    {x.min !== undefined && (
+                      <>
+                        {', ambang '}
+                        {x.min}{' '}
+                        <span className={x.met ? 'okt' : 'badt'}>
+                          {x.met ? <CircleCheck className="ic" aria-hidden="true" /> : <CircleX className="ic" aria-hidden="true" />}{' '}
+                          {x.met ? 'tercapai' : 'belum tercapai'}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>

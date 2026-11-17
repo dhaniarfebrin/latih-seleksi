@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Clock, Flag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Flag } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, getServerOffset } from '@/shared/api/client'
 import { getExam, getExamResult, putExamResponse, submitExam } from '../api'
@@ -6,6 +6,7 @@ import type { Exam, ExamItem, ExamResult } from '../types'
 import { fmtClock } from '@/shared/lib/time'
 import { itemStatus, nextSeq, remainingSeconds, summarizeSections } from '../exam'
 import { errorMessage } from '@/shared/lib/error'
+import { Ruler } from '@/shared/components/Ruler'
 
 const STATUS_LABEL = { empty: 'belum dijawab', answered: 'terjawab', flagged: 'ragu-ragu' }
 
@@ -90,19 +91,27 @@ export function Running(props: {
       <Clock className="ic" aria-hidden="true" /> {fmtClock(left)}
     </span>
   )
-  const grid = (
-    <div className="grid" role="group" aria-label="Nomor soal">
-      {exam.items.map((it, i) => (
+  // The ruler covers the subtest on screen; the tabs move between subtests.
+  const ruler = (
+    <Ruler
+      label="Nomor soal"
+      current={item.pos}
+      cells={exam.items
+        .filter((it) => it.section === item.section)
+        .map((it) => ({ pos: it.pos, state: itemStatus(it), label: `Soal ${it.pos}, ${STATUS_LABEL[itemStatus(it)]}` }))}
+      onPick={(pos) => goto(exam.items.findIndex((it) => it.pos === pos))}
+    />
+  )
+  const tabs = (
+    <div className="tabs" role="group" aria-label="Subtes">
+      {sections.map((x) => (
         <button
-          key={it.pos}
-          className={`cell ${itemStatus(it)}${i === idx ? ' cur' : ''}`}
-          aria-label={`Soal ${it.pos}, ${STATUS_LABEL[itemStatus(it)]}`}
-          aria-current={i === idx}
-          onClick={() => goto(i)}
+          key={x.id}
+          className={`tab${x.id === item.section ? ' on' : ''}`}
+          aria-pressed={x.id === item.section}
+          onClick={() => goto(exam.items.findIndex((it) => it.section === x.id))}
         >
-          {it.pos}
-          {itemStatus(it) === 'flagged' && <Flag className="ic" aria-hidden="true" />}
-          {itemStatus(it) === 'answered' && <Check className="ic" aria-hidden="true" />}
+          {x.id} {x.answered}/{x.total}
         </button>
       ))}
     </div>
@@ -110,22 +119,46 @@ export function Running(props: {
 
   return (
     <div className="wide exam">
-      <div className="bar mo">
-        <p className="eyebrow">
-          Soal {item.pos} / {exam.items.length}
+      <header className="pin">
+        <div className="band">
+          <div className="band-top">
+            {timer}
+            <div className="dk tabs-slot">{tabs}</div>
+            {!confirming && (
+              <button className="btn hi band-end" onClick={() => setConfirming(true)}>
+                Selesai
+              </button>
+            )}
+          </div>
+          <progress max={exam.items.length} value={exam.items.length - unanswered} aria-label="Soal terjawab" />
+          <div className="dk">{ruler}</div>
+          <details className="mo">
+            <summary>
+              Nomor soal ({exam.items.length - unanswered}/{exam.items.length} terjawab
+              {flagged > 0 ? `, ragu ${flagged}` : ''})
+            </summary>
+            {tabs}
+            {ruler}
+          </details>
+        </div>
+      </header>
+      {confirming && (
+        <section className="panel" role="alertdialog" aria-label="Konfirmasi selesai">
+          <p>{unanswered > 0 ? `${unanswered} soal belum dijawab. Akhiri simulasi sekarang?` : 'Akhiri simulasi sekarang?'}</p>
+          <div className="row">
+            <button className="btn hi" disabled={busy} onClick={() => void finish()}>
+              {busy ? 'Mengirim...' : 'Ya, selesai'}
+            </button>
+            <button className="btn" disabled={busy} onClick={() => setConfirming(false)}>
+              Lanjut mengerjakan
+            </button>
+          </div>
+        </section>
+      )}
+      <section className="qcard" aria-label={`Soal ${item.pos}`}>
+        <p className="muted">
+          Soal {item.pos} dari {exam.items.length}, {item.section}
         </p>
-        {timer}
-      </div>
-      <div className="qmain">
-        <p className="eyebrow dk">
-          Soal {item.pos} / {exam.items.length}
-        </p>
-        <details className="mo">
-          <summary>
-            Nomor soal ({exam.items.length - unanswered}/{exam.items.length} terjawab)
-          </summary>
-          {grid}
-        </details>
         <p className="stem">{item.stem}</p>
         <ul className="opts" role="list">
           {item.options.map((o) => (
@@ -160,35 +193,7 @@ export function Running(props: {
             <ChevronRight className="ic" aria-hidden="true" />
           </button>
         </div>
-      </div>
-      <aside className="side">
-        <div className="dk side-timer">
-          <span className="eyebrow">Sisa waktu</span>
-          {timer}
-        </div>
-        <p className="muted">
-          {sections.map((x) => `${x.id} ${x.answered}/${x.total}`).join(' | ')}
-          {flagged > 0 ? ` | ragu ${flagged}` : ''}
-        </p>
-        <div className="dk">{grid}</div>
-        {confirming ? (
-          <section className="panel" role="alertdialog" aria-label="Konfirmasi selesai">
-            <p>{unanswered > 0 ? `${unanswered} soal belum dijawab. Akhiri simulasi sekarang?` : 'Akhiri simulasi sekarang?'}</p>
-            <div className="row">
-              <button className="btn hi" disabled={busy} onClick={() => void finish()}>
-                {busy ? 'Mengirim...' : 'Ya, selesai'}
-              </button>
-              <button className="btn" disabled={busy} onClick={() => setConfirming(false)}>
-                Lanjut mengerjakan
-              </button>
-            </div>
-          </section>
-        ) : (
-          <button className="btn hi" onClick={() => setConfirming(true)}>
-            Selesai
-          </button>
-        )}
-      </aside>
+      </section>
     </div>
   )
 }

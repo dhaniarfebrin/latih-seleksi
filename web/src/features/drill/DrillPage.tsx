@@ -12,12 +12,13 @@ export function DrillPage() {
   const attempt = s.attempt
   const labelsOf = (patternId: string) => patterns.find((p) => p.id === patternId)?.misconceptions ?? {}
   return (
-    <section className="screen narrow">
+    <section className={s.screen === 'start' ? 'screen narrow' : 'screen mid'}>
       {s.screen === 'start' && <DrillStart initialPatternId={params.get('pattern') ?? ''} patterns={patterns} loadError={patternsError} dueCount={dueCount} onStart={start} onPickWeakest={getWeakestPatternId} />}
       {s.screen === 'question' && attempt && (
         <Question
           key={s.index}
           item={attempt.items[s.index]}
+          items={attempt.items}
           total={attempt.items.length}
           targetSec={s.targetSec}
           labels={labelsOf(attempt.pattern_id)}

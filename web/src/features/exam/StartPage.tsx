@@ -41,12 +41,11 @@ export function StartPage() {
 
   return (
     <section className="screen narrow">
-      <p className="eyebrow">{partial ? 'Simulasi parsial' : 'Simulasi lengkap'}</p>
       <h1 className="d">
         Simulasi <mark>SKD</mark>
       </h1>
       <p className="muted">
-        {partial ? 'Durasi prorata (bukan durasi resmi). ' : ''}Waktu dihitung server dan jalan terus walau halaman ditutup.
+        {partial ? 'Simulasi parsial, durasi prorata (bukan durasi resmi). ' : 'Simulasi lengkap. '}Waktu dihitung server dan jalan terus walau halaman ditutup.
       </p>
       {specs.length > 1 && (
         <fieldset className="field">

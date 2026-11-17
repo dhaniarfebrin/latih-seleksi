@@ -66,12 +66,11 @@ export function DrillStart(props: {
 
   return (
     <>
-      <p className="eyebrow">{N} soal</p>
       <h1 className="d">
         <mark>Drill</mark>
       </h1>
       <p className="muted">
-        {pattern ? pattern.label : 'Memuat pola soal...'}. Jawab, lalu lihat kunci, penjelasan, dan jenis salahnya.
+        {pattern ? `${N} soal ${pattern.label}` : 'Memuat pola soal...'}. Jawab, lalu lihat kunci, penjelasan, dan jenis salahnya.
       </p>
       <fieldset className="field">
         <legend>Pola soal</legend>
