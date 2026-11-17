@@ -9,7 +9,7 @@ import (
 	"latihseleksi/api/internal/bank"
 )
 
-const usage = "usage: bank check | bank review | bank sheet"
+const usage = "usage: bank check | bank review | bank sheet | bank sheet-twk"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -28,6 +28,8 @@ func main() {
 		review(b)
 	case "sheet":
 		sheet(b)
+	case "sheet-twk":
+		sheetTWK(b)
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
@@ -84,6 +86,31 @@ func sheet(b *bank.Bank) {
 			e.ID, e.Status, e.Aspek, e.RubricRef.Value, e.RubricRef.Butir, label[e.RubricRef.Value], butir[e.RubricRef], e.Scenario)
 		for _, o := range e.Options {
 			fmt.Printf("  - bobot %d: %s\n", o.Weight, o.Text)
+		}
+	}
+}
+
+// sheetTWK prints a markdown review sheet of every TWK item, grouped by
+// aspek, for a human to read the question, key and quote against the source.
+func sheetTWK(b *bank.Bank) {
+	fmt.Print("# Lembar tinjau TWK\n\nKunci berasal dari kutipan sumber (dicek otomatis terhadap korpus). Yang perlu dinilai manusia: kutipan benar dan utuh, kunci tidak ambigu, pengecoh jelas salah, kalimat soal wajar. Tandai tiap item: [x] setuju, atau tulis catatan.\n")
+	byAspek := map[string][]bank.TWKEntry{}
+	var aspects []string
+	for _, e := range b.TWK {
+		if _, ok := byAspek[e.Aspek]; !ok {
+			aspects = append(aspects, e.Aspek)
+		}
+		byAspek[e.Aspek] = append(byAspek[e.Aspek], e)
+	}
+	sort.Strings(aspects)
+	for _, a := range aspects {
+		fmt.Printf("\n# Aspek: %s (%d item)\n", a, len(byAspek[a]))
+		for _, e := range byAspek[a] {
+			fmt.Printf("\n## %s\n\n- [ ] setuju | catatan:\n- status: %s, ditinjau: %s\n- sumber: %s, %s\n- soal: %s\n- kunci: %s\n- pengecoh:\n", e.ID, e.Status, e.ReviewedBy, e.SourceID, e.Ref, e.Question, e.Correct)
+			for _, d := range e.Distractors {
+				fmt.Printf("  - %s\n", d)
+			}
+			fmt.Printf("- kutipan: %q\n", e.Quote)
 		}
 	}
 }
