@@ -145,6 +145,15 @@ func TestCoverage(t *testing.T) {
 	}
 }
 
+func TestTWKHasEnoughReviewedPerAspek(t *testing.T) {
+	const min = 15
+	for a, v := range loadBank(t).Coverage(SectionTWK) {
+		if v.Reviewed < min {
+			t.Errorf("aspek %s: want >= %d reviewed TWK items, got %d", a, min, v.Reviewed)
+		}
+	}
+}
+
 var (
 	testCorpus = map[string]string{"src": "Pasal 1\nBahasa Negara ialah\nBahasa Indonesia."}
 	testAspect = []string{"bahasa-negara"}
