@@ -5,8 +5,6 @@ import (
 	"context"
 	"sort"
 	"time"
-
-	"latihseleksi/api/internal/gen"
 )
 
 const (
@@ -120,14 +118,14 @@ type Dashboard struct {
 // Service builds dashboards from stored answers.
 type Service struct {
 	st       Store
-	families []gen.Family
+	patterns PatternSource
 	due      DueSource // may be nil
 }
 
-// New returns a Service; families define which patterns can be suggested as
-// untried. due lists patterns whose review is due and may be nil.
-func New(st Store, families []gen.Family, due DueSource) *Service {
-	return &Service{st: st, families: families, due: due}
+// New returns a Service; patterns define which drill patterns (TIU and TWK) can
+// be suggested as untried. due lists patterns whose review is due and may be nil.
+func New(st Store, patterns PatternSource, due DueSource) *Service {
+	return &Service{st: st, patterns: patterns, due: due}
 }
 
 // Dashboard returns the weakness dashboard of the user.
@@ -136,9 +134,9 @@ func (s *Service) Dashboard(ctx context.Context, userID string) (Dashboard, erro
 	if err != nil {
 		return Dashboard{}, err
 	}
-	ids := make([]string, len(s.families))
-	for i, f := range s.families {
-		ids[i] = f.ID()
+	var ids []string
+	if s.patterns != nil {
+		ids = s.patterns.PatternIDs()
 	}
 	var due []string
 	if s.due != nil {

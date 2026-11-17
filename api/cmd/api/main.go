@@ -64,6 +64,7 @@ func run() error {
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
 
 	reviews := review.New(st)
+	drillSvc := drill.New(st, catalog.All(), items, reviews)
 
 	// FIREBASE_PROJECT_ID is not a secret. Empty leaves /v1/exams* closed (503).
 	var verifier *auth.Verifier
@@ -75,7 +76,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpx.NewHandler(drill.New(st, catalog.All(), items, reviews), examSvc, insight.New(st, catalog.All(), reviews), export.New(st), reviews, st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
+		Handler:           httpx.NewHandler(drillSvc, examSvc, insight.New(st, drillSvc, reviews), export.New(st), reviews, st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

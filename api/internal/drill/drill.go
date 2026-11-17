@@ -128,6 +128,16 @@ func (s *Service) Patterns() []Pattern {
 	return out
 }
 
+// PatternIDs lists the ids of Patterns in the same order.
+func (s *Service) PatternIDs() []string {
+	ps := s.Patterns()
+	ids := make([]string, len(ps))
+	for i, p := range ps {
+		ids[i] = p.ID
+	}
+	return ids
+}
+
 // Create generates n questions with random seeds and freezes them for userID.
 func (s *Service) Create(ctx context.Context, userID, patternID string, n, band int) (AttemptView, error) {
 	if patternID == ReviewPatternID && s.reviewer != nil && s.facts != nil {

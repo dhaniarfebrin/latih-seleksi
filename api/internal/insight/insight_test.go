@@ -239,3 +239,22 @@ func TestServiceUsesDueSource(t *testing.T) {
 		t.Errorf("err=%v queue=%+v", err, d.Queue)
 	}
 }
+
+type fakePatterns struct{ ids []string }
+
+func (f fakePatterns) PatternIDs() []string { return f.ids }
+
+// Untried suggestions come from the pattern source, so banked TWK patterns
+// can be suggested after the generated ones.
+func TestServiceSuggestsUntriedPatternsFromSource(t *testing.T) {
+	src := fakePatterns{[]string{"TIU.a", "TWK.x", "TWK.y"}}
+	st := &fakeStore{facts: repeat("TIU.a", 4, 0)} // TIU.a tried, 100% accurate
+	d, err := New(st, src, nil).Dashboard(context.Background(), "u")
+	want := []QueueItem{
+		{PatternID: "TWK.x", Reason: ReasonUntried},
+		{PatternID: "TWK.y", Reason: ReasonUntried},
+	}
+	if err != nil || !reflect.DeepEqual(d.Queue, want) {
+		t.Errorf("err=%v queue=%+v, want %+v", err, d.Queue, want)
+	}
+}
