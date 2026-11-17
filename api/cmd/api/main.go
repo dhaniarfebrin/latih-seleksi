@@ -19,6 +19,7 @@ import (
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/httpx"
 	"latihseleksi/api/internal/insight"
+	"latihseleksi/api/internal/review"
 	"latihseleksi/api/internal/spec"
 	"latihseleksi/api/internal/store"
 )
@@ -62,6 +63,8 @@ func run() error {
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
 
+	reviews := review.New(st)
+
 	// FIREBASE_PROJECT_ID is not a secret. Empty leaves /v1/exams* closed (503).
 	var verifier *auth.Verifier
 	if pid := os.Getenv("FIREBASE_PROJECT_ID"); pid != "" {
@@ -72,7 +75,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpx.NewHandler(drill.New(st, catalog.All(), items), examSvc, insight.New(st, catalog.All()), export.New(st), st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
+		Handler:           httpx.NewHandler(drill.New(st, catalog.All(), items, reviews), examSvc, insight.New(st, catalog.All(), reviews), export.New(st), reviews, st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

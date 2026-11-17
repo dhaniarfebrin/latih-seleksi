@@ -14,7 +14,7 @@ func fact(attempt, pattern string, correct bool, ms int) Fact {
 }
 
 func TestEmptyIsNonNil(t *testing.T) {
-	d := Build(nil, nil)
+	d := Build(nil, nil, nil)
 	if d.Sections == nil || d.Patterns == nil || d.Sessions == nil || d.Queue == nil {
 		t.Fatalf("nil slice in %+v", d)
 	}
@@ -22,7 +22,7 @@ func TestEmptyIsNonNil(t *testing.T) {
 
 func TestAccuracyAndAverageTime(t *testing.T) {
 	facts := []Fact{fact("a", "p", true, 1000), fact("a", "p", false, 3000), fact("a", "p", true, 2000)}
-	d := Build(facts, nil)
+	d := Build(facts, nil, nil)
 	p := d.Patterns[0]
 	if p.Answered != 3 || p.Correct != 2 || p.AvgTimeMS != 2000 {
 		t.Errorf("pattern = %+v", p)
@@ -59,7 +59,7 @@ func TestCauseLabels(t *testing.T) {
 		{"exactly 0.5x is not fast", 500, CauseCounts{Misunderstood: 1}},
 	}
 	for _, c := range cases {
-		d := Build(append(append([]Fact{}, correct...), fact("a", "p", false, c.ms)), nil)
+		d := Build(append(append([]Fact{}, correct...), fact("a", "p", false, c.ms)), nil, nil)
 		if got := d.Patterns[0].Causes; got != c.want {
 			t.Errorf("%s: causes = %+v, want %+v", c.name, got, c.want)
 		}
@@ -68,18 +68,18 @@ func TestCauseLabels(t *testing.T) {
 
 func TestFewCorrectIsUnclear(t *testing.T) {
 	facts := []Fact{fact("a", "p", true, 1000), fact("a", "p", true, 1000), fact("a", "p", false, 9000)}
-	if got := Build(facts, nil).Patterns[0].Causes; got != (CauseCounts{Unclear: 1}) {
+	if got := Build(facts, nil, nil).Patterns[0].Causes; got != (CauseCounts{Unclear: 1}) {
 		t.Errorf("causes = %+v", got)
 	}
 }
 
 func TestTopMisconception(t *testing.T) {
 	w := func(m string) Fact { f := fact("a", "p", false, 1); f.MisconceptionID = m; return f }
-	got := Build([]Fact{w("b"), w("a"), w("b"), w("a"), w("")}, nil).Patterns[0].TopMisconceptionID
+	got := Build([]Fact{w("b"), w("a"), w("b"), w("a"), w("")}, nil, nil).Patterns[0].TopMisconceptionID
 	if got != "a" {
 		t.Errorf("top = %q, want a (tie to smallest id)", got)
 	}
-	if got := Build([]Fact{fact("a", "p", true, 1)}, nil).Patterns[0].TopMisconceptionID; got != "" {
+	if got := Build([]Fact{fact("a", "p", true, 1)}, nil, nil).Patterns[0].TopMisconceptionID; got != "" {
 		t.Errorf("top = %q, want empty", got)
 	}
 }
@@ -101,7 +101,7 @@ func TestQueueOrderAndUntriedFill(t *testing.T) {
 	facts = append(facts, repeat("low", 1, 3)...)  // 25%
 	facts = append(facts, repeat("good", 4, 1)...) // 80%: not queued
 	facts = append(facts, repeat("few", 0, 2)...)  // 0% but only 2 answers
-	d := Build(facts, []string{"good", "new1", "low", "new2"})
+	d := Build(facts, []string{"good", "new1", "low", "new2"}, nil)
 	want := []QueueItem{
 		{PatternID: "low", Reason: ReasonLowAccuracy, AccuracyPct: 25},
 		{PatternID: "mid", Reason: ReasonLowAccuracy, AccuracyPct: 75},
@@ -114,7 +114,7 @@ func TestQueueOrderAndUntriedFill(t *testing.T) {
 
 // The queue percent is rounded like the UI's own percent (1/8 = 12.5% shows as 13%), not truncated.
 func TestQueueAccuracyRounds(t *testing.T) {
-	d := Build(repeat("p", 1, 7), nil)
+	d := Build(repeat("p", 1, 7), nil, nil)
 	if len(d.Queue) != 1 || d.Queue[0].AccuracyPct != 13 {
 		t.Errorf("queue = %+v, want one item at 13%%", d.Queue)
 	}
@@ -125,7 +125,7 @@ func TestQueueCappedAtThree(t *testing.T) {
 	for _, p := range []string{"a", "b", "c", "d"} {
 		facts = append(facts, repeat(p, 0, 3)...)
 	}
-	if n := len(Build(facts, []string{"x"}).Queue); n != MaxQueue {
+	if n := len(Build(facts, []string{"x"}, nil).Queue); n != MaxQueue {
 		t.Errorf("queue length = %d", n)
 	}
 }
@@ -137,7 +137,7 @@ func TestSessionsNewestFirstAndCapped(t *testing.T) {
 		f.StartedAt = t0.Add(time.Duration(i) * time.Hour)
 		facts = append(facts, f)
 	}
-	d := Build(facts, nil)
+	d := Build(facts, nil, nil)
 	if len(d.Sessions) != MaxSessions {
 		t.Fatalf("sessions = %d", len(d.Sessions))
 	}
@@ -154,7 +154,7 @@ func TestSessionPatternOnlyForDrill(t *testing.T) {
 	sim2 := fact("sim", "p2", false, 1)
 	sim2.Mode = "simulasi"
 	sim2.StartedAt = t0.Add(time.Hour)
-	d := Build([]Fact{fact("dr", "p1", true, 1), sim, sim2}, nil)
+	d := Build([]Fact{fact("dr", "p1", true, 1), sim, sim2}, nil, nil)
 	if len(d.Sessions) != 2 {
 		t.Fatalf("sessions = %+v", d.Sessions)
 	}
@@ -168,7 +168,7 @@ func TestSessionPatternOnlyForDrill(t *testing.T) {
 
 // Answers without a pattern id cannot be placed anywhere; they must not show up as a pattern "".
 func TestFactsWithoutPatternAreSkipped(t *testing.T) {
-	d := Build([]Fact{fact("a", "", false, 1), fact("a", "p", true, 1)}, nil)
+	d := Build([]Fact{fact("a", "", false, 1), fact("a", "p", true, 1)}, nil, nil)
 	if len(d.Patterns) != 1 || d.Patterns[0].PatternID != "p" || d.Sections[0].Answered != 1 || d.Sessions[0].Answered != 1 {
 		t.Errorf("dashboard = %+v", d)
 	}
@@ -186,7 +186,7 @@ func (f *fakeStore) ResponseFacts(_ context.Context, _ string, limit int) ([]Fac
 
 func TestServiceUsesFactLimit(t *testing.T) {
 	st := &fakeStore{facts: repeat("p", 1, 0)}
-	d, err := New(st, nil).Dashboard(context.Background(), "u")
+	d, err := New(st, nil, nil).Dashboard(context.Background(), "u")
 	if err != nil || st.limit != FactLimit || len(d.Patterns) != 1 {
 		t.Errorf("limit=%d err=%v d=%+v", st.limit, err, d)
 	}
@@ -197,7 +197,7 @@ func TestServiceUsesFactLimit(t *testing.T) {
 func TestWeightedFactsAreExcluded(t *testing.T) {
 	w := fact("a", "TKP.x", false, 1000)
 	w.Section, w.Weighted = "TKP", true
-	d := Build([]Fact{w, fact("a", "p", true, 1000)}, []string{"TKP.x", "p"})
+	d := Build([]Fact{w, fact("a", "p", true, 1000)}, []string{"TKP.x", "p"}, nil)
 	if len(d.Sections) != 1 || d.Sections[0].Section != "TIU" || d.Sections[0].Answered != 1 {
 		t.Errorf("sections = %+v", d.Sections)
 	}
@@ -206,5 +206,36 @@ func TestWeightedFactsAreExcluded(t *testing.T) {
 	}
 	if len(d.Sessions) != 1 || d.Sessions[0].Answered != 1 {
 		t.Errorf("sessions = %+v", d.Sessions)
+	}
+}
+
+// Due patterns come first, once each, then low accuracy (skipping those already
+// queued), then untried; the cap still holds.
+func TestQueueDueFirstWithoutDuplicates(t *testing.T) {
+	var facts []Fact
+	facts = append(facts, repeat("low", 1, 3)...) // 25%, also due
+	facts = append(facts, repeat("mid", 3, 1)...) // 75%
+	d := Build(facts, []string{"new1"}, []string{"low", "low", "gone"})
+	want := []QueueItem{
+		{PatternID: "low", Reason: ReasonDue},
+		{PatternID: "gone", Reason: ReasonDue},
+		{PatternID: "mid", Reason: ReasonLowAccuracy, AccuracyPct: 75},
+	}
+	if !reflect.DeepEqual(d.Queue, want) {
+		t.Errorf("queue = %+v, want %+v", d.Queue, want)
+	}
+	if n := len(Build(nil, nil, []string{"a", "b", "c", "d"}).Queue); n != MaxQueue {
+		t.Errorf("queue length = %d", n)
+	}
+}
+
+type fakeDue struct{ ids []string }
+
+func (f fakeDue) DuePatterns(context.Context, string) ([]string, error) { return f.ids, nil }
+
+func TestServiceUsesDueSource(t *testing.T) {
+	d, err := New(&fakeStore{}, nil, fakeDue{[]string{"p"}}).Dashboard(context.Background(), "u")
+	if err != nil || len(d.Queue) != 1 || d.Queue[0].Reason != ReasonDue {
+		t.Errorf("err=%v queue=%+v", err, d.Queue)
 	}
 }

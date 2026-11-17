@@ -12,6 +12,33 @@ type Data struct {
 	ExportedAt time.Time `json:"exported_at"`
 	Account    Account   `json:"account"`
 	Attempts   []Attempt `json:"attempts"`
+	// ReviewCards and ReviewLog are the spaced-repetition state and history.
+	ReviewCards []ReviewCard `json:"review_cards"`
+	ReviewLog   []ReviewLog  `json:"review_log"`
+}
+
+// ReviewCard is the current FSRS state of a TWK fact or TIU pattern.
+type ReviewCard struct {
+	Kind       string    `json:"kind"`
+	Key        string    `json:"key"`
+	Stability  float64   `json:"stability"`
+	Difficulty float64   `json:"difficulty"`
+	Due        time.Time `json:"due"`
+	LastReview time.Time `json:"last_review"`
+	Reps       int       `json:"reps"`
+	Lapses     int       `json:"lapses"`
+}
+
+// ReviewLog is one review; the before values are absent for a first review.
+type ReviewLog struct {
+	AttemptID        string    `json:"attempt_id"`
+	Kind             string    `json:"kind"`
+	Key              string    `json:"key"`
+	Grade            int       `json:"grade"`
+	ReviewedAt       time.Time `json:"reviewed_at"`
+	ElapsedDays      int       `json:"elapsed_days"`
+	StabilityBefore  *float64  `json:"stability_before,omitempty"`
+	DifficultyBefore *float64  `json:"difficulty_before,omitempty"`
 }
 
 type Account struct {
@@ -75,6 +102,12 @@ func (s *Service) Build(ctx context.Context, userID string) (Data, error) {
 	}
 	if d.Attempts == nil {
 		d.Attempts = []Attempt{}
+	}
+	if d.ReviewCards == nil {
+		d.ReviewCards = []ReviewCard{}
+	}
+	if d.ReviewLog == nil {
+		d.ReviewLog = []ReviewLog{}
 	}
 	d.ExportedAt = s.now().UTC()
 	return d, nil

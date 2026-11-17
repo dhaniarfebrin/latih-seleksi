@@ -153,3 +153,27 @@ func (b *Bank) Draw(id string, n int, seed int64) ([]gen.Draft, error) {
 	}
 	return out, nil
 }
+
+// ByID returns the reviewed TWK items with the given entry ids in the order of
+// ids, each with its drill pattern id (TWK.<aspek>) in Draft.PatternID.
+// Unknown or unreviewed ids are skipped. Deterministic per seed.
+func (b *Bank) ByID(ids []string, seed int64) []gen.Draft {
+	byID := make(map[string]TWKEntry, len(b.TWK))
+	for _, e := range b.TWK {
+		if e.Status == StatusReviewed {
+			byID[e.ID] = e
+		}
+	}
+	rng := rand.New(rand.NewSource(seed))
+	out := make([]gen.Draft, 0, len(ids))
+	for i, id := range ids {
+		e, ok := byID[id]
+		if !ok {
+			continue
+		}
+		d := e.draft(rng, seed+int64(i))
+		d.PatternID = DrillPrefix + e.Aspek
+		out = append(out, d)
+	}
+	return out
+}

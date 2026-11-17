@@ -25,7 +25,7 @@ type Item struct {
 	Pos      int
 	Seed     int64
 	Snapshot json.RawMessage
-	// Section and PatternID are set for simulation items only.
+	// Section and PatternID are set for simulation items and review drill items.
 	Section   string
 	PatternID string
 }

@@ -8,3 +8,8 @@ type Store interface {
 	// and simulation attempts, newest first, at most limit rows.
 	ResponseFacts(ctx context.Context, userID string, limit int) ([]Fact, error)
 }
+
+// DueSource lists the patterns whose spaced-repetition review is due now.
+type DueSource interface {
+	DuePatterns(ctx context.Context, userID string) ([]string, error)
+}

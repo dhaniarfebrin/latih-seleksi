@@ -28,8 +28,9 @@ func (s *Store) CreateAttempt(ctx context.Context, a question.Attempt, items []q
 	}
 	for _, it := range items {
 		if _, err := tx.Exec(ctx,
-			`insert into attempt_item (attempt_id, pos, seed, item_snapshot) values ($1, $2, $3, $4)`,
-			a.ID, it.Pos, it.Seed, []byte(it.Snapshot)); err != nil {
+			`insert into attempt_item (attempt_id, pos, seed, item_snapshot, section, pattern_id)
+			 values ($1, $2, $3, $4, nullif($5, ''), nullif($6, ''))`,
+			a.ID, it.Pos, it.Seed, []byte(it.Snapshot), it.Section, it.PatternID); err != nil {
 			return question.Attempt{}, fmt.Errorf("insert item %d: %w", it.Pos, err)
 		}
 	}

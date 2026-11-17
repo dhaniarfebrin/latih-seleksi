@@ -400,3 +400,40 @@ func TestDrawTWK(t *testing.T) {
 		t.Error("unknown pattern accepted")
 	}
 }
+
+func TestByID(t *testing.T) {
+	b := loadBank(t)
+	var want []TWKEntry
+	var draft string
+	for _, e := range b.TWK {
+		if e.Status == StatusReviewed && len(want) < 3 {
+			want = append(want, e)
+		}
+		if e.Status != StatusReviewed {
+			draft = e.ID
+		}
+	}
+	ids := []string{want[2].ID, "no-such-id", want[0].ID, want[1].ID}
+	if draft != "" {
+		ids = append(ids, draft)
+	}
+	got := b.ByID(ids, 7)
+	if len(got) != 3 {
+		t.Fatalf("got %d drafts, want 3 (unknown and unreviewed skipped)", len(got))
+	}
+	for i, e := range []TWKEntry{want[2], want[0], want[1]} {
+		d := got[i]
+		if d.FactID != e.ID || d.PatternID != DrillPrefix+e.Aspek {
+			t.Errorf("draft %d = fact %q pattern %q, want %q %q", i, d.FactID, d.PatternID, e.ID, DrillPrefix+e.Aspek)
+		}
+		var key string
+		for _, o := range d.Options {
+			if o.Key == d.AnswerKey {
+				key = o.Text
+			}
+		}
+		if key != e.Correct {
+			t.Errorf("%s: key text %q, want %q", e.ID, key, e.Correct)
+		}
+	}
+}

@@ -21,7 +21,7 @@ func TestBuildStampsTimeAndNonNilAttempts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !d.ExportedAt.Equal(at) || d.Attempts == nil {
+	if !d.ExportedAt.Equal(at) || d.Attempts == nil || d.ReviewCards == nil || d.ReviewLog == nil {
 		t.Errorf("d = %+v", d)
 	}
 }

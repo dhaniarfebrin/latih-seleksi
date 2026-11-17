@@ -6,11 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"unicode/utf8"
 
 	"latihseleksi/api/internal/gen"
+	"latihseleksi/api/internal/insight"
 	"latihseleksi/api/internal/question"
+	"latihseleksi/api/internal/review"
 )
 
 const (
@@ -20,7 +23,14 @@ const (
 	maxN        = 20
 	maxTimeMS   = 24 * 60 * 60 * 1000
 	seedRetries = 5
+	// reviewFetch is how many due fact ids a review drill reads before the
+	// bank drops stale ones and the list is cut to n.
+	reviewFetch = 200
 )
+
+// ReviewPatternID is the reserved pattern id of a drill of the user's due TWK
+// facts; its items carry their own TWK.<aspek> pattern.
+const ReviewPatternID = "ULANG"
 
 var (
 	ErrNotFound  = question.ErrNotFound
@@ -89,17 +99,18 @@ type Service struct {
 	ordered  []gen.Family // catalog order, for listing
 	families map[string]gen.Family
 	facts    FactSource // may be nil
+	reviewer Reviewer   // may be nil
 }
 
 // New builds the service over st and the registered question families
 // (catalog order is the listing order). facts adds banked patterns after them
-// and may be nil.
-func New(st Store, ordered []gen.Family, facts FactSource) *Service {
+// and may be nil, as may rev (no review scheduling, no ULANG drill).
+func New(st Store, ordered []gen.Family, facts FactSource, rev Reviewer) *Service {
 	families := make(map[string]gen.Family, len(ordered))
 	for _, f := range ordered {
 		families[f.ID()] = f
 	}
-	return &Service{store: st, ordered: ordered, families: families, facts: facts}
+	return &Service{store: st, ordered: ordered, families: families, facts: facts, reviewer: rev}
 }
 
 // Patterns lists the registered families in catalog order, then banked patterns.
@@ -119,6 +130,9 @@ func (s *Service) Patterns() []Pattern {
 
 // Create generates n questions with random seeds and freezes them for userID.
 func (s *Service) Create(ctx context.Context, userID, patternID string, n, band int) (AttemptView, error) {
+	if patternID == ReviewPatternID && s.reviewer != nil && s.facts != nil {
+		return s.createReview(ctx, userID, n, band)
+	}
 	fam, generated := s.families[patternID]
 	banked := false
 	if !generated && s.facts != nil {
@@ -153,6 +167,62 @@ func (s *Service) Create(ctx context.Context, userID, patternID string, n, band 
 	return s.Get(ctx, userID, a.ID)
 }
 
+// createReview freezes up to n of the user's due TWK facts, most overdue first.
+// Items keep their real aspect pattern and section so the dashboard stays correct.
+func (s *Service) createReview(ctx context.Context, userID string, n, band int) (AttemptView, error) {
+	if n < 1 || n > maxN {
+		return AttemptView{}, invalid("n must be between 1 and %d", maxN)
+	}
+	if band < 1 || band > 3 {
+		return AttemptView{}, invalid("band must be between 1 and 3")
+	}
+	// Fetch more than n: ByID drops ids no longer reviewed in the bank, and
+	// stale ids among the most overdue must not hide valid ones behind them.
+	ids, err := s.reviewer.DueFacts(ctx, userID, reviewFetch)
+	if err != nil {
+		return AttemptView{}, err
+	}
+	seed, err := question.RandomSeed()
+	if err != nil {
+		return AttemptView{}, err
+	}
+	drafts := s.facts.ByID(ids, seed)
+	if len(drafts) > n {
+		drafts = drafts[:n]
+	}
+	if len(drafts) == 0 {
+		return AttemptView{}, invalid("nothing is due for review")
+	}
+	items, err := freeze(drafts, true)
+	if err != nil {
+		return AttemptView{}, err
+	}
+	a, err := s.store.CreateAttempt(ctx, question.Attempt{UserID: userID, Mode: ModeDrill, PatternID: ReviewPatternID, Band: band, N: len(items)}, items)
+	if err != nil {
+		return AttemptView{}, err
+	}
+	return s.Get(ctx, userID, a.ID)
+}
+
+// freeze turns drafts into frozen items; withPattern also sets each item's own
+// pattern id and section (the part of the id before the first dot).
+func freeze(drafts []gen.Draft, withPattern bool) ([]question.Item, error) {
+	items := make([]question.Item, 0, len(drafts))
+	for i, d := range drafts {
+		raw, err := json.Marshal(question.FromDraft(d))
+		if err != nil {
+			return nil, err
+		}
+		it := question.Item{Pos: i + 1, Seed: d.Seed, Snapshot: raw}
+		if withPattern {
+			it.PatternID = d.PatternID
+			it.Section, _, _ = strings.Cut(d.PatternID, ".")
+		}
+		items = append(items, it)
+	}
+	return items, nil
+}
+
 // drawFacts freezes up to n banked questions of the pattern.
 func (s *Service) drawFacts(patternID string, n int) ([]question.Item, error) {
 	seed, err := question.RandomSeed()
@@ -166,15 +236,7 @@ func (s *Service) drawFacts(patternID string, n int) ([]question.Item, error) {
 	if len(drafts) == 0 {
 		return nil, fmt.Errorf("no questions for %s", patternID)
 	}
-	items := make([]question.Item, 0, len(drafts))
-	for i, d := range drafts {
-		raw, err := json.Marshal(question.FromDraft(d))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, question.Item{Pos: i + 1, Seed: d.Seed, Snapshot: raw})
-	}
-	return items, nil
+	return freeze(drafts, false)
 }
 
 // generate builds n frozen questions of a family with random seeds.
@@ -316,7 +378,7 @@ func (s *Service) Submit(ctx context.Context, userID, id string) (Result, error)
 	if err != nil {
 		return Result{}, err
 	}
-	a, _, resps, err := s.store.GetAttempt(ctx, userID, id)
+	a, snaps, _, resps, err := s.load(ctx, userID, id)
 	if err != nil {
 		return Result{}, err
 	}
@@ -334,7 +396,29 @@ func (s *Service) Submit(ctx context.Context, userID, id string) (Result, error)
 	if len(resps) > 0 {
 		res.AvgTimeMS = total / len(resps)
 	}
+	if s.reviewer != nil {
+		if err := s.reviewer.Record(ctx, userID, id, reviewOutcomes(a, snaps, resps, res.Score)); err != nil {
+			return Result{}, err
+		}
+	}
 	return res, nil
+}
+
+// reviewOutcomes is what a submitted drill teaches the scheduler. Banked
+// (TWK) answers review their fact; a generated drill reviews its pattern, as
+// Good when accuracy over the answered items reaches insight.QueueAccuracyPct.
+// An attempt with no answers schedules nothing.
+func reviewOutcomes(a question.Attempt, snaps map[int]question.Snapshot, resps []question.Response, score int) []review.Outcome {
+	var out []review.Outcome
+	for _, r := range resps {
+		if id := snaps[r.Pos].FactID; id != "" {
+			out = append(out, review.Outcome{Kind: review.KindFact, Key: id, Correct: r.Correct})
+		}
+	}
+	if len(out) == 0 && len(resps) > 0 && a.PatternID != ReviewPatternID {
+		out = append(out, review.Outcome{Kind: review.KindPattern, Key: a.PatternID, Correct: score*100 >= insight.QueueAccuracyPct*len(resps)})
+	}
+	return out
 }
 
 // Report stores a user's report on the question at pos, replacing an earlier

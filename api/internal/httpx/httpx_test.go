@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math/big"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"latihseleksi/api/internal/auth"
 	"latihseleksi/api/internal/bank"
@@ -26,6 +28,7 @@ import (
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/insight"
+	"latihseleksi/api/internal/review"
 	"latihseleksi/api/internal/spec"
 	"latihseleksi/api/internal/store"
 )
@@ -53,7 +56,8 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 		t.Fatal(err)
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
-	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All(), items), examSvc, insight.New(st, catalog.All()), export.New(st), st, cfg))
+	reviews := review.New(st)
+	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All(), items, reviews), examSvc, insight.New(st, catalog.All(), reviews), export.New(st), reviews, st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -872,5 +876,143 @@ func TestExportMe(t *testing.T) {
 	code, out, _ = doToken(t, "GET", url, "", tokB)
 	if code != http.StatusOK || strings.Contains(out, closed.ID) || !strings.Contains(out, `"attempts":[]`) {
 		t.Errorf("other user export = %d %s", code, out)
+	}
+}
+
+// A drill submit schedules reviews once; due facts come back through ULANG with
+// their real TWK pattern, and a due TIU pattern heads the dashboard queue.
+func TestReviewFlow(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	sub := "review-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	tok := mint(sub)
+	t.Cleanup(func() { doToken(t, "DELETE", srv.URL+"/v1/me", "", tok) })
+
+	count := func(table string) int {
+		t.Helper()
+		var n int
+		err := pool.QueryRow(ctx, `select count(*) from `+table+` t join app_user u on u.id = t.user_id where u.auth_sub = $1`, sub).Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	answerAndSubmit := func(c createResp) {
+		t.Helper()
+		for _, it := range c.Items {
+			if code, out, _ := doToken(t, "PUT", fmt.Sprintf("%s/v1/attempts/%s/responses/%d", srv.URL, c.ID, it.Pos), `{"answer":"A","time_ms":1000}`, tok); code != http.StatusOK {
+				t.Fatalf("answer = %d %s", code, out)
+			}
+		}
+		if code, out, _ := doToken(t, "POST", srv.URL+"/v1/attempts/"+c.ID+"/submit", "", tok); code != http.StatusOK {
+			t.Fatalf("submit = %d %s", code, out)
+		}
+	}
+	reviews := func() map[string]int {
+		t.Helper()
+		code, out, _ := doToken(t, "GET", srv.URL+"/v1/me/reviews", "", tok)
+		if code != http.StatusOK {
+			t.Fatalf("reviews = %d %s", code, out)
+		}
+		for _, banned := range []string{"answer_key", "snapshot", "stem"} {
+			if strings.Contains(out, banned) {
+				t.Errorf("reviews leaks %q: %s", banned, out)
+			}
+		}
+		var m map[string]int
+		if err := json.Unmarshal([]byte(out), &m); err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
+
+	twk := create(t, srv, tok, `{"pattern_id":"TWK.bela-negara","n":3}`)
+	answerAndSubmit(twk)
+	doToken(t, "POST", srv.URL+"/v1/attempts/"+twk.ID+"/submit", "", tok) // a second submit must add nothing
+	if count("review_card") != 3 || count("review_log") != 3 {
+		t.Fatalf("after submit twice: %d cards, %d logs, want 3 each", count("review_card"), count("review_log"))
+	}
+	var future int
+	if err := pool.QueryRow(ctx, `select count(*) from review_card c join app_user u on u.id = c.user_id where u.auth_sub = $1 and c.due > now()`, sub).Scan(&future); err != nil || future != 3 {
+		t.Errorf("cards due in the future = %d (%v), want 3", future, err)
+	}
+	if m := reviews(); m["due_count"] != 0 {
+		t.Errorf("reviews before due = %v", m)
+	}
+	if code, _, _ := doToken(t, "POST", srv.URL+"/v1/attempts", `{"pattern_id":"ULANG"}`, tok); code != http.StatusBadRequest {
+		t.Errorf("ULANG with nothing due = %d, want 400", code)
+	}
+
+	tiu := create(t, srv, tok, `{"pattern_id":"`+persentase.PatternID+`","n":4,"band":1}`)
+	answerAndSubmit(tiu)
+	if count("review_card") != 4 {
+		t.Errorf("cards after TIU drill = %d, want 4", count("review_card"))
+	}
+	if _, err := pool.Exec(ctx, `update review_card set due = now() - interval '1 day' where user_id = (select id from app_user where auth_sub = $1)`, sub); err != nil {
+		t.Fatal(err)
+	}
+	if m := reviews(); m["due_count"] != 4 || m["facts_due"] != 3 || m["patterns_due"] != 1 {
+		t.Errorf("reviews = %v, want 3 facts + 1 pattern", m)
+	}
+
+	code, out, _ := doToken(t, "GET", srv.URL+"/v1/me/dashboard", "", tok)
+	var dash struct {
+		Queue []struct {
+			PatternID string `json:"pattern_id"`
+			Reason    string `json:"reason"`
+		} `json:"queue"`
+	}
+	if err := json.Unmarshal([]byte(out), &dash); err != nil || code != http.StatusOK || len(dash.Queue) == 0 ||
+		dash.Queue[0].Reason != "jatuh_tempo" || dash.Queue[0].PatternID != persentase.PatternID {
+		t.Errorf("dashboard queue = %s", out)
+	}
+
+	rev := create(t, srv, tok, `{"pattern_id":"ULANG","n":8}`)
+	if len(rev.Items) != 3 {
+		t.Fatalf("ULANG items = %d, want the 3 due facts", len(rev.Items))
+	}
+	answerAndSubmit(rev)
+	if count("review_log") != 7 {
+		t.Errorf("logs after ULANG = %d, want 7", count("review_log"))
+	}
+	code, out, _ = doToken(t, "GET", srv.URL+"/v1/me/dashboard", "", tok)
+	if code != http.StatusOK {
+		t.Fatalf("dashboard = %d %s", code, out)
+	}
+	var d2 struct {
+		Patterns []struct {
+			PatternID string `json:"pattern_id"`
+			Section   string `json:"section"`
+			Answered  int    `json:"answered"`
+		} `json:"patterns"`
+	}
+	if err := json.Unmarshal([]byte(out), &d2); err != nil {
+		t.Fatal(err)
+	}
+	twkAnswers := 0
+	for _, p := range d2.Patterns {
+		if p.PatternID == "ULANG" {
+			t.Errorf("dashboard attributes answers to ULANG: %s", out)
+		}
+		if p.PatternID == "TWK.bela-negara" && p.Section == "TWK" {
+			twkAnswers = p.Answered
+		}
+	}
+	if twkAnswers != 6 { // 3 from the first drill, 3 from the review drill
+		t.Errorf("TWK.bela-negara answered = %d, want 6 in %s", twkAnswers, out)
+	}
+
+	code, out, _ = doToken(t, "GET", srv.URL+"/v1/me/export", "", tok)
+	var ex struct {
+		Cards []struct{ Kind, Key string } `json:"review_cards"`
+		Log   []struct{ Kind, Key string } `json:"review_log"`
+	}
+	if err := json.Unmarshal([]byte(out), &ex); err != nil || code != http.StatusOK || len(ex.Cards) != 4 || len(ex.Log) != 7 {
+		t.Errorf("export = %d %v cards %d log %d", code, err, len(ex.Cards), len(ex.Log))
 	}
 }

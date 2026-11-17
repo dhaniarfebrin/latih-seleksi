@@ -6,6 +6,7 @@ import (
 
 	"latihseleksi/api/internal/gen"
 	"latihseleksi/api/internal/question"
+	"latihseleksi/api/internal/review"
 )
 
 // FactSource serves banked fact questions (TWK) as drill patterns. Pattern ids
@@ -18,6 +19,18 @@ type FactSource interface {
 	Misconceptions() map[string]string
 	// Draw returns up to n distinct items of the pattern, deterministic per seed.
 	Draw(id string, n int, seed int64) ([]gen.Draft, error)
+	// ByID returns the items for the given fact ids in that order, each with
+	// its drill pattern id in Draft.PatternID; unknown ids are skipped.
+	ByID(ids []string, seed int64) []gen.Draft
+}
+
+// Reviewer is the spaced-repetition side: it records a submitted drill and
+// lists the TWK facts that are due.
+type Reviewer interface {
+	// Record reviews each outcome once for the attempt; repeating is a no-op.
+	Record(ctx context.Context, userID, attemptID string, outcomes []review.Outcome) error
+	// DueFacts lists fact ids due now, most overdue first, at most limit.
+	DueFacts(ctx context.Context, userID string, limit int) ([]string, error)
 }
 
 // Store is what Service needs from persistence. Implementations return

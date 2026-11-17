@@ -41,6 +41,7 @@ const (
 
 // Queue reasons; the UI words them.
 const (
+	ReasonDue         = "jatuh_tempo"
 	ReasonLowAccuracy = "akurasi_rendah"
 	ReasonUntried     = "belum_dicoba"
 )
@@ -100,7 +101,8 @@ type SessionStat struct {
 	Correct   int       `json:"correct"`
 }
 
-// QueueItem is a suggested next drill. AccuracyPct is set for ReasonLowAccuracy.
+// QueueItem is a suggested next drill. AccuracyPct is set for ReasonLowAccuracy;
+// ReasonDue is a pattern whose review is due.
 type QueueItem struct {
 	PatternID   string `json:"pattern_id"`
 	Reason      string `json:"reason"`
@@ -119,11 +121,13 @@ type Dashboard struct {
 type Service struct {
 	st       Store
 	families []gen.Family
+	due      DueSource // may be nil
 }
 
-// New returns a Service; families define which patterns can be suggested as untried.
-func New(st Store, families []gen.Family) *Service {
-	return &Service{st: st, families: families}
+// New returns a Service; families define which patterns can be suggested as
+// untried. due lists patterns whose review is due and may be nil.
+func New(st Store, families []gen.Family, due DueSource) *Service {
+	return &Service{st: st, families: families, due: due}
 }
 
 // Dashboard returns the weakness dashboard of the user.
@@ -136,7 +140,13 @@ func (s *Service) Dashboard(ctx context.Context, userID string) (Dashboard, erro
 	for i, f := range s.families {
 		ids[i] = f.ID()
 	}
-	return Build(facts, ids), nil
+	var due []string
+	if s.due != nil {
+		if due, err = s.due.DuePatterns(ctx, userID); err != nil {
+			return Dashboard{}, err
+		}
+	}
+	return Build(facts, ids, due), nil
 }
 
 type patternAcc struct {
@@ -148,8 +158,9 @@ type patternAcc struct {
 }
 
 // Build is the pure aggregation behind Dashboard. catalog lists all pattern
-// ids in display order, used to suggest patterns never tried.
-func Build(facts []Fact, catalog []string) Dashboard {
+// ids in display order, used to suggest patterns never tried. due lists the
+// patterns whose review is due, most overdue first; they head the queue.
+func Build(facts []Fact, catalog, due []string) Dashboard {
 	d := Dashboard{
 		Sections: []SectionStat{},
 		Patterns: []PatternStat{},
@@ -253,12 +264,26 @@ func Build(facts []Fact, catalog []string) Dashboard {
 		d.Sessions = d.Sessions[:MaxSessions]
 	}
 
+	queued := map[string]bool{}
+	for _, id := range due {
+		if len(d.Queue) == MaxQueue {
+			break
+		}
+		if !queued[id] {
+			queued[id] = true
+			d.Queue = append(d.Queue, QueueItem{PatternID: id, Reason: ReasonDue})
+		}
+	}
 	// d.Patterns is already ordered by accuracy, lowest first.
 	for _, p := range d.Patterns {
 		if len(d.Queue) == MaxQueue {
 			break
 		}
+		if queued[p.PatternID] {
+			continue
+		}
 		if p.Answered >= MinAnsweredForQueue && p.Correct*100 < QueueAccuracyPct*p.Answered {
+			queued[p.PatternID] = true
 			d.Queue = append(d.Queue, QueueItem{PatternID: p.PatternID, Reason: ReasonLowAccuracy, AccuracyPct: (p.Correct*200 + p.Answered) / (2 * p.Answered)})
 		}
 	}
@@ -266,7 +291,7 @@ func Build(facts []Fact, catalog []string) Dashboard {
 		if len(d.Queue) == MaxQueue {
 			break
 		}
-		if pats[id] == nil {
+		if pats[id] == nil && !queued[id] {
 			d.Queue = append(d.Queue, QueueItem{PatternID: id, Reason: ReasonUntried})
 		}
 	}

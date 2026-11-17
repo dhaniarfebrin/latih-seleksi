@@ -97,5 +97,24 @@ func (s *Store) ExportUser(ctx context.Context, userID string) (export.Data, err
 	if err := irows.Err(); err != nil {
 		return export.Data{}, err
 	}
+
+	crows, err := s.pool.Query(ctx,
+		`select kind, key, stability, difficulty, due, last_review, reps, lapses
+		 from review_card where user_id = $1 order by kind, key`, userID)
+	if err != nil {
+		return export.Data{}, err
+	}
+	if d.ReviewCards, err = pgx.CollectRows(crows, pgx.RowToStructByPos[export.ReviewCard]); err != nil {
+		return export.Data{}, err
+	}
+	lrows, err := s.pool.Query(ctx,
+		`select attempt_id::text, kind, key, grade, reviewed_at, elapsed_days, stability_before, difficulty_before
+		 from review_log where user_id = $1 order by reviewed_at, attempt_id, kind, key`, userID)
+	if err != nil {
+		return export.Data{}, err
+	}
+	if d.ReviewLog, err = pgx.CollectRows(lrows, pgx.RowToStructByPos[export.ReviewLog]); err != nil {
+		return export.Data{}, err
+	}
 	return d, nil
 }
