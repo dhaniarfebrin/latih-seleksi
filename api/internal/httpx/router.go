@@ -8,6 +8,7 @@ import (
 	"latihseleksi/api/internal/auth"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
+	"latihseleksi/api/internal/export"
 	"latihseleksi/api/internal/insight"
 )
 
@@ -24,6 +25,7 @@ type api struct {
 	svc     *drill.Service
 	exam    *exam.Service
 	insight *insight.Service
+	export  *export.Service
 	auth    *auth.Verifier
 	users   userStore
 }
@@ -36,8 +38,8 @@ type userStore interface {
 }
 
 // NewHandler builds the router with request id, access log and CORS middleware.
-func NewHandler(svc *drill.Service, ex *exam.Service, in *insight.Service, users userStore, cfg Config) http.Handler {
-	a := &api{svc: svc, exam: ex, insight: in, auth: cfg.Auth, users: users}
+func NewHandler(svc *drill.Service, ex *exam.Service, in *insight.Service, exp *export.Service, users userStore, cfg Config) http.Handler {
+	a := &api{svc: svc, exam: ex, insight: in, export: exp, auth: cfg.Auth, users: users}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -57,6 +59,7 @@ func NewHandler(svc *drill.Service, ex *exam.Service, in *insight.Service, users
 	mux.HandleFunc("GET /v1/exams/{id}/result", a.requireAuth(a.examResult))
 	mux.HandleFunc("POST /v1/exams/{id}/items/{pos}/report", a.requireAuth(a.reportItem))
 	mux.HandleFunc("GET /v1/me/dashboard", a.requireAuth(a.dashboard))
+	mux.HandleFunc("GET /v1/me/export", a.requireAuth(a.exportMe))
 	mux.HandleFunc("DELETE /v1/me", a.requireAuth(a.deleteMe))
 	return requestID(cors(cfg.CORSOrigin, mux))
 }

@@ -22,6 +22,7 @@ import (
 	"latihseleksi/api/internal/bank"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
+	"latihseleksi/api/internal/export"
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/gen/persentase"
 	"latihseleksi/api/internal/insight"
@@ -52,7 +53,7 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 		t.Fatal(err)
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
-	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), st, cfg))
+	srv := httptest.NewServer(NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), export.New(st), st, cfg))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -788,5 +789,69 @@ func TestReportItem(t *testing.T) {
 		if code, out, _ := doToken(t, "POST", tc.url, tc.body, tc.tok); code != tc.want {
 			t.Errorf("%s = %d %s, want %d", tc.name, code, out, tc.want)
 		}
+	}
+}
+
+func TestExportMe(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
+	subA, subB := "export-a-"+suffix, "export-b-"+suffix
+	tokA, tokB := mint(subA), mint(subB)
+	url := srv.URL + "/v1/me/export"
+	if code, _, _ := do(t, "GET", url, ""); code != http.StatusUnauthorized {
+		t.Errorf("no token = %d, want 401", code)
+	}
+
+	closed := create(t, srv, tokA, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	open := create(t, srv, tokA, `{"pattern_id":"`+persentase.PatternID+`","n":2,"band":1}`)
+	for _, c := range []createResp{closed, open} {
+		if code, out, _ := doToken(t, "PUT", srv.URL+"/v1/attempts/"+c.ID+"/responses/1", `{"answer":"`+c.Items[0].Options[0].Key+`","time_ms":5}`, tokA); code != http.StatusOK {
+			t.Fatalf("answer = %d %s", code, out)
+		}
+	}
+	if code, out, _ := doToken(t, "POST", srv.URL+"/v1/attempts/"+closed.ID+"/submit", "", tokA); code != http.StatusOK {
+		t.Fatalf("submit = %d %s", code, out)
+	}
+
+	code, out, hdr := doToken(t, "GET", url, "", tokA)
+	if code != http.StatusOK || !strings.Contains(hdr.Get("Content-Disposition"), "attachment") {
+		t.Fatalf("export = %d %v %s", code, hdr, out)
+	}
+	if strings.Contains(out, subA) {
+		t.Error("export leaks the auth subject")
+	}
+	var d struct {
+		ExportedAt string `json:"exported_at"`
+		Attempts   []struct {
+			ID    string `json:"id"`
+			Items []struct {
+				Snapshot json.RawMessage `json:"snapshot"`
+				Response *struct {
+					Answer string `json:"answer"`
+				} `json:"response"`
+			} `json:"items"`
+		} `json:"attempts"`
+	}
+	if err := json.Unmarshal([]byte(out), &d); err != nil {
+		t.Fatal(err)
+	}
+	if d.ExportedAt == "" || len(d.Attempts) != 2 {
+		t.Fatalf("export = %s", out)
+	}
+	for _, a := range d.Attempts {
+		wantSnap := a.ID == closed.ID
+		for i, it := range a.Items {
+			if (len(it.Snapshot) > 0) != wantSnap {
+				t.Errorf("attempt %s item %d snapshot present = %v, want %v", a.ID, i, len(it.Snapshot) > 0, wantSnap)
+			}
+		}
+		if len(a.Items) != 2 || a.Items[0].Response == nil || a.Items[1].Response != nil {
+			t.Errorf("attempt %s items = %+v", a.ID, a.Items)
+		}
+	}
+
+	code, out, _ = doToken(t, "GET", url, "", tokB)
+	if code != http.StatusOK || strings.Contains(out, closed.ID) || !strings.Contains(out, `"attempts":[]`) {
+		t.Errorf("other user export = %d %s", code, out)
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"latihseleksi/api/internal/bank"
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
+	"latihseleksi/api/internal/export"
 	"latihseleksi/api/internal/gen/catalog"
 	"latihseleksi/api/internal/httpx"
 	"latihseleksi/api/internal/insight"
@@ -71,7 +72,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpx.NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
+		Handler:           httpx.NewHandler(drill.New(st, catalog.All()), examSvc, insight.New(st, catalog.All()), export.New(st), st, httpx.Config{CORSOrigin: os.Getenv("CORS_ORIGIN"), Auth: verifier}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
