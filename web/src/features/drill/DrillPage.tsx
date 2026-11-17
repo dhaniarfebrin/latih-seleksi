@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getWeakestPatternId } from '@/shared/api/weakest'
 import { DrillStart } from './components/DrillStart'
@@ -8,6 +9,11 @@ import { useDrill } from './useDrill'
 export function DrillPage() {
   const [params] = useSearchParams()
   const { s, patterns, patternsError, dueCount, start, answer, submit, next, reset } = useDrill()
+
+  // The action buttons sit at the bottom, so each new screen or question would otherwise open scrolled down.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [s.screen, s.index])
 
   const attempt = s.attempt
   const labelsOf = (patternId: string) => patterns.find((p) => p.id === patternId)?.misconceptions ?? {}

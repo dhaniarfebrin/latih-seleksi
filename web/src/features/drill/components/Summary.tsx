@@ -21,11 +21,6 @@ export function Summary(props: {
   const [submitError, setSubmitError] = useState('')
   const sent = useRef(false)
 
-  // The last question screen is scrolled down; the summary starts at its heading.
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
-
   useEffect(() => {
     if (sent.current) return
     sent.current = true
