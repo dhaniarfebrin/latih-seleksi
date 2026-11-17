@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T14:14:26Z",
+  "title": "Design System: Latih Seleksi",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Kertas Krem Hangat",
+        "canonical": "#f4f0e8",
+        "tonalRamp": [
+          "#454544",
+          "#747370",
+          "#a2a09b",
+          "#cac7c1",
+          "#f4f0e8",
+          "#f7f4ef",
+          "#fbf9f6",
+          "#fdfdfc"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Kartu Putih Gading",
+        "canonical": "#fbf9f4",
+        "tonalRamp": [
+          "#474747",
+          "#777775",
+          "#a7a6a3",
+          "#d0ceca",
+          "#fbf9f4",
+          "#fcfbf7",
+          "#fdfdfb",
+          "#fefefd"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Tinta Arang",
+        "canonical": "#17191c",
+        "tonalRamp": [
+          "#0e0f11",
+          "#101214",
+          "#131417",
+          "#151719",
+          "#17191c",
+          "#5d5e60",
+          "#a2a3a4",
+          "#dcdcdd"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Abu Tinta Pudar",
+        "canonical": "#5a5e5b",
+        "tonalRamp": [
+          "#1f2020",
+          "#2f3130",
+          "#3e4140",
+          "#4c4f4d",
+          "#5a5e5b",
+          "#8c8e8c",
+          "#bdbfbd",
+          "#e6e7e6"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Garis Kertas",
+        "canonical": "#d8d2c4",
+        "tonalRamp": [
+          "#3e3e3b",
+          "#67655f",
+          "#908d84",
+          "#b3aea3",
+          "#d8d2c4",
+          "#e4e0d6",
+          "#efede7",
+          "#f9f8f6"
+        ]
+      },
+      "highlighter": {
+        "role": "primary",
+        "displayName": "Stabilo Kuning",
+        "canonical": "#f7d547",
+        "tonalRamp": [
+          "#463e1c",
+          "#756627",
+          "#a48f33",
+          "#cdb13d",
+          "#f7d547",
+          "#f9e27e",
+          "#fceeb5",
+          "#fef9e3"
+        ]
+      },
+      "correct": {
+        "role": "secondary",
+        "displayName": "Hijau Tinta Benar",
+        "canonical": "#1b6446",
+        "tonalRamp": [
+          "#0f221b",
+          "#123427",
+          "#154532",
+          "#18543c",
+          "#1b6446",
+          "#5f927e",
+          "#a4c1b5",
+          "#dde8e3"
+        ]
+      },
+      "wrong": {
+        "role": "secondary",
+        "displayName": "Merah Koreksi",
+        "canonical": "#ae2f1d",
+        "tonalRamp": [
+          "#341511",
+          "#541c14",
+          "#752317",
+          "#91291a",
+          "#ae2f1d",
+          "#c66d61",
+          "#dfaca5",
+          "#f3e0dd"
+        ]
+      },
+      "caution": {
+        "role": "tertiary",
+        "displayName": "Cokelat Peringatan",
+        "canonical": "#7a5000",
+        "tonalRamp": [
+          "#271d0a",
+          "#3d2b07",
+          "#533805",
+          "#664402",
+          "#7a5000",
+          "#a2844c",
+          "#cab999",
+          "#ebe5d9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Judul halaman (h1.d)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Judul bagian landing."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Judul panel dan subbagian."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Teks isi."
+      },
+      "question": {
+        "displayName": "Question",
+        "purpose": "Batang soal."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Eyebrow mono huruf kapital."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Skor, timer, persentase, nomor soal."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-pill",
+        "value": "0 6px 24px rgb(0 0 0 / .18)",
+        "purpose": "Hanya pil navigasi ponsel."
+      },
+      {
+        "name": "dialog-backdrop",
+        "value": "rgb(0 0 0 / .55)",
+        "purpose": "Lapisan di belakang dialog."
+      }
+    ],
+    "motion": [
+      {
+        "name": "nav-fade",
+        "value": "background-color .15s",
+        "purpose": "Transisi tab navigasi; dimatikan oleh prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "desktop",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Aksi utama; latar tinta, teks kertas, lebar penuh.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Mulai drill</button>",
+      "css": ".ds-btn{display:flex;align-items:center;justify-content:center;min-height:54px;padding:0 20px;border-radius:14px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;width:100%;border:1.5px solid var(--ink, #17191c);} .ds-btn-primary{background:var(--ink, #17191c);color:var(--on-ink, #f4f0e8);} .ds-btn:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:2px;}"
+    },
+    {
+      "name": "Highlight Button",
+      "kind": "button",
+      "refersTo": "button-highlight",
+      "description": "Aksi lanjut yang aktif; stabilo kuning dengan garis tinta.",
+      "html": "<button class=\"ds-btn ds-btn-hi\">Lanjutkan simulasi</button>",
+      "css": ".ds-btn{display:flex;align-items:center;justify-content:center;min-height:54px;padding:0 20px;border-radius:14px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;width:100%;border:1.5px solid var(--ink, #17191c);} .ds-btn-hi{background:var(--hi, #f7d547);color:var(--on-hi, #17191c);border-color:var(--on-hi, #17191c);} .ds-btn:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:2px;}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Aksi sekunder; transparan dengan garis tepi, hover menggelapkan garis.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Batal</button>",
+      "css": ".ds-btn{display:flex;align-items:center;justify-content:center;min-height:54px;padding:0 20px;border-radius:14px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;width:100%;border:1.5px solid var(--edge, #d8d2c4);} .ds-btn-ghost{background:transparent;color:var(--ink, #17191c);} .ds-btn-ghost:hover{border-color:var(--ink, #17191c);} .ds-btn:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:2px;}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Tindakan merusak seperti hapus akun.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Hapus akun dan data</button>",
+      "css": ".ds-btn{display:flex;align-items:center;justify-content:center;min-height:54px;padding:0 20px;border-radius:14px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;width:100%;border:1.5px solid var(--bad, #ae2f1d);} .ds-btn-danger{background:var(--bad, #ae2f1d);color:var(--on-ink, #f4f0e8);} .ds-btn:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:2px;}"
+    },
+    {
+      "name": "Panel Card",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Kartu gading bergaris tipis tanpa bayangan, dengan eyebrow mono.",
+      "html": "<div class=\"ds-panel\"><p class=\"ds-eyebrow\">Contoh titik lemah</p><h2 class=\"ds-title\">Persentase berantai</h2><p class=\"ds-muted\">Akurasi 55%</p></div>",
+      "css": ".ds-panel{background:var(--card, #fbf9f4);border:1px solid var(--line, #d8d2c4);border-radius:18px;padding:16px;display:grid;gap:4px;color:var(--ink, #17191c);font:16px/1.45 'IBM Plex Sans',system-ui,sans-serif;} .ds-eyebrow{margin:0;font:12px 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted, #5a5e5b);} .ds-title{margin:0 0 4px;font:700 17px 'Bricolage Grotesque','Trebuchet MS',system-ui,sans-serif;} .ds-muted{margin:0;color:var(--muted, #5a5e5b);}"
+    },
+    {
+      "name": "Answer Option",
+      "kind": "custom",
+      "refersTo": "option",
+      "description": "Opsi jawaban: huruf bulat, teks, tag status dengan ikon dan teks.",
+      "html": "<ul class=\"ds-opts\"><li class=\"ds-opt ds-ok\"><span class=\"ds-k\">B</span><span>Rp216.000</span><span class=\"ds-tag\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg> Benar</span></li><li class=\"ds-opt ds-bad\"><span class=\"ds-k\">C</span><span>Rp220.000</span><span class=\"ds-tag\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/></svg> Pilihan Anda</span></li></ul>",
+      "css": ".ds-opts{list-style:none;margin:0;padding:0;display:grid;gap:10px;font:16px/1.45 'IBM Plex Sans',system-ui,sans-serif;} .ds-opt{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;min-height:54px;padding:8px 14px;background:var(--card, #fbf9f4);border:1.5px solid var(--edge, #d8d2c4);border-radius:14px;color:var(--ink, #17191c);} .ds-k{width:30px;height:30px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-items:center;font-size:14px;} .ds-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;} .ds-ok{background:var(--ok-bg, #dceadf);border-color:var(--ok, #1b6446);color:var(--ok, #1b6446);} .ds-bad{background:var(--bad-bg, #f5d9d0);border-color:var(--bad, #ae2f1d);color:var(--bad, #ae2f1d);}"
+    },
+    {
+      "name": "Caution Chip",
+      "kind": "chip",
+      "refersTo": "chip-caution",
+      "description": "Label jenis kesalahan atau saran latihan.",
+      "html": "<p class=\"ds-chip\">Jenis salah: menjumlahkan persen langsung</p>",
+      "css": ".ds-chip{margin:0;padding:6px 12px;border-radius:12px;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;background:var(--warn-bg, #f4e4b4);color:var(--warn, #7a5000);display:block;}"
+    },
+    {
+      "name": "Segmented Choice",
+      "kind": "custom",
+      "refersTo": "segment",
+      "description": "Pilihan radio berbentuk kartu; terpilih = stabilo kuning.",
+      "html": "<div class=\"ds-seg\"><label class=\"ds-seg-l\">8 soal</label><label class=\"ds-seg-l ds-on\">12 soal</label><label class=\"ds-seg-l\">20 soal</label></div>",
+      "css": ".ds-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;} .ds-seg-l{display:grid;place-items:center;min-height:48px;padding:8px 12px;border:1.5px solid var(--edge, #d8d2c4);border-radius:12px;background:var(--card, #fbf9f4);color:var(--ink, #17191c);text-align:center;cursor:pointer;} .ds-seg-l.ds-on{border-color:var(--ink, #17191c);background:var(--hi, #f7d547);color:var(--on-hi, #17191c);}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Input 48 px dengan label di atas.",
+      "html": "<label class=\"ds-lbl\">Email<input class=\"ds-input\" type=\"email\" value=\"nama@contoh.id\"></label>",
+      "css": ".ds-lbl{display:grid;gap:4px;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;color:var(--ink, #17191c);} .ds-input{min-height:48px;padding:8px 12px;border:1.5px solid var(--edge, #d8d2c4);border-radius:12px;background:var(--card, #fbf9f4);color:var(--ink, #17191c);font:400 16px 'IBM Plex Sans',system-ui,sans-serif;} .ds-input:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:2px;}"
+    },
+    {
+      "name": "Mobile Nav Pill",
+      "kind": "nav",
+      "refersTo": "nav-pill",
+      "description": "Pil navigasi melayang ponsel: 5 tab, tab aktif berisi stabilo.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-a ds-active\">Beranda</a><a class=\"ds-a\">Drill</a><a class=\"ds-a\">Simulasi</a><a class=\"ds-a\">Riwayat</a><a class=\"ds-a\">Akun</a></nav>",
+      "css": ".ds-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:6px;max-width:420px;border:1px solid var(--line, #d8d2c4);border-radius:28px;background:var(--card, #fbf9f4);box-shadow:0 6px 24px rgb(0 0 0/.18);font:600 11px 'IBM Plex Sans',system-ui,sans-serif;} .ds-a{display:flex;align-items:center;justify-content:center;min-height:52px;padding:6px 2px;border-radius:22px;color:var(--muted, #5a5e5b);white-space:nowrap;cursor:pointer;transition:background-color .15s;} .ds-a.ds-active{background:var(--hi, #f7d547);color:var(--on-hi, #17191c);} .ds-a:focus-visible{outline:3px solid var(--ink, #17191c);outline-offset:-3px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Study Notebook",
+    "overview": "Sistem ini terasa seperti buku catatan belajar yang rapi: kertas krem hangat, tinta arang pekat, dan satu stabilo kuning untuk hal yang sedang penting. Angka dan label memakai huruf mono seperti tulisan tangan teknis di margin. Kartu hanya dibatasi garis tipis. Tidak ada bayangan yang menghias, tidak ada gradien, tidak ada maskot. Suasananya tenang, padat, dan hangat, sejalan dengan suara informal \"kamu\" di PRODUCT.md.\n\nKepadatan sedang: satu kolom sempit (480 px) untuk alur fokus seperti login dan drill, kolom lebar (1040 px) untuk beranda dan dasbor, dan dua kolom (soal + panel samping 300 px) saat ujian di desktop. Target sentuh besar (48–54 px) berlaku di ponsel dan laptop, karena keduanya pengguna utama.\n\nPenolakan visual yang dikonfirmasi pemilik (2026-11-17): bukan aplikasi edukasi yang ramai. Tidak ada maskot, gamifikasi mencolok, gradien ungu-biru ala startup edtech, maupun tampilan portal pemerintah.",
+    "keyCharacteristics": [
+      "Kertas krem dan tinta arang; satu aksen kuning stabilo.",
+      "Datar: garis 1–1,5 px menggantikan bayangan.",
+      "Status selalu ikon + teks, tidak pernah hanya warna.",
+      "Angka dalam mono tabular; judul dalam display berat 800.",
+      "Mode gelap otomatis lewat `prefers-color-scheme`, bukan toggle.",
+      "Komponen besar dan tegas: tombol 54 px, sudut 14–18 px."
+    ],
+    "rules": [
+      {
+        "name": "The One Highlighter Rule",
+        "body": "Stabilo kuning menandai satu hal yang sedang aktif atau penting per area; ia bukan dekorasi. Di mode gelap, `mark` berubah dari garis bawah setengah tinggi menjadi chip solid dengan teks gelap, karena teks terang di atas kuning tidak terbaca.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Color Alone Rule",
+        "body": "Benar, salah, terjawab, ditandai, dan peringatan selalu disertai ikon dan teks (konvensi NOTES.md 2026-11-15). Warna hanya memperkuat.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono For Numbers Rule",
+        "body": "Setiap angka yang dibandingkan atau dihitung (skor, waktu, persentase, nomor) memakai mono tabular agar rata dan mudah dipindai.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Kartu, panel, opsi, dan input tidak pernah diberi bayangan. Batas dan isi warna yang membedakan.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do pakai custom property di `:root` untuk warna, jangan menulis hex baru di komponen; set gelap menimpa lewat `prefers-color-scheme`.",
+      "Do tampilkan status dengan ikon + teks, bukan hanya warna; ikon dekoratif `aria-hidden` dan setiap kontrol punya label teks.",
+      "Do pakai stabilo kuning untuk satu hal aktif per area, dengan teks tinta di atasnya.",
+      "Do set angka dalam mono tabular (`.num`).",
+      "Do jaga target sentuh ≥48 px, tombol utama 54 px, di ponsel maupun laptop.",
+      "Do hormati `prefers-reduced-motion`; gerak hanya transisi latar 0,15 detik pada tab nav.",
+      "Do sembunyikan navigasi melayang saat ujian berjalan di ponsel.",
+      "Do tampilkan disclaimer independen di footer dan jaga bahasa informal \"kamu\"."
+    ],
+    "donts": [
+      "Don't pakai bayangan pada kartu, panel, opsi, atau input; kedalaman dari garis dan lapisan warna.",
+      "Don't tambahkan maskot, gamifikasi mencolok, atau gradien ungu-biru ala startup edtech.",
+      "Don't tiru tampilan portal pemerintah atau pakai nama/logo BKN, KemenPANRB, atau FHCI.",
+      "Don't pakai teks terang di atas stabilo kuning; di mode gelap `mark` harus chip solid bergelap.",
+      "Don't menandai benar/salah hanya dengan warna.",
+      "Don't menampilkan testimoni, angka pengguna, atau jaminan kelulusan tanpa sumber (PRODUCT.md, Product Principles).",
+      "Don't mengira font bernama sudah tampil: sampai ada `@font-face` atau paket font, anggap tampilan nyata memakai fallback dan uji tata letak dengan Trebuchet MS/system-ui."
+    ]
+  }
+}
