@@ -1,23 +1,20 @@
-import { ExternalLink, Globe, Info } from 'lucide-react'
+import { ExternalLink, Globe } from 'lucide-react'
 
+// A reading page: one column, sections divided by rules instead of boxed cards.
 export function AboutPage() {
   return (
-    <section className="screen narrow">
-      <p className="eyebrow">Tentang</p>
+    <article className="screen mid doc">
       <h1 className="d">
         Tentang <mark>Latih Seleksi</mark>
       </h1>
-      <div className="panel">
-        <h2 className="sub">
-          <Info className="ic" aria-hidden="true" /> Catatan penting
+      <p className="note" role="note">
+        Aplikasi latihan independen, bukan produk resmi penyelenggara seleksi atau instansi pemerintah. Semua soal dibuat sendiri
+        dan tidak menjamin kelulusan.
+      </p>
+      <section aria-labelledby="src-h">
+        <h2 id="src-h" className="sub">
+          Sumber spesifikasi ujian
         </h2>
-        <p>
-          Aplikasi latihan independen, bukan produk resmi penyelenggara seleksi atau instansi pemerintah. Semua soal dibuat sendiri
-          dan tidak menjamin kelulusan.
-        </p>
-      </div>
-      <div className="panel">
-        <h2 className="sub">Sumber spesifikasi ujian</h2>
         <ul className="steps">
           <li>
             <a href="https://data-jdih.menpan.go.id/dokumen/2024kepmenpanrb321.pdf" target="_blank" rel="noopener noreferrer">
@@ -36,9 +33,16 @@ export function AboutPage() {
           Simulasi lengkap memakai durasi resmi; memilih sebagian subtes memakai durasi prorata, bukan durasi resmi. Bobot TKP adalah penilaian penyusun, bukan kunci resmi. Ambang batas tiap jalur mengikuti sumber di atas;
           ambang CPNS 2026 belum diumumkan.
         </p>
-      </div>
-      <div className="panel">
-        <h2 className="sub">Pembuat</h2>
+        <p>
+          <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
+            Simulasi resmi (cat.bkn.go.id)
+          </a>
+        </p>
+      </section>
+      <section aria-labelledby="mk-h">
+        <h2 id="mk-h" className="sub">
+          Pembuat
+        </h2>
         <p>Dibuat oleh Dhaniar. Saran dan masukan boleh lewat:</p>
         <ul className="steps">
           <li>
@@ -57,12 +61,7 @@ export function AboutPage() {
             </a>
           </li>
         </ul>
-      </div>
-      <p>
-        <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
-          Simulasi resmi (cat.bkn.go.id)
-        </a>
-      </p>
-    </section>
+      </section>
+    </article>
   )
 }

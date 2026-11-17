@@ -57,7 +57,6 @@ export function LoginPage() {
   return (
     <section className="screen narrow login-wrap">
       <div className="login-note">
-        <p className="eyebrow">Latih Seleksi</p>
         <h2 className="sub">Kenapa perlu akun?</h2>
         <ul>
           <li>Riwayat drill dan simulasi tersimpan per akun.</li>
@@ -66,7 +65,6 @@ export function LoginPage() {
         </ul>
       </div>
       <div className="col">
-        <p className="eyebrow">{label}</p>
         <h1 className="d">
           {label} ke <mark>Latih Seleksi</mark>
         </h1>
@@ -132,7 +130,6 @@ export function Verify() {
   }
   return (
     <section className="screen narrow">
-      <p className="eyebrow">Akun</p>
       <h1 className="d">Verifikasi email</h1>
       <p className="muted">Kami mengirim tautan verifikasi ke {user?.email}. Buka tautan itu, lalu muat ulang status.</p>
       <button

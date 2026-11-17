@@ -73,7 +73,6 @@ export function AccountPage() {
   const initial = (user?.email ?? '?').charAt(0).toUpperCase()
   return (
     <section className="screen narrow">
-      <p className="eyebrow">Akun</p>
       <h1 className="d">Akun</h1>
       <div className="panel">
         <div className="acct-head">
