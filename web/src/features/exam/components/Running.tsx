@@ -16,7 +16,8 @@ export function Running(props: {
   onFinished: (r: ExamResult, exam?: Exam) => void
 }) {
   const { exam, onAnswered, onFinished } = props
-  const [idx, setIdx] = useState(0)
+  // Resume at the first unanswered question, or the first one when all are answered.
+  const [idx, setIdx] = useState(() => Math.max(0, exam.items.findIndex((it) => itemStatus(it) === 'empty')))
   const [left, setLeft] = useState(() => remainingSeconds(exam.deadline_at, Date.now(), getServerOffset()))
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)

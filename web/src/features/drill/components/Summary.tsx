@@ -6,6 +6,7 @@ import type { Item } from '../types'
 import { ReportForm } from '@/shared/components/ReportForm'
 import { errorMessage } from '@/shared/lib/error'
 import { Ruler } from '@/shared/components/Ruler'
+import { fmtSeconds } from '@/shared/lib/time'
 
 export function Summary(props: {
   attemptId: string
@@ -19,6 +20,11 @@ export function Summary(props: {
   const sum = summarize(items, targetSec)
   const [submitError, setSubmitError] = useState('')
   const sent = useRef(false)
+
+  // The last question screen is scrolled down; the summary starts at its heading.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   useEffect(() => {
     if (sent.current) return
@@ -44,7 +50,7 @@ export function Summary(props: {
         />
       </section>
       <p className="muted">
-        Rata-rata <span className="num">{(sum.avgMs / 1000).toFixed(1)}</span> detik per soal.
+        Rata-rata <span className="num">{fmtSeconds(sum.avgMs)}</span> detik per soal.
       </p>
       {sum.withinTarget !== null && (
         <p className="muted">
@@ -98,7 +104,7 @@ export function Summary(props: {
               </p>
               {r && (
                 <p className="muted">
-                  Waktu <span className="num">{(r.time_ms / 1000).toFixed(1)}</span> detik
+                  Waktu <span className="num">{fmtSeconds(r.time_ms)}</span> detik
                   {r.misconception_id && <> | {misconceptionLabel(labels, r.misconception_id)}</>}
                 </p>
               )}

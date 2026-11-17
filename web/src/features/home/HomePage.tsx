@@ -43,7 +43,7 @@ export function HomePage() {
             <Target className="ic" aria-hidden="true" /> Drill
           </h2>
           <p className="muted">Latihan 8 soal TIU dengan langkah dan jenis salah hitung.</p>
-          <Link className="btn" to="/drill">
+          <Link className="btn ghost" to="/drill">
             Mulai drill
           </Link>
         </div>
@@ -52,7 +52,7 @@ export function HomePage() {
             <Timer className="ic" aria-hidden="true" /> Simulasi
           </h2>
           <p className="muted">Simulasi SKD berwaktu (TWK, TIU, TKP atau sebagian), dinilai server terhadap ambang.</p>
-          <Link className="btn" to="/simulation">
+          <Link className="btn ghost" to="/simulation">
             Mulai simulasi
           </Link>
         </div>
@@ -62,7 +62,7 @@ export function HomePage() {
           <ChartNoAxesColumn className="ic" aria-hidden="true" /> Titik lemah
         </h2>
         <p className="muted">Akurasi dan waktu per pola soal, serta saran latihan berikutnya.</p>
-        <Link className="btn" to="/dashboard">
+        <Link className="more" to="/dashboard">
           Lihat dasbor
         </Link>
       </div>

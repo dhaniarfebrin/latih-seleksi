@@ -49,8 +49,8 @@ export function StartPage() {
       </p>
       {specs.length > 1 && (
         <fieldset className="field">
-          <legend>Spesifikasi</legend>
-          <div className="seg one">
+          <legend>Spesifikasi (pilih satu)</legend>
+          <div className="seg one pick radio">
             {specs.map((sp) => (
               <label key={sp.id} className={spec?.id === sp.id ? 'on' : ''}>
                 <input
@@ -71,8 +71,8 @@ export function StartPage() {
       )}
       {spec && (
         <fieldset className="field">
-          <legend>Subtes</legend>
-          <div className="seg one">
+          <legend>Subtes (pilih satu atau lebih)</legend>
+          <div className="seg one pick">
             {spec.sections.map((s) => (
               <label key={s.id} className={chosen.includes(s.id) ? 'on' : ''}>
                 <input
@@ -89,8 +89,8 @@ export function StartPage() {
       )}
       {spec && spec.tracks.length > 0 && (
         <fieldset className="field">
-          <legend>Jalur</legend>
-          <div className="seg one">
+          <legend>Jalur (pilih satu)</legend>
+          <div className="seg one pick radio">
             {spec.tracks.map((t) => (
               <label key={t.id} className={track?.id === t.id ? 'on' : ''}>
                 <input type="radio" name="track" checked={track?.id === t.id} onChange={() => setTrackId(t.id)} />

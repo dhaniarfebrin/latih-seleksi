@@ -11,9 +11,9 @@ const BANDED_SECTION = 'TIU'
 const REVIEW_PATTERN_ID = 'ULANG'
 const TARGETS: [number | null, string][] = [
   [null, 'Mati'],
-  [30, '30 d'],
-  [60, '60 d'],
-  [90, '90 d'],
+  [30, '30 dtk'],
+  [60, '60 dtk'],
+  [90, '90 dtk'],
 ]
 
 export function DrillStart(props: {
@@ -77,7 +77,7 @@ export function DrillStart(props: {
         {groupPatterns(patterns).map((g) => (
           <div key={g.section}>
             <p className="eyebrow">{g.section}</p>
-            <div className="seg">
+            <div className="seg tags">
               {g.patterns.map((p) => (
                 <label key={p.id} className={pattern?.id === p.id ? 'on' : ''}>
                   <input
@@ -92,7 +92,7 @@ export function DrillStart(props: {
             </div>
           </div>
         ))}
-        <button className="btn" disabled={busy || noWeakest} onClick={pickWeakest}>
+        <button className="btn ghost sm" disabled={busy || noWeakest} onClick={pickWeakest}>
           Pola terlemah
         </button>
         {noWeakest && <p className="muted">Belum ada data dasbor untuk menentukan pola terlemah.</p>}
@@ -116,7 +116,7 @@ export function DrillStart(props: {
       )}
       <fieldset className="field">
         <legend>Target waktu per soal</legend>
-        <div className="seg">
+        <div className="seg c4">
           {TARGETS.map(([v, label]) => (
             <label key={label} className={targetSec === v ? 'on' : ''}>
               <input type="radio" name="target" checked={targetSec === v} onChange={() => setTargetSec(v)} />
