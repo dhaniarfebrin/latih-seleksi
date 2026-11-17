@@ -8,7 +8,8 @@ export default defineConfig({
   resolve: { alias: { '@': '/src' } },
   server: {
     host: 'localhost',
-    proxy: { '/v1': 'http://localhost:8080' },
+    // DEV_API_URL points the proxy at another API, e.g. when 8080 belongs to a different project.
+    proxy: { '/v1': process.env.DEV_API_URL ?? 'http://localhost:8080' },
   },
   test: { environment: 'node' },
 })
