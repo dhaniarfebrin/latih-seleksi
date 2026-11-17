@@ -7,13 +7,13 @@ import { useDrill } from './useDrill'
 
 export function DrillPage() {
   const [params] = useSearchParams()
-  const { s, patterns, patternsError, start, answer, submit, next, reset } = useDrill()
+  const { s, patterns, patternsError, dueCount, start, answer, submit, next, reset } = useDrill()
 
   const attempt = s.attempt
   const labelsOf = (patternId: string) => patterns.find((p) => p.id === patternId)?.misconceptions ?? {}
   return (
     <section className="screen narrow">
-      {s.screen === 'start' && <DrillStart initialPatternId={params.get('pattern') ?? ''} patterns={patterns} loadError={patternsError} onStart={start} onPickWeakest={getWeakestPatternId} />}
+      {s.screen === 'start' && <DrillStart initialPatternId={params.get('pattern') ?? ''} patterns={patterns} loadError={patternsError} dueCount={dueCount} onStart={start} onPickWeakest={getWeakestPatternId} />}
       {s.screen === 'question' && attempt && (
         <Question
           key={s.index}

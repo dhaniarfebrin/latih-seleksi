@@ -7,6 +7,8 @@ const N = 8
 // Banked sections (TWK) have no difficulty bands; the API still takes one.
 const FIXED_BAND = 2
 const BANDED_SECTION = 'TIU'
+// Reserved pattern id of the review drill (api/internal/drill ReviewPatternID).
+const REVIEW_PATTERN_ID = 'ULANG'
 const TARGETS: [number | null, string][] = [
   [null, 'Mati'],
   [30, '30 d'],
@@ -19,11 +21,13 @@ export function DrillStart(props: {
   initialPatternId: string
   patterns: Pattern[]
   loadError: string
+  // Cards due for review; the review button shows only when above zero.
+  dueCount: number
   onStart: (patternId: string, n: number, band: number, targetSec: number | null) => Promise<void>
   // Resolves to the weakest pattern id from the dashboard queue, or null when there is none yet.
   onPickWeakest: () => Promise<string | null>
 }) {
-  const { initialPatternId, patterns, loadError, onStart, onPickWeakest } = props
+  const { initialPatternId, patterns, loadError, dueCount, onStart, onPickWeakest } = props
   const [patternId, setPatternId] = useState(initialPatternId)
   const [band, setBand] = useState(2)
   const [targetSec, setTargetSec] = useState<number | null>(null)
@@ -33,17 +37,18 @@ export function DrillStart(props: {
 
   const pattern = patterns.find((p) => p.id === patternId) ?? patterns[0]
   const banded = pattern ? sectionOf(pattern.id) === BANDED_SECTION : true
-  const start = async () => {
-    if (!pattern) return
+  const begin = async (id: string, useBand: boolean) => {
     setBusy(true)
     setError('')
     try {
-      await onStart(pattern.id, N, banded ? band : FIXED_BAND, targetSec)
+      await onStart(id, N, useBand ? band : FIXED_BAND, targetSec)
     } catch (e) {
       setError(errorMessage(e))
       setBusy(false)
     }
   }
+  const start = () => pattern && begin(pattern.id, banded)
+  const startReview = () => begin(REVIEW_PATTERN_ID, false)
 
   const pickWeakest = async () => {
     setBusy(true)
@@ -129,6 +134,11 @@ export function DrillStart(props: {
       <button className="btn hi" disabled={!pattern || busy} onClick={start}>
         {busy ? 'Menyiapkan...' : 'Mulai latihan'}
       </button>
+      {dueCount > 0 && (
+        <button className="btn" disabled={busy} onClick={startReview}>
+          Ulang yang jatuh tempo ({dueCount})
+        </button>
+      )}
     </>
   )
 }

@@ -4,6 +4,10 @@ import type { Attempt, Pattern, ResponseView, Result } from './types'
 
 export const listPatterns = () => call<{ patterns: Pattern[] }>('GET', '/v1/patterns').then((r) => r.patterns)
 
+// Facts due for review (api/internal/review). Only facts feed the ULANG drill;
+// due TIU patterns surface in the dashboard queue, so due_count would overcount.
+export const getDueCount = () => call<{ facts_due: number }>('GET', '/v1/me/reviews').then((r) => r.facts_due)
+
 export const createAttempt = (pattern_id: string, n: number, band: number) =>
   call<Attempt>('POST', '/v1/attempts', { pattern_id, n, band })
 

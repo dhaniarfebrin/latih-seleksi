@@ -34,7 +34,7 @@ export interface SessionStat {
 
 export interface QueueItem {
   pattern_id: string
-  reason: 'akurasi_rendah' | 'belum_dicoba'
+  reason: 'jatuh_tempo' | 'akurasi_rendah' | 'belum_dicoba'
   accuracy_pct: number
 }
 

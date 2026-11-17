@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react'
-import { createAttempt, listPatterns, putResponse, submitAttempt } from './api'
+import { createAttempt, getDueCount, listPatterns, putResponse, submitAttempt } from './api'
 import { initialSession, reduce } from './session'
 import type { Pattern } from './types'
 import { errorMessage } from '@/shared/lib/error'
@@ -10,12 +10,18 @@ export function useDrill() {
   const [s, dispatch] = useReducer(reduce, initialSession)
   const [patterns, setPatterns] = useState<Pattern[]>([])
   const [patternsError, setPatternsError] = useState('')
+  const [dueCount, setDueCount] = useState(0)
 
   useEffect(() => {
     let live = true
     listPatterns().then(
       (p) => live && setPatterns(p),
       (e) => live && setPatternsError(errorMessage(e)),
+    )
+    // The review button is optional: a failed count just hides it.
+    getDueCount().then(
+      (n) => live && setDueCount(n),
+      () => undefined,
     )
     return () => {
       live = false
@@ -34,6 +40,7 @@ export function useDrill() {
     s,
     patterns,
     patternsError,
+    dueCount,
     start,
     answer,
     submit: submitAttempt,

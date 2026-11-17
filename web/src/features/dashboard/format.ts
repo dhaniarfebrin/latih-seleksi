@@ -22,4 +22,8 @@ export const CAUSE_LABELS: Record<keyof CauseCounts, string> = {
 export const causeText = (key: keyof CauseCounts, count: number) => `${CAUSE_LABELS[key]}: ${count} soal`
 
 export const queueReason = (q: QueueItem) =>
-  q.reason === 'akurasi_rendah' ? `Akurasi ${q.accuracy_pct}%, perlu diulang` : 'Belum dicoba'
+  q.reason === 'jatuh_tempo'
+    ? 'Jatuh tempo untuk diulang'
+    : q.reason === 'akurasi_rendah'
+      ? `Akurasi ${q.accuracy_pct}%, perlu diulang`
+      : 'Belum dicoba'

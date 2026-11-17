@@ -16,6 +16,7 @@ describe('format', () => {
   })
   it('words queue reasons', () => {
     expect(queueReason({ pattern_id: 'p', reason: 'akurasi_rendah', accuracy_pct: 40 })).toBe('Akurasi 40%, perlu diulang')
+    expect(queueReason({ pattern_id: 'p', reason: 'jatuh_tempo', accuracy_pct: 90 })).toBe('Jatuh tempo untuk diulang')
     expect(queueReason({ pattern_id: 'p', reason: 'belum_dicoba', accuracy_pct: 0 })).toBe('Belum dicoba')
   })
 })
