@@ -170,6 +170,32 @@ func TestFakeList_newestFirstPerUser(t *testing.T) {
 	}
 }
 
+// List scores closed exams from the data it already loaded: one GetExam per
+// exam, not a second load per closed exam.
+func TestFakeList_loadsEachExamOnce(t *testing.T) {
+	f := newFakeEnv(t)
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		v := f.create(t, "u1")
+		if _, err := f.svc.Submit(ctx, "u1", v.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.st.getCalls = 0
+	list, err := f.svc.List(ctx, "u1", 10)
+	if err != nil || len(list) != 3 {
+		t.Fatalf("list: %v, len=%d", err, len(list))
+	}
+	for _, it := range list {
+		if it.Result == nil {
+			t.Fatalf("closed exam %s has no result", it.ID)
+		}
+	}
+	if f.st.getCalls != 3 {
+		t.Errorf("GetExam called %d times for 3 closed exams, want 3", f.st.getCalls)
+	}
+}
+
 // A source failure must not be reported as bad input, and must not reach the store.
 func TestFakeCreate_sourceFailureLeavesNoExam(t *testing.T) {
 	f := newFakeEnv(t)

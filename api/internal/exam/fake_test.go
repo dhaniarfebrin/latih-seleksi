@@ -18,6 +18,8 @@ type fakeStore struct {
 	order []string
 	// reports by "examID/pos".
 	reports map[string]fakeReport
+	// getCalls counts GetExam reads, so a test can assert how often a path loads an exam.
+	getCalls int
 }
 
 type fakeExam struct {
@@ -39,6 +41,7 @@ func (f *fakeStore) CreateExam(_ context.Context, e question.Exam, items []quest
 }
 
 func (f *fakeStore) GetExam(_ context.Context, id string) (question.Exam, []question.Item, []question.Response, error) {
+	f.getCalls++
 	fe, ok := f.exams[id]
 	if !ok {
 		return question.Exam{}, nil, nil, question.ErrNotFound

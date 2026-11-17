@@ -424,7 +424,7 @@ func (s *Service) List(ctx context.Context, userID string, limit int) ([]ExamSum
 			DurationSeconds: int(dur / time.Second), DurationBasis: basis, SubmittedAt: l.exam.SubmittedAt,
 		}
 		if l.closed() {
-			res, err := s.Result(ctx, userID, id)
+			res, err := l.result()
 			if err != nil {
 				return nil, err
 			}
@@ -528,6 +528,12 @@ func (s *Service) Result(ctx context.Context, userID, id string) (Result, error)
 	if err != nil {
 		return Result{}, err
 	}
+	return l.result()
+}
+
+// result scores an already loaded exam, so callers that hold one (List) do not
+// read it a second time. An exam still in progress gives ErrInProgress.
+func (l loaded) result() (Result, error) {
 	if !l.closed() {
 		return Result{}, ErrInProgress
 	}
