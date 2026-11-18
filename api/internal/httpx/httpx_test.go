@@ -683,6 +683,11 @@ func TestCORSAllowsAuthorizationHeader(t *testing.T) {
 func TestDashboard(t *testing.T) {
 	srv, mint := newAuthServer(t)
 	tokA, tokB := mint("dash-a"), mint("dash-b")
+	// The users are fixed, so wipe their rows or a second run sees the first run's data.
+	t.Cleanup(func() {
+		doToken(t, "DELETE", srv.URL+"/v1/me", "", tokA)
+		doToken(t, "DELETE", srv.URL+"/v1/me", "", tokB)
+	})
 	type dash struct {
 		Sections []struct {
 			Section  string `json:"section"`
