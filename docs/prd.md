@@ -94,11 +94,14 @@ Spesifikasi disimpan sebagai data, tidak di-hardcode. Contoh: `skd-2024` dari Ke
 - `mastery`: user × pattern, akurasi, waktu, status FSRS.
 - `item_report`: item, user, alasan, status tindak lanjut.
 
-## 10. Arsitektur dan stack (usulan, belum diputuskan)
+## 10. Arsitektur dan stack
+
+Rincian dan alasannya ada di `docs/architecture.md` §3.
 
 - **Backend:** Go + PostgreSQL. Dipilih karena bisa dikemas sebagai satu binary kecil dalam container. Isinya generator templat, skoring, penjadwal FSRS, dan API.
-- **Frontend:** Next.js + TypeScript, PWA mobile-first.
-- **Auth:** OIDC. Bisa Keycloak atau penyedia terkelola.
+- **Frontend:** SPA statis Vite + React + TypeScript, mobile-first. PWA (service worker, antrean jawaban offline) direncanakan tetapi belum terpasang.
+- **Auth:** Firebase Authentication (Google dan email/sandi). Backend memverifikasi ID token sendiri lewat JWKS dan hanya menyimpan `sub`.
+- **Hosting (rencana, belum pernah di-deploy):** Cloudflare (SPA statis), Cloud Run (API Go), Neon (PostgreSQL). Lokal memakai Docker Compose.
 - **Pipeline konten:** CLI/batch terpisah dari runtime (generate → verify → review → publish), dengan LLM murah via Batch API.
 - **Mobile native (fase 3):** React Native, setelah web stabil.
 

@@ -63,8 +63,6 @@ Catatan: pada beberapa Mac dengan Go 1.22.x, `go test` bisa berhenti dengan gala
 | `docs/research/` | Riset kompetitor, keluhan pengguna, dan spesifikasi resmi beserta sumbernya |
 | `docs/mockup/` | Mockup tampilan |
 
-Catatan: `docs/prd.md` §10 masih menyebut Next.js; untuk stack, `docs/architecture.md` yang berlaku (SPA Vite statis di Cloudflare, API Go di Cloud Run, Postgres di Neon).
-
 ## Disclaimer
 
 Aplikasi latihan independen, bukan produk resmi penyelenggara seleksi. Soal buatan sendiri dan tidak menjamin kelulusan. Untuk simulasi resmi, gunakan situs penyelenggara.

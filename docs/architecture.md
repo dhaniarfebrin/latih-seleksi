@@ -1,6 +1,6 @@
 # Arsitektur: Latih Seleksi
 
-Status: draf v0.2. Turunan dari `docs/prd.md` (§6 kebutuhan, §7 invarian, §9 model data, §10 stack, §11 non-fungsional). UI mengacu ke `docs/mockup/latih-seleksi.html`. Bila PRD §10 berbeda dengan dokumen ini (PRD masih menyebut Next.js), dokumen ini yang berlaku untuk stack.
+Status: draf v0.2. Turunan dari `docs/prd.md` (§6 kebutuhan, §7 invarian, §9 model data, §10 stack, §11 non-fungsional). UI mengacu ke `docs/mockup/latih-seleksi.html`. Bila PRD §10 berbeda dengan dokumen ini, dokumen ini yang berlaku untuk stack.
 
 Penanda: **[Putusan]** = diambil di dokumen ini dan perlu persetujuan, **[Dikonfirmasi]** = sudah disetujui pemilik proyek, **Asumsi (belum pasti)** = belum diverifikasi, **[Terbuka]** = keputusan milik pemilik proyek (PRD §13), **(rencana)** = dirancang tetapi belum ada di repositori.
 
