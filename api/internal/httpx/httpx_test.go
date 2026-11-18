@@ -566,6 +566,11 @@ func TestDeleteMe(t *testing.T) {
 func TestListExams(t *testing.T) {
 	srv, mint := newAuthServer(t)
 	tokA, tokB := mint("list-a"), mint("list-b")
+	// Fixed users: wipe their rows or an exam closed by an earlier run shows up in the list.
+	t.Cleanup(func() {
+		doToken(t, "DELETE", srv.URL+"/v1/me", "", tokA)
+		doToken(t, "DELETE", srv.URL+"/v1/me", "", tokB)
+	})
 	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tokA)
 	if code != http.StatusCreated {
 		t.Fatalf("create = %d %s", code, out)
