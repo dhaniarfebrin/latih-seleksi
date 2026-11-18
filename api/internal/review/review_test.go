@@ -55,6 +55,10 @@ func (f *fakeStore) Due(_ context.Context, user string, kind Kind, now time.Time
 	return keys, nil
 }
 
+type fakeFacts map[string]bool
+
+func (f fakeFacts) Has(id string) bool { return f[id] }
+
 func TestRecordIsIdempotentPerAttempt(t *testing.T) {
 	st := newFake()
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -87,7 +91,7 @@ func TestRecordIsIdempotentPerAttempt(t *testing.T) {
 func TestDueAndCounts(t *testing.T) {
 	st := newFake()
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	s := &Service{st: st, now: func() time.Time { return now }}
+	s := &Service{st: st, facts: fakeFacts{"f1": true, "f2": true}, now: func() time.Time { return now }}
 	ctx := context.Background()
 	if err := s.Record(ctx, "u", "a1", []Outcome{{KindFact, "f1", false}, {KindFact, "f2", true}, {KindPattern, "p1", false}}); err != nil {
 		t.Fatal(err)
@@ -109,5 +113,23 @@ func TestDueAndCounts(t *testing.T) {
 	}
 	if other, _ := s.DueFacts(ctx, "other", 5); len(other) != 0 {
 		t.Errorf("other user's due = %v", other)
+	}
+}
+
+func TestCountsSkipsFactsTheBankNoLongerServes(t *testing.T) {
+	st := newFake()
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	s := &Service{st: st, facts: fakeFacts{"f1": true}, now: func() time.Time { return now }}
+	ctx := context.Background()
+	if err := s.Record(ctx, "u", "a1", []Outcome{{KindFact, "f1", false}, {KindFact, "gone", false}, {KindPattern, "p1", false}}); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(30 * 24 * time.Hour)
+	c, err := s.Counts(ctx, "u")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c != (Counts{DueCount: 2, FactsDue: 1, PatternsDue: 1}) {
+		t.Errorf("counts = %+v, want the stale fact left out", c)
 	}
 }

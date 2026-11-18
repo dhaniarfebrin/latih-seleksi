@@ -154,6 +154,16 @@ func (b *Bank) Draw(id string, n int, seed int64) ([]gen.Draft, error) {
 	return out, nil
 }
 
+// Has reports whether id is a reviewed TWK entry, the same set ByID serves.
+func (b *Bank) Has(id string) bool {
+	for _, e := range b.TWK {
+		if e.ID == id {
+			return e.Status == StatusReviewed
+		}
+	}
+	return false
+}
+
 // ByID returns the reviewed TWK items with the given entry ids in the order of
 // ids, each with its drill pattern id (TWK.<aspek>) in Draft.PatternID.
 // Unknown or unreviewed ids are skipped. Deterministic per seed.

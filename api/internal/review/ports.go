@@ -17,6 +17,12 @@ type Log struct {
 	DifficultyBefore float64
 }
 
+// FactIndex says which TWK fact ids can still be served. A card whose fact is
+// gone (for example demoted back to draft) is not counted as due.
+type FactIndex interface {
+	Has(factID string) bool
+}
+
 // Step turns a card (nil when the item was never reviewed) and an outcome into
 // the next card and the log row of that review.
 type Step func(prev *fsrs.Card, o Outcome) (fsrs.Card, Log)

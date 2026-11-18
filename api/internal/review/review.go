@@ -39,11 +39,12 @@ type Counts struct {
 
 // Service schedules reviews.
 type Service struct {
-	st  Store
-	now func() time.Time
+	st    Store
+	facts FactIndex
+	now   func() time.Time
 }
 
-func New(st Store) *Service { return &Service{st: st, now: time.Now} }
+func New(st Store, facts FactIndex) *Service { return &Service{st: st, facts: facts, now: time.Now} }
 
 // Record reviews each outcome once for the attempt. Calling it again for the
 // same attempt changes nothing.
@@ -81,15 +82,22 @@ func (s *Service) DuePatterns(ctx context.Context, userID string) ([]string, err
 	return s.st.Due(ctx, userID, KindPattern, s.now(), maxDue)
 }
 
-// Counts returns how many facts and patterns are due now.
+// Counts returns how many facts and patterns are due now. Facts the bank no
+// longer serves are not counted.
 func (s *Service) Counts(ctx context.Context, userID string) (Counts, error) {
 	facts, err := s.DueFacts(ctx, userID, maxDue)
 	if err != nil {
 		return Counts{}, err
 	}
+	nf := 0
+	for _, id := range facts {
+		if s.facts.Has(id) {
+			nf++
+		}
+	}
 	pats, err := s.DuePatterns(ctx, userID)
 	if err != nil {
 		return Counts{}, err
 	}
-	return Counts{DueCount: len(facts) + len(pats), FactsDue: len(facts), PatternsDue: len(pats)}, nil
+	return Counts{DueCount: nf + len(pats), FactsDue: nf, PatternsDue: len(pats)}, nil
 }

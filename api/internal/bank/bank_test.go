@@ -405,6 +405,28 @@ func TestDrawTWK(t *testing.T) {
 	}
 }
 
+func TestHas(t *testing.T) {
+	b := loadBank(t)
+	var reviewed, draft string
+	for _, e := range b.TWK {
+		if e.Status == StatusReviewed && reviewed == "" {
+			reviewed = e.ID
+		}
+		if e.Status != StatusReviewed && draft == "" {
+			draft = e.ID
+		}
+	}
+	if !b.Has(reviewed) {
+		t.Errorf("Has(%q) = false for a reviewed entry", reviewed)
+	}
+	if draft != "" && b.Has(draft) {
+		t.Errorf("Has(%q) = true for an unreviewed entry", draft)
+	}
+	if b.Has("no-such-id") {
+		t.Error("Has(no-such-id) = true")
+	}
+}
+
 func TestByID(t *testing.T) {
 	b := loadBank(t)
 	var want []TWKEntry

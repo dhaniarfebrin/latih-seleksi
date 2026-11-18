@@ -63,7 +63,7 @@ func run() error {
 	}
 	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
 
-	reviews := review.New(st)
+	reviews := review.New(st, items)
 	drillSvc := drill.New(st, catalog.All(), items, reviews)
 
 	// FIREBASE_PROJECT_ID is not a secret. Empty leaves /v1/exams* closed (503).
