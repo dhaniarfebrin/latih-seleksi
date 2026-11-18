@@ -40,7 +40,7 @@ func (Family) Misconceptions() map[string]string {
 	return map[string]string{
 		MisJumlahLangsung: "Menjumlahkan semua kelompok tanpa mengurangi anggota yang terhitung dua kali",
 		MisLupaIrisan:     "Lupa menyesuaikan irisan: ada bagian yang terhitung dua kali atau terkurangi berlebihan",
-		MisTertukar:       "Menjawab pertanyaan lain, misalnya gabungan padahal yang ditanya yang di luar himpunan",
+		MisTertukar:       "Menjawab besaran lain, bukan yang ditanyakan (misalnya gabungan, bagian di luar, atau satu himpunan saja)",
 		MisSalahHitung:    "Salah hitung kecil: hasil mendekati jawaban benar",
 	}
 }

@@ -190,7 +190,7 @@ func (Family) Generate(seed int64, band gen.Band) (gen.Draft, error) {
 			} else {
 				s1, s2 := nonZero(rng, 3), nonZero(rng, 4)
 				ts = interleave(arithmetic(letter(), s1, 4), arithmetic(term{false, rng.Intn(20) + 2}, s2, 4), 7)
-				how = fmt.Sprintf("Huruf (suku ganjil) bergeser %+d dan angka (suku genap) bertambah %+d.", s1, s2)
+				how = fmt.Sprintf("Huruf (suku ganjil) bergeser %+d dan angka (suku genap) berubah %+d.", s1, s2)
 			}
 		default:
 			if rng.Intn(2) == 0 {
