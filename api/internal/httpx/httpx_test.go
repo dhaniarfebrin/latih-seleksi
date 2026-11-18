@@ -592,6 +592,78 @@ func TestListExams(t *testing.T) {
 	}
 }
 
+// The list may carry only these fields. An allow-list catches a field added
+// later (item_snapshot, weight, a key) that a search for known names would miss.
+func TestListExamsExposesOnlyAllowedFields(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tok := mint("list-fields")
+	create := func() string {
+		code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"skd-2024","track":"umum","sections":["TIU"]}`, tok)
+		if code != http.StatusCreated {
+			t.Fatalf("create = %d %s", code, out)
+		}
+		var c createResp
+		if err := json.Unmarshal([]byte(out), &c); err != nil {
+			t.Fatal(err)
+		}
+		return c.ID
+	}
+	open, closed := create(), create()
+	if code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams/"+closed+"/submit", "", tok); code != http.StatusOK {
+		t.Fatalf("submit = %d %s", code, out)
+	}
+	code, out, _ := doToken(t, "GET", srv.URL+"/v1/exams", "", tok)
+	if code != http.StatusOK {
+		t.Fatalf("list = %d %s", code, out)
+	}
+	var body struct {
+		Exams []map[string]any `json:"exams"`
+	}
+	if err := json.Unmarshal([]byte(out), &body); err != nil {
+		t.Fatal(err)
+	}
+	summary := map[string]bool{"id": true, "spec_id": true, "track": true, "sections": true, "status": true,
+		"started_at": true, "deadline_at": true, "duration_seconds": true, "duration_basis": true,
+		"submitted_at": true, "result": true}
+	result := map[string]bool{"exam_id": true, "spec_id": true, "track": true, "status": true, "partial": true,
+		"duration_basis": true, "sections": true, "total": true, "max_total": true, "submitted_at": true}
+	section := map[string]bool{"id": true, "items": true, "answered": true, "score": true, "max": true, "min": true, "met": true}
+	check := func(what string, got map[string]any, allowed map[string]bool) {
+		for k := range got {
+			if !allowed[k] {
+				t.Errorf("%s exposes unexpected field %q", what, k)
+			}
+		}
+	}
+	seen := map[string]bool{}
+	for _, e := range body.Exams {
+		id, _ := e["id"].(string)
+		seen[id] = true
+		check("exam summary", e, summary)
+		res, hasResult := e["result"].(map[string]any)
+		if id == open && hasResult {
+			t.Errorf("open exam carries a result: %v", res)
+		}
+		if id == closed {
+			if !hasResult {
+				t.Fatalf("closed exam has no result: %s", out)
+			}
+			check("result", res, result)
+			secs, _ := res["sections"].([]any)
+			if len(secs) == 0 {
+				t.Fatalf("result has no sections: %s", out)
+			}
+			for _, sec := range secs {
+				m, _ := sec.(map[string]any)
+				check("result section", m, section)
+			}
+		}
+	}
+	if !seen[open] || !seen[closed] {
+		t.Errorf("list missing an exam: %s", out)
+	}
+}
+
 func TestCORSAllowsDelete(t *testing.T) {
 	srv := newServer(t, Config{CORSOrigin: "http://localhost:5173"})
 	_, _, hdr := do(t, "OPTIONS", srv.URL+"/v1/me", "")

@@ -196,6 +196,62 @@ func TestFakeList_loadsEachExamOnce(t *testing.T) {
 	}
 }
 
+// One exam with an undecodable snapshot must not hide the rest of the history:
+// List skips it, while reading that exam directly still fails.
+func TestFakeList_skipsCorruptExam(t *testing.T) {
+	f := newFakeEnv(t)
+	ctx := context.Background()
+	good := f.create(t, "u1")
+	bad := f.create(t, "u1")
+	f.st.exams[bad.ID].items[0].Snapshot = []byte("{not json")
+	list, err := f.svc.List(ctx, "u1", 10)
+	if err != nil {
+		t.Fatalf("list failed because of one corrupt exam: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != good.ID {
+		t.Fatalf("list = %+v, want only %s", list, good.ID)
+	}
+	if _, err := f.svc.Get(ctx, "u1", bad.ID); err == nil || errors.Is(err, ErrNotFound) {
+		t.Errorf("Get of a corrupt exam = %v, want a non-NotFound error", err)
+	}
+}
+
+// A store failure is not a corrupt exam: List must report it, not hide it.
+func TestFakeList_storeErrorStillFails(t *testing.T) {
+	f := newFakeEnv(t)
+	f.create(t, "u1")
+	f.st.getErr = errors.New("connection lost")
+	if _, err := f.svc.List(context.Background(), "u1", 10); err == nil {
+		t.Fatal("list swallowed a store error")
+	}
+}
+
+// A closed TKP exam is scored by option weight in the list, the same as in its result.
+func TestFakeList_scoresWeightedSection(t *testing.T) {
+	f := newWeightedEnv(t, weightedSource{})
+	ctx := context.Background()
+	v, err := f.svc.Create(ctx, "u1", "skd-2024", "umum", []string{"TKP"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for pos, a := range map[int]string{1: "E", 2: "E", 3: "B", 4: "A"} {
+		if _, err := f.svc.Answer(ctx, "u1", v.ID, AnswerInput{Pos: pos, Answer: a, Seq: 1}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := f.svc.Submit(ctx, "u1", v.ID); err != nil {
+		t.Fatal(err)
+	}
+	list, err := f.svc.List(ctx, "u1", 10)
+	if err != nil || len(list) != 1 || list[0].Result == nil {
+		t.Fatalf("list = %+v, %v", list, err)
+	}
+	// E=5, E=5, B=2, A=1; the rest blank.
+	if got := list[0].Result.Sections[0]; got.Score != 13 || got.Answered != 4 || got.Max != 225 {
+		t.Errorf("section = %+v, want score 13 answered 4 max 225", got)
+	}
+}
+
 // A source failure must not be reported as bad input, and must not reach the store.
 func TestFakeCreate_sourceFailureLeavesNoExam(t *testing.T) {
 	f := newFakeEnv(t)

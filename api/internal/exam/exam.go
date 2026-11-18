@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 	"unicode/utf8"
 
@@ -38,6 +39,11 @@ var (
 	ErrInvalid    = question.ErrInvalid
 	ErrClosed     = errors.New("exam is closed")
 	ErrInProgress = errors.New("exam is still in progress")
+
+	// errCorrupt marks a stored exam whose frozen data cannot be decoded or
+	// scored. It is a data problem of one exam, unlike a store error, so List
+	// can skip that exam instead of failing the whole list.
+	errCorrupt = errors.New("corrupt exam data")
 )
 
 func invalid(format string, a ...any) error {
@@ -293,13 +299,13 @@ func (s *Service) load(ctx context.Context, userID, id string) (loaded, error) {
 	}
 	sp, err := spec.Parse(e.SpecBody)
 	if err != nil {
-		return loaded{}, fmt.Errorf("decode frozen spec: %w", err)
+		return loaded{}, fmt.Errorf("%w: decode frozen spec: %w", errCorrupt, err)
 	}
 	snaps := make(map[int]question.Snapshot, len(items))
 	for _, it := range items {
 		var sn question.Snapshot
 		if err := json.Unmarshal(it.Snapshot, &sn); err != nil {
-			return loaded{}, fmt.Errorf("decode snapshot %d: %w", it.Pos, err)
+			return loaded{}, fmt.Errorf("%w: decode snapshot %d: %w", errCorrupt, it.Pos, err)
 		}
 		snaps[it.Pos] = sn
 	}
@@ -402,7 +408,8 @@ const (
 )
 
 // List returns the user's exams, newest first. Each is loaded through load, so
-// an overdue exam is closed (expired) before it is reported.
+// an overdue exam is closed (expired) before it is reported. An exam whose
+// stored data is corrupt is logged and left out; store errors still fail the call.
 func (s *Service) List(ctx context.Context, userID string, limit int) ([]ExamSummary, error) {
 	if limit < 1 || limit > MaxListLimit {
 		return nil, invalid("limit must be between 1 and %d", MaxListLimit)
@@ -414,6 +421,10 @@ func (s *Service) List(ctx context.Context, userID string, limit int) ([]ExamSum
 	out := make([]ExamSummary, 0, len(ids))
 	for _, id := range ids {
 		l, err := s.load(ctx, userID, id)
+		if errors.Is(err, errCorrupt) {
+			slog.Error("exam skipped in list", "exam", id, "err", err)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -425,6 +436,10 @@ func (s *Service) List(ctx context.Context, userID string, limit int) ([]ExamSum
 		}
 		if l.closed() {
 			res, err := l.result()
+			if errors.Is(err, errCorrupt) {
+				slog.Error("exam skipped in list", "exam", id, "err", err)
+				continue
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -539,7 +554,7 @@ func (l loaded) result() (Result, error) {
 	}
 	track, ok := l.spec.Track(l.exam.Track)
 	if !ok {
-		return Result{}, fmt.Errorf("frozen spec %s lost track %q", l.spec.ID, l.exam.Track)
+		return Result{}, fmt.Errorf("%w: frozen spec %s lost track %q", errCorrupt, l.spec.ID, l.exam.Track)
 	}
 	byPos := make(map[int]question.Response, len(l.resps))
 	for _, r := range l.resps {
@@ -569,7 +584,7 @@ func (l loaded) result() (Result, error) {
 			if ok && sec.Scoring.Kind == spec.KindWeighted {
 				o, found := l.snaps[it.Pos].Option(r.Answer)
 				if !found {
-					return Result{}, fmt.Errorf("item %d: answer %s is not an option of the frozen question", it.Pos, r.Answer)
+					return Result{}, fmt.Errorf("%w: item %d: answer %s is not an option of the frozen question", errCorrupt, it.Pos, r.Answer)
 				}
 				sc.Weight = o.Weight
 			}
@@ -577,7 +592,7 @@ func (l loaded) result() (Result, error) {
 		}
 		sr, err := scoring.ScoreSection(sec, track, rs)
 		if err != nil {
-			return Result{}, err
+			return Result{}, fmt.Errorf("%w: score section %s: %w", errCorrupt, sec.ID, err)
 		}
 		res.Sections = append(res.Sections, SectionResult{
 			ID: sr.ID, Items: sec.Items, Answered: answered, Score: sr.Score, Max: sr.Max, Min: sr.Min, Met: sr.Met,
