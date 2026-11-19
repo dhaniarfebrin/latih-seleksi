@@ -79,7 +79,7 @@ Dibaca langsung pada 18 Nov 2026. Tujuan: memutuskan apakah modul BUMN (PRD fase
 
 - Angka E.2-E.3 (hlm. 3): wajib dipakai "secara utuh tanpa pengurangan atau penambahan" pada seluruh group BUMN.
 - **Beda dari BerAKHLAK ASN.** SE ini 6 nilai (A-K-H-L-A-K); SE MenPANRB 20/2021 punya 7 nilai BerAKHLAK (ada Berorientasi Pelayanan) dengan perilaku berbeda (lihat `sumber_twk_tkp.md`). Bank TKP yang ada memakai SE 20/2021; modul AKHLAK BUMN wajib memakai SE-7/2020, jangan dicampur.
-- Status berlaku SE-7/2020: **belum diverifikasi.** Hasil pencarian tidak menemukan pencabutan, tetapi halaman JDIH BUMN (daftar status) tidak saya buka. SK-115/MBU/05/2022 (AKHLAK Culture Journey) merujuk ke SE ini menurut ringkasan pencarian (tidak dibuka). Cara cek: halaman peraturan di jdih.bumn.go.id atau peraturan.bpk.go.id.
+- Status berlaku SE-7/2020: peraturan.bpk.go.id (dicek 2026-11-20, hasil pencarian "SE-7/MBU/07/2020") menampilkan entri "Berlaku mulai 6 tahun yang lalu", berlaku sejak 1 Juli 2020; halaman itu tidak memuat relasi mencabut, diubah, atau dicabut (tidak ada bagian "Status Peraturan"). Itu ketiadaan di halaman, bukan bukti tidak ada pencabut; halaman jdih.bumn.go.id tidak bisa dibuka (404). SK-115/MBU/05/2022 merujuk ke SE ini menurut ringkasan pencarian (tidak dibuka).
 - **Asumsi (belum pasti):** tes AKHLAK RBB mengukur nilai-nilai ini; sumber media menyebut "karakter dan penerapan nilai" (ANTARA 9 Mar 2025) dan memakai urutan enam nilai yang sama, tetapi tidak ada sumber resmi yang menautkan item tes ke SE-7/2020.
 - Kunci/bobot jawaban AKHLAK: **tidak ada pedoman resmi.** Statusnya sama dengan bobot TKP (sumber_twk_tkp.md): kunci buatan aplikasi, bukan kunci resmi, harus berlabel begitu.
 
