@@ -11,6 +11,7 @@ import {
   summarizeSections,
   availableSections,
   isBumnSpec,
+  weightedSectionIds,
   toggleSection,
 } from './exam'
 
@@ -136,6 +137,12 @@ describe('section choice', () => {
     expect(isBumnSpec('rbb-2024')).toBe(true)
     expect(isBumnSpec('skd-2024')).toBe(false)
     expect(isBumnSpec('skd-sekolah-kedinasan-2026')).toBe(false)
+  })
+  it('recognises the weighted sections', () => {
+    expect(weightedSectionIds(['TKD', 'AKHLAK', 'WK'])).toEqual(['AKHLAK'])
+    expect(weightedSectionIds(['TWK', 'TIU', 'TKP'])).toEqual(['TKP'])
+    expect(weightedSectionIds(['TWK', 'TIU'])).toEqual([])
+    expect(weightedSectionIds(['TKP', 'AKHLAK'])).toEqual(['TKP', 'AKHLAK'])
   })
   it('toggles a section but keeps at least one', () => {
     expect(toggleSection(['TWK', 'TIU'], 'TWK')).toEqual(['TIU'])

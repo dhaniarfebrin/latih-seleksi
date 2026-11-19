@@ -81,6 +81,8 @@ export interface ExamResult {
   sections: SectionResult[]
   total: number
   max_total: number
+  // Weighted stage score (0-100); set only when every spec section was taken.
+  weighted?: number
   submitted_at: string
 }
 

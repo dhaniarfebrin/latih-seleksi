@@ -1,12 +1,13 @@
 import { CircleCheck, CircleX, Minus, Scale } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ReportForm } from '@/shared/components/ReportForm'
-import { BUMN_NOTICE, isBumnSpec, timeLine, WEIGHTED_SECTION } from '../exam'
+import { BUMN_NOTICE, isBumnSpec, timeLine, WEIGHTED_SCORE_NOTE, WEIGHTED_SECTIONS, weightedSectionIds } from '../exam'
 import { reportItem } from '../api'
 import type { Exam, ExamItem, ExamResult } from '../types'
 
 export function Result(props: { result: ExamResult; exam: Exam | null }) {
   const { result, exam } = props
+  const weightedIds = weightedSectionIds(result.sections.map((x) => x.id))
   return (
     <div className="wide split">
       <div className="col">
@@ -21,8 +22,16 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
         {result.duration_basis === 'prorated' && (
           <p className="muted">Durasi dihitung prorata dari durasi resmi, jadi bukan durasi resmi ujian.</p>
         )}
-        {result.sections.some((x) => x.id === WEIGHTED_SECTION) && (
-          <p className="chip warn">Bobot TKP adalah penilaian penyusun, bukan kunci resmi.</p>
+        {weightedIds.length > 0 && (
+          <p className="chip warn">
+            Bobot {weightedIds.join(' dan ')} adalah penilaian penyusun, bukan kunci resmi.
+          </p>
+        )}
+        {result.weighted !== undefined && (
+          <p>
+            Nilai tertimbang <mark className="num">{result.weighted.toFixed(1)}</mark> / 100
+            <span className="muted"> ({WEIGHTED_SCORE_NOTE})</span>
+          </p>
         )}
         <section className="panel">
           <h2 className="sub">Per subtes</h2>
@@ -73,7 +82,7 @@ function Review({ examId, items }: { examId: string; items: ExamItem[] }) {
       <h2 className="sub">Tinjauan soal</h2>
       {items.map((it) => {
         const r = it.response
-        const weighted = it.section === WEIGHTED_SECTION
+        const weighted = WEIGHTED_SECTIONS.has(it.section)
         return (
           <details key={it.pos}>
             <summary>

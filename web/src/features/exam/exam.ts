@@ -61,8 +61,14 @@ export function examReduce(s: ExamSession, a: ExamAction): ExamSession {
   }
 }
 
-// The weighted subtest: scored by option weight (the authors' judgement), not right or wrong.
-export const WEIGHTED_SECTION = 'TKP'
+// The weighted subtests: scored by option weight (the authors' judgement), not right or wrong.
+export const WEIGHTED_SECTIONS: ReadonlySet<string> = new Set(['TKP', 'AKHLAK'])
+
+// The weighted subtests among the given section ids, in the given order.
+export const weightedSectionIds = (ids: string[]): string[] => ids.filter((id) => WEIGHTED_SECTIONS.has(id))
+
+export const WEIGHTED_SCORE_NOTE =
+  'Nilai tertimbang memakai bobot tahap BUMN 2024 dari spesifikasi, tetapi jumlah soal AKHLAK tidak resmi, jadi hanya perkiraan latihan.'
 
 // The BUMN profile is unofficial (item counts and duration come from media); the result carries
 // only the spec id, not its scope, so BUMN specs are recognised by their `rbb-` id prefix.
