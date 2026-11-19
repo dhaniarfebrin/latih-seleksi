@@ -1,7 +1,7 @@
 import { CircleCheck, CircleX, Minus, Scale } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ReportForm } from '@/shared/components/ReportForm'
-import { timeLine, WEIGHTED_SECTION } from '../exam'
+import { BUMN_NOTICE, isBumnSpec, timeLine, WEIGHTED_SECTION } from '../exam'
 import { reportItem } from '../api'
 import type { Exam, ExamItem, ExamResult } from '../types'
 
@@ -14,6 +14,7 @@ export function Result(props: { result: ExamResult; exam: Exam | null }) {
           Skor <mark className="num">{result.total}</mark> / {result.max_total}
         </h1>
         {result.status === 'expired' && <p className="muted">Waktu habis.</p>}
+        {isBumnSpec(result.spec_id) && <p className="chip warn">{BUMN_NOTICE}</p>}
         {result.partial && (
           <p className="chip warn">Simulasi parsial: tiap subtes dibandingkan dengan ambangnya, bukan status lulus.</p>
         )}

@@ -35,7 +35,7 @@ export function AboutPage() {
         </p>
         <p>
           <a href="https://cat.bkn.go.id" target="_blank" rel="noopener noreferrer">
-            Simulasi resmi (cat.bkn.go.id)
+            Simulasi resmi CPNS (cat.bkn.go.id)
           </a>
         </p>
       </section>

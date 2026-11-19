@@ -10,6 +10,7 @@ import {
   remainingSeconds,
   summarizeSections,
   availableSections,
+  isBumnSpec,
   toggleSection,
 } from './exam'
 
@@ -130,6 +131,11 @@ describe('section choice', () => {
   }
   it('defaults to the available sections in spec order', () => {
     expect(availableSections(spec)).toEqual(['TWK', 'TIU'])
+  })
+  it('recognises the BUMN profile by spec id', () => {
+    expect(isBumnSpec('rbb-2024')).toBe(true)
+    expect(isBumnSpec('skd-2024')).toBe(false)
+    expect(isBumnSpec('skd-sekolah-kedinasan-2026')).toBe(false)
   })
   it('toggles a section but keeps at least one', () => {
     expect(toggleSection(['TWK', 'TIU'], 'TWK')).toEqual(['TIU'])

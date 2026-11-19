@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createExam, listSpecs } from './api'
-import { availableSections, toggleSection } from './exam'
+import { availableSections, BUMN_NOTICE, isBumnSpec, toggleSection } from './exam'
 import type { Spec } from './types'
 import { errorMessage } from '@/shared/lib/error'
 
@@ -25,6 +25,7 @@ export function StartPage() {
   const open = spec ? availableSections(spec) : []
   const chosen = picked ?? open
   const partial = !!spec && chosen.length < spec.sections.length
+  const bumn = !!spec && isBumnSpec(spec.id)
 
   const start = async () => {
     if (!spec || !track) return
@@ -42,11 +43,12 @@ export function StartPage() {
   return (
     <section className="screen narrow">
       <h1 className="d">
-        Simulasi <mark>SKD</mark>
+        Simulasi <mark>{bumn ? 'BUMN' : 'SKD'}</mark>
       </h1>
       <p className="muted">
         {partial ? 'Simulasi parsial, durasi prorata (bukan durasi resmi). ' : 'Simulasi lengkap. '}Waktu dihitung server dan jalan terus walau halaman ditutup.
       </p>
+      {bumn && <p className="chip warn">{BUMN_NOTICE}</p>}
       {specs.length > 1 && (
         <fieldset className="field">
           <legend>Spesifikasi (pilih satu)</legend>

@@ -64,6 +64,12 @@ export function examReduce(s: ExamSession, a: ExamAction): ExamSession {
 // The weighted subtest: scored by option weight (the authors' judgement), not right or wrong.
 export const WEIGHTED_SECTION = 'TKP'
 
+// The BUMN profile is unofficial (item counts and duration come from media); the result carries
+// only the spec id, not its scope, so BUMN specs are recognised by their `rbb-` id prefix.
+export const isBumnSpec = (specId: string): boolean => specId.startsWith('rbb-')
+export const BUMN_NOTICE =
+  'Profil BUMN tidak resmi: jumlah soal dan durasi bersumber dari media, hanya ambang dan skala yang mengikuti laman resmi rekrutmen BUMN 2024. Hasil di sini bukan status lulus.'
+
 // Ids of the sections of spec that can be taken now, in spec order.
 export const availableSections = (sp: Spec): string[] => sp.sections.filter((s) => s.available).map((s) => s.id)
 
