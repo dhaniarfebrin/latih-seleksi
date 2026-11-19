@@ -532,3 +532,17 @@ func TestCreate_sourceFailureIsNotInvalid(t *testing.T) {
 		t.Fatalf("Create err = %v, want a non-ErrInvalid error", err)
 	}
 }
+
+func TestGeneratedSourceForOtherSection(t *testing.T) {
+	src := NewGeneratedSourceFor("TKD", catalog.Subset("TIU.numerik.deret-angka", "TIU.verbal.silogisme"))
+	if got := src.Sections(); len(got) != 1 || got[0] != "TKD" {
+		t.Fatalf("Sections = %v", got)
+	}
+	items, err := src.Pick("TKD", 100, 7)
+	if err != nil || len(items) != 100 {
+		t.Fatalf("Pick: %d items, err %v", len(items), err)
+	}
+	if _, err := src.Pick("TIU", 1, 1); err == nil {
+		t.Error("TIU accepted by a TKD source")
+	}
+}

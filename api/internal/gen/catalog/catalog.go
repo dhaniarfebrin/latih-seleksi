@@ -21,3 +21,21 @@ import (
 func All() []gen.Family {
 	return []gen.Family{persentase.Family{}, kerjasama.Family{}, kecepatan.Family{}, ratarata.Family{}, deretangka.Family{}, perbandingan.Family{}, silogisme.Family{}, umur.Family{}, aritmetika.Family{}, himpunan.Family{}, derethuruf.Family{}, analitis.Family{}}
 }
+
+// Subset returns the families with the given ids, in the order given. It
+// panics on an unknown id: callers are startup wiring with literal ids.
+func Subset(ids ...string) []gen.Family {
+	byID := map[string]gen.Family{}
+	for _, f := range All() {
+		byID[f.ID()] = f
+	}
+	out := make([]gen.Family, 0, len(ids))
+	for _, id := range ids {
+		f, ok := byID[id]
+		if !ok {
+			panic("catalog: unknown family " + id)
+		}
+		out = append(out, f)
+	}
+	return out
+}

@@ -119,7 +119,7 @@ Rincian dan alasannya ada di `docs/architecture.md` §3.
 |---|---|---|
 | 0. Validasi | 3–5 wawancara pelamar, prototipe 1 keluarga templat (persentase berantai) | Keputusan lanjut atau ubah |
 | 1. MVP SKD | FR-01 s.d. FR-13, bank awal sesuai kapasitas review | Dipakai sendiri, lalu beta tertutup |
-| 2. BUMN | TKD + AKHLAK (sumber resmi nilai AKHLAK dicek ulang), English struktur dan bacaan | Modul BUMN |
+| 2. BUMN | TKD + AKHLAK (sumber resmi nilai AKHLAK dicek ulang), English struktur dan bacaan. Dimulai sebagai "profil tidak resmi" (spec `rbb-2024`: TKD numerik+logika dan WK; ambang resmi, jumlah soal dan durasi tidak resmi); AKHLAK menyusul | Modul BUMN |
 | 3. Perluasan | Chat penjelasan berkuota, soal figural (SVG generator), React Native, monetisasi | Rilis publik |
 
 ## 13. Pertanyaan terbuka

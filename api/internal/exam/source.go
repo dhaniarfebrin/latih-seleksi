@@ -18,8 +18,9 @@ const sectionTIU = "TIU"
 // seedTries bounds the retries for one position when a generated stem repeats.
 const seedTries = 5
 
-// GeneratedSource serves TIU items from template families.
+// GeneratedSource serves items of one section from template families.
 type GeneratedSource struct {
+	section  string
 	families []gen.Family
 }
 
@@ -27,17 +28,22 @@ var _ ItemSource = GeneratedSource{}
 
 // NewGeneratedSource serves TIU from the given families (use catalog.All()).
 func NewGeneratedSource(families []gen.Family) GeneratedSource {
-	return GeneratedSource{families: families}
+	return NewGeneratedSourceFor(sectionTIU, families)
 }
 
-func (GeneratedSource) Sections() []string { return []string{sectionTIU} }
+// NewGeneratedSourceFor serves the given section from the given families.
+func NewGeneratedSourceFor(section string, families []gen.Family) GeneratedSource {
+	return GeneratedSource{section: section, families: families}
+}
+
+func (g GeneratedSource) Sections() []string { return []string{g.section} }
 
 // Pick returns n items, round-robin over the families starting at a seeded
 // offset, each with a seeded band 1-3. It avoids repeated stems when it can;
 // after seedTries repeats it keeps the last draft rather than fail. The result
 // is deterministic per seed.
 func (g GeneratedSource) Pick(section string, n int, seed int64) ([]gen.Draft, error) {
-	if section != sectionTIU {
+	if section != g.section {
 		return nil, fmt.Errorf("exam: generated source has no section %q", section)
 	}
 	if len(g.families) == 0 {

@@ -25,8 +25,12 @@ import (
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/export"
+	"latihseleksi/api/internal/gen/analitis"
 	"latihseleksi/api/internal/gen/catalog"
+	"latihseleksi/api/internal/gen/deretangka"
+	"latihseleksi/api/internal/gen/himpunan"
 	"latihseleksi/api/internal/gen/persentase"
+	"latihseleksi/api/internal/gen/silogisme"
 	"latihseleksi/api/internal/insight"
 	"latihseleksi/api/internal/review"
 	"latihseleksi/api/internal/spec"
@@ -55,7 +59,7 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), exam.NewGeneratedSourceFor("TKD", catalog.Subset(deretangka.PatternID, silogisme.PatternID, analitis.PatternID, himpunan.PatternID)), bank.WKSource{Bank: items}, items)
 	reviews := review.New(st, items)
 	drillSvc := drill.New(st, catalog.All(), items, reviews)
 	srv := httptest.NewServer(NewHandler(drillSvc, examSvc, insight.New(st, drillSvc, reviews), export.New(st), reviews, st, cfg))
@@ -1097,5 +1101,48 @@ func TestReviewFlow(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(out), &ex); err != nil || code != http.StatusOK || len(ex.Cards) != 4 || len(ex.Log) != 7 {
 		t.Errorf("export = %d %v cards %d log %d", code, err, len(ex.Cards), len(ex.Log))
+	}
+}
+
+func TestBUMNSimulationCreatesAndScores(t *testing.T) {
+	srv, mint := newAuthServer(t)
+	tok := mint("bumn-sim")
+	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"rbb-2024","track":"umum","sections":["TKD","WK"]}`, tok)
+	if code != http.StatusCreated {
+		t.Fatalf("create = %d %s", code, out)
+	}
+	var ex struct {
+		ID    string `json:"id"`
+		Items []struct {
+			Section string `json:"section"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(out), &ex); err != nil || len(ex.Items) != 110 {
+		t.Fatalf("exam body: %v items=%d", err, len(ex.Items))
+	}
+	counts := map[string]int{}
+	for _, it := range ex.Items {
+		counts[it.Section]++
+	}
+	if counts["TKD"] != 100 || counts["WK"] != 10 {
+		t.Errorf("section counts = %v", counts)
+	}
+	code, out, _ = doToken(t, "POST", srv.URL+"/v1/exams/"+ex.ID+"/submit", "", tok)
+	if code != http.StatusOK {
+		t.Fatalf("submit = %d %s", code, out)
+	}
+	var res struct {
+		Sections []struct {
+			ID  string `json:"id"`
+			Max int    `json:"max"`
+			Min int    `json:"min"`
+		} `json:"sections"`
+		MaxTotal int `json:"max_total"`
+	}
+	if err := json.Unmarshal([]byte(out), &res); err != nil || len(res.Sections) != 2 || res.MaxTotal != 200 {
+		t.Fatalf("result: %v %s", err, out)
+	}
+	if s0, s1 := res.Sections[0], res.Sections[1]; s0.ID != "TKD" || s0.Min != 58 || s0.Max != 100 || s1.ID != "WK" || s1.Min != 50 || s1.Max != 100 {
+		t.Errorf("sections = %+v", res.Sections)
 	}
 }

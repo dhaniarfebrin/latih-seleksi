@@ -463,3 +463,64 @@ func TestByID(t *testing.T) {
 		}
 	}
 }
+
+func TestWKSourceServesReviewedTWK(t *testing.T) {
+	b := loadBank(t)
+	src := WKSource{b}
+	if got := src.Sections(); len(got) != 1 || got[0] != SectionWK {
+		t.Fatalf("Sections = %v", got)
+	}
+	reviewed := map[string]bool{}
+	for _, e := range b.TWK {
+		if e.Status == StatusReviewed {
+			reviewed[e.ID] = true
+		}
+	}
+	for seed := int64(1); seed <= 20; seed++ {
+		a, err := src.Pick(SectionWK, 10, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(a) != 10 {
+			t.Fatalf("seed %d: %d items", seed, len(a))
+		}
+		seen := map[string]bool{}
+		for _, d := range a {
+			if !reviewed[d.FactID] || seen[d.FactID] {
+				t.Fatalf("seed %d: %q is unreviewed or repeated", seed, d.FactID)
+			}
+			seen[d.FactID] = true
+			if !strings.HasPrefix(d.PatternID, "twk-") {
+				t.Errorf("pattern id %q lost", d.PatternID)
+			}
+			var key string
+			for _, o := range d.Options {
+				if o.Key == d.AnswerKey {
+					key = o.Text
+				}
+			}
+			e := entryByID(b, d.FactID)
+			if key != e.Correct || !strings.Contains(squash(e.Quote), squash(e.Correct)) {
+				t.Errorf("%s: key %q not the cited correct answer", d.FactID, key)
+			}
+		}
+		again, _ := src.Pick(SectionWK, 10, seed)
+		for i := range a {
+			if a[i].FactID != again[i].FactID || a[i].AnswerKey != again[i].AnswerKey {
+				t.Fatalf("seed %d: not deterministic", seed)
+			}
+		}
+	}
+	if _, err := src.Pick("TWK", 1, 1); err == nil {
+		t.Error("WK source accepted section TWK")
+	}
+}
+
+func entryByID(b *Bank, id string) TWKEntry {
+	for _, e := range b.TWK {
+		if e.ID == id {
+			return e
+		}
+	}
+	return TWKEntry{}
+}

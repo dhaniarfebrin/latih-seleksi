@@ -1,0 +1,32 @@
+{
+  "id": "rbb-2024",
+  "label": "BUMN (profil tidak resmi): TKD numerik dan logika, WK",
+  "source": "Ambang dan skala dari laman resmi rekrutmen BUMN 2024 (arsip 2024-06-02). Jumlah soal dan durasi tidak resmi (angka dari media), hanya untuk latihan.",
+  "source_url": "https://web.archive.org/web/20240602/https://rekrutmenbersama2024.fhcibumn.id/",
+  "enacted_on": "2024-06-02",
+  "scope": "bumn",
+  "duration_min": 83,
+  "sections": [
+    {
+      "id": "TKD",
+      "label": "Tes Kemampuan Dasar (numerik dan logika)",
+      "items": 100,
+      "scoring": { "kind": "right-wrong", "correct": 1 }
+    },
+    {
+      "id": "WK",
+      "label": "Wawasan Kebangsaan",
+      "items": 10,
+      "scoring": { "kind": "right-wrong", "correct": 10 },
+      "aspects": ["nasionalisme", "integritas", "bela-negara", "pilar-negara", "bahasa-negara"]
+    }
+  ],
+  "tracks": [
+    {
+      "id": "umum",
+      "label": "Umum",
+      "thresholds": { "TKD": 58, "WK": 50 }
+    }
+  ],
+  "max_total": 200
+}

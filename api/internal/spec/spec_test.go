@@ -18,11 +18,11 @@ func mustLoad(t *testing.T) *Registry {
 func TestEmbeddedSpecsValidate(t *testing.T) {
 	r := mustLoad(t)
 	all := r.All()
-	if len(all) != 2 {
-		t.Fatalf("got %d specs, want 2", len(all))
+	if len(all) != 3 {
+		t.Fatalf("got %d specs, want 3", len(all))
 	}
-	if all[0].ID != "skd-2024" || all[1].ID != "skd-sekolah-kedinasan-2026" {
-		t.Errorf("All order = %s, %s", all[0].ID, all[1].ID)
+	if all[0].ID != "rbb-2024" || all[1].ID != "skd-2024" || all[2].ID != "skd-sekolah-kedinasan-2026" {
+		t.Errorf("All order = %s, %s, %s", all[0].ID, all[1].ID, all[2].ID)
 	}
 	for _, s := range all {
 		if err := s.Validate(); err != nil {
@@ -229,5 +229,24 @@ func TestLoadFSRejects(t *testing.T) {
 	unk := fstest.MapFS{"d/a.json": {Data: []byte(strings.Replace(valid, `"scope":"x"`, `"scope":"x","extra":1`, 1))}}
 	if _, err := loadFS(unk, "d"); err == nil {
 		t.Error("unknown field accepted by loadFS")
+	}
+}
+
+func TestRBB2024Spec(t *testing.T) {
+	s, ok := mustLoad(t).Get("rbb-2024")
+	if !ok {
+		t.Fatal("rbb-2024 missing")
+	}
+	if s.Scope != "bumn" || s.MaxTotal != 200 || s.DurationMin != 83 {
+		t.Errorf("scope=%s max=%d duration=%d", s.Scope, s.MaxTotal, s.DurationMin)
+	}
+	if len(s.Sections) != 2 || s.Sections[0].ID != "TKD" || s.Sections[0].MaxScore() != 100 || s.Sections[1].ID != "WK" || s.Sections[1].MaxScore() != 100 {
+		t.Errorf("sections = %+v", s.Sections)
+	}
+	if len(s.Tracks) != 1 || s.Tracks[0].ID != "umum" || s.Tracks[0].Thresholds["TKD"] != 58 || s.Tracks[0].Thresholds["WK"] != 50 {
+		t.Errorf("tracks = %+v", s.Tracks)
+	}
+	if !strings.Contains(s.Source, "tidak resmi") {
+		t.Errorf("source must say counts and duration are unofficial: %q", s.Source)
 	}
 }

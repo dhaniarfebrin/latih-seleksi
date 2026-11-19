@@ -16,7 +16,11 @@ import (
 	"latihseleksi/api/internal/drill"
 	"latihseleksi/api/internal/exam"
 	"latihseleksi/api/internal/export"
+	"latihseleksi/api/internal/gen/analitis"
 	"latihseleksi/api/internal/gen/catalog"
+	"latihseleksi/api/internal/gen/deretangka"
+	"latihseleksi/api/internal/gen/himpunan"
+	"latihseleksi/api/internal/gen/silogisme"
 	"latihseleksi/api/internal/httpx"
 	"latihseleksi/api/internal/insight"
 	"latihseleksi/api/internal/review"
@@ -61,7 +65,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), items)
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), exam.NewGeneratedSourceFor("TKD", catalog.Subset(deretangka.PatternID, silogisme.PatternID, analitis.PatternID, himpunan.PatternID)), bank.WKSource{Bank: items}, items)
 
 	reviews := review.New(st, items)
 	drillSvc := drill.New(st, catalog.All(), items, reviews)
