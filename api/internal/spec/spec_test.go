@@ -156,6 +156,9 @@ func TestValidateRejects(t *testing.T) {
 		{"empty aspect", func(s *Spec) { s.Sections[0].Aspects[0] = "" }, "empty aspect"},
 		{"duplicate aspect", func(s *Spec) { s.Sections[0].Aspects[1] = s.Sections[0].Aspects[0] }, "duplicate aspect"},
 		{"total_min above max_total", func(s *Spec) { s.Tracks[1].TotalMin = 551 }, "total_min 551"},
+		{"weights not 100", func(s *Spec) { s.Tracks[1].Weights = map[string]int{"TWK": 30, "TIU": 30, "TKP": 30} }, "add up to 90"},
+		{"weight unknown section", func(s *Spec) { s.Tracks[1].Weights = map[string]int{"TWK": 50, "XX": 50} }, "unknown section"},
+		{"weight zero", func(s *Spec) { s.Tracks[1].Weights = map[string]int{"TWK": 100, "TIU": 0} }, "must be > 0"},
 		{"track without rule", func(s *Spec) { s.Tracks[1].TotalMin = 0; s.Tracks[1].Thresholds = nil }, "no rule"},
 	}
 	for _, c := range cases {
@@ -189,6 +192,13 @@ func cloneSpec(s Spec) Spec {
 			th[k] = v
 		}
 		tr.Thresholds = th
+		if tr.Weights != nil {
+			w := make(map[string]int, len(tr.Weights))
+			for k, v := range tr.Weights {
+				w[k] = v
+			}
+			tr.Weights = w
+		}
 		out.Tracks[i] = tr
 	}
 	return out
@@ -237,14 +247,21 @@ func TestRBB2024Spec(t *testing.T) {
 	if !ok {
 		t.Fatal("rbb-2024 missing")
 	}
-	if s.Scope != "bumn" || s.MaxTotal != 200 || s.DurationMin != 83 {
+	if s.Scope != "bumn" || s.MaxTotal != 300 || s.DurationMin != 90 {
 		t.Errorf("scope=%s max=%d duration=%d", s.Scope, s.MaxTotal, s.DurationMin)
 	}
-	if len(s.Sections) != 2 || s.Sections[0].ID != "TKD" || s.Sections[0].MaxScore() != 100 || s.Sections[1].ID != "WK" || s.Sections[1].MaxScore() != 100 {
+	if len(s.Sections) != 3 || s.Sections[0].ID != "TKD" || s.Sections[0].MaxScore() != 100 ||
+		s.Sections[1].ID != "AKHLAK" || s.Sections[1].Items != 20 || s.Sections[1].Scoring.Kind != KindWeighted || s.Sections[1].MaxScore() != 100 ||
+		s.Sections[2].ID != "WK" || s.Sections[2].MaxScore() != 100 {
 		t.Errorf("sections = %+v", s.Sections)
 	}
-	if len(s.Tracks) != 1 || s.Tracks[0].ID != "umum" || s.Tracks[0].Thresholds["TKD"] != 58 || s.Tracks[0].Thresholds["WK"] != 50 {
+	th := s.Tracks[0].Thresholds
+	w := s.Tracks[0].Weights
+	if len(s.Tracks) != 1 || s.Tracks[0].ID != "umum" || th["TKD"] != 58 || th["AKHLAK"] != 65 || th["WK"] != 50 {
 		t.Errorf("tracks = %+v", s.Tracks)
+	}
+	if w["TKD"] != 40 || w["AKHLAK"] != 50 || w["WK"] != 10 || len(w) != 3 {
+		t.Errorf("weights = %v, want TKD 40, AKHLAK 50, WK 10", w)
 	}
 	if !strings.Contains(s.Source, "tidak resmi") {
 		t.Errorf("source must say counts and duration are unofficial: %q", s.Source)

@@ -19,7 +19,8 @@ type ItemSource interface {
 
 var _ ItemSource = (*Bank)(nil)
 
-// Sections lists the sections this bank serves.
+// Sections lists the sections this bank serves. AKHLAK is left out on purpose:
+// AkhlakSource offers it only once enough items are reviewed.
 func (b *Bank) Sections() []string { return []string{SectionTWK, SectionTKP} }
 
 var optionKeys = []string{"A", "B", "C", "D", "E"}
@@ -39,6 +40,12 @@ func (b *Bank) Pick(section string, n int, seed int64) ([]gen.Draft, error) {
 		for _, e := range b.TKP {
 			if e.Status == StatusReviewed {
 				pool = append(pool, e.draft)
+			}
+		}
+	case SectionAKHLAK:
+		for _, e := range b.AKHLAK {
+			if e.Status == StatusReviewed {
+				pool = append(pool, e.akhlakDraft)
 			}
 		}
 	default:

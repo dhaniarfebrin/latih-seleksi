@@ -382,3 +382,26 @@ func TestScoreSectionMatchesScore(t *testing.T) {
 		t.Error("TWK responses accepted for TIU")
 	}
 }
+
+func TestWeighted(t *testing.T) {
+	s := load(t, "rbb-2024")
+	track, _ := s.Track("umum")
+	// TKD 80/100, AKHLAK 70/100, WK 50/100: 0.4*80 + 0.5*70 + 0.1*50 = 32+35+5.
+	full := []SectionResult{{ID: "TKD", Score: 80, Max: 100}, {ID: "AKHLAK", Score: 70, Max: 100}, {ID: "WK", Score: 50, Max: 100}}
+	if got, ok := Weighted(s, track, full); !ok || got != 72.0 {
+		t.Errorf("Weighted = %v, %v, want 72.0, true", got, ok)
+	}
+	// 1-decimal rounding: 0.4*57 + 0.5*66 + 0.1*30 = 22.8 + 33 + 3 = 58.8.
+	odd := []SectionResult{{ID: "TKD", Score: 57, Max: 100}, {ID: "AKHLAK", Score: 66, Max: 100}, {ID: "WK", Score: 30, Max: 100}}
+	if got, _ := Weighted(s, track, odd); got != 58.8 {
+		t.Errorf("Weighted = %v, want 58.8", got)
+	}
+	if _, ok := Weighted(s, track, full[:2]); ok {
+		t.Error("a partial attempt must have no weighted score")
+	}
+	noW := track
+	noW.Weights = nil
+	if _, ok := Weighted(s, noW, full); ok {
+		t.Error("a track without weights must have no weighted score")
+	}
+}

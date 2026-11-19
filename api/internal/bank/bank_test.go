@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"latihseleksi/api/internal/spec"
 )
 
 var ws = regexp.MustCompile(`\s+`)
@@ -523,4 +525,127 @@ func entryByID(b *Bank, id string) TWKEntry {
 		}
 	}
 	return TWKEntry{}
+}
+
+func TestAkhlakBankShape(t *testing.T) {
+	b := loadBank(t)
+	if len(b.AkhlakRubric.Values) != 6 || !strings.Contains(b.AkhlakRubric.Source, "SE-7/MBU/07/2020") {
+		t.Fatalf("akhlak rubric = %+v", b.AkhlakRubric)
+	}
+	per := map[string]int{}
+	for _, e := range b.AKHLAK {
+		per[e.Aspek]++
+		if e.Status != StatusDraft {
+			t.Errorf("%s: shipped AKHLAK items stay draft until a human reviews them", e.ID)
+		}
+	}
+	if len(b.AKHLAK) != 60 || len(per) != 6 {
+		t.Fatalf("%d items over %d values, want 60 over 6", len(b.AKHLAK), len(per))
+	}
+	for v, n := range per {
+		if n != 10 {
+			t.Errorf("value %s has %d items, want 10", v, n)
+		}
+	}
+	if _, err := b.Pick(SectionAKHLAK, 1, 1); err == nil {
+		t.Error("draft AKHLAK items must never be picked")
+	}
+}
+
+func TestAkhlakValidateRejectsUnknownValue(t *testing.T) {
+	b := loadBank(t)
+	e := b.AKHLAK[0]
+	e.RubricRef.Value = "zz"
+	if err := e.Validate(b.AkhlakRubric, []string{e.Aspek}); err == nil {
+		t.Error("rubric_ref outside the AKHLAK rubric accepted")
+	}
+	if err := (Rubric{Values: b.Rubric.Values}).validate(akhlakRubricValues); err == nil {
+		t.Error("a 7-value rubric passed the 6-value check")
+	}
+}
+
+func TestAkhlakSourceGate(t *testing.T) {
+	b := loadBank(t)
+	src := AkhlakSource{b}
+	if got := src.Sections(); len(got) != 0 {
+		t.Fatalf("Sections before review = %v, want none", got)
+	}
+	// Fixture: enough items in total but covering only two values.
+	two := 0
+	for i := range b.AKHLAK {
+		if (b.AKHLAK[i].Aspek == "amanah" || b.AKHLAK[i].Aspek == "loyal") && two < AkhlakMinReviewed {
+			b.AKHLAK[i].Status = StatusReviewed
+			two++
+		}
+	}
+	if two != AkhlakMinReviewed {
+		t.Fatalf("fixture flagged %d items, want %d", two, AkhlakMinReviewed)
+	}
+	if got := src.Sections(); len(got) != 0 {
+		t.Fatalf("Sections with %d reviewed over two values = %v, want none", two, got)
+	}
+	// Every value at the per-value minimum is still short of the total.
+	reviewPerValue(b, AkhlakMinPerValue)
+	if got := src.Sections(); len(got) != 0 {
+		t.Fatalf("Sections with %d per value = %v, want none", AkhlakMinPerValue, got)
+	}
+	reviewPerValue(b, AkhlakMinPerValue+1)
+	if got := src.Sections(); len(got) != 1 || got[0] != SectionAKHLAK {
+		t.Fatalf("Sections = %v", got)
+	}
+	reviewed := map[string]bool{}
+	for _, e := range b.AKHLAK {
+		if e.Status == StatusReviewed {
+			reviewed[e.Scenario] = true
+		}
+	}
+	a, err := src.Pick(SectionAKHLAK, AkhlakMinReviewed, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, d := range a {
+		if !reviewed[d.Stem] || seen[d.Stem] {
+			t.Errorf("%q is unreviewed or repeated", d.Stem)
+		}
+		seen[d.Stem] = true
+		if !strings.HasPrefix(d.PatternID, "akhlak-") || d.AnswerKey == "" || len(d.Options) != 5 {
+			t.Errorf("malformed draft %+v", d)
+		}
+		if !strings.Contains(d.Steps[len(d.Steps)-1], "bobot = penilaian penyusun") {
+			t.Errorf("steps lost the unofficial-weight line: %v", d.Steps)
+		}
+	}
+	if _, err := src.Pick(SectionTWK, 1, 1); err == nil {
+		t.Error("AKHLAK source accepted section TWK")
+	}
+	if _, err := src.Pick(SectionAKHLAK, len(reviewed)+1, 3); err == nil {
+		t.Error("asking for more reviewed items than exist must error")
+	}
+}
+
+// reviewPerValue marks exactly k items of every AKHLAK value reviewed and the
+// rest draft, in file order.
+func reviewPerValue(b *Bank, k int) {
+	n := map[string]int{}
+	for i := range b.AKHLAK {
+		e := &b.AKHLAK[i]
+		e.Status = StatusDraft
+		if n[e.Aspek] < k {
+			e.Status = StatusReviewed
+			n[e.Aspek]++
+		}
+	}
+}
+
+func TestAkhlakMinReviewedEqualsSpecItems(t *testing.T) {
+	reg, err := spec.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, _ := reg.Get("rbb-2024")
+	sec, ok := s.Section(SectionAKHLAK)
+	if !ok || sec.Items != AkhlakMinReviewed {
+		t.Errorf("rbb-2024 AKHLAK items = %d (found %v), AkhlakMinReviewed = %d", sec.Items, ok, AkhlakMinReviewed)
+	}
 }

@@ -1,0 +1,1922 @@
+[
+ {
+  "id": "akhlak-b1-001",
+  "aspek": "amanah",
+  "scenario": "Anda berjanji menyerahkan laporan bulanan kepada atasan pada Jumat sore. Kamis malam Anda sadar data satu divisi belum lengkap dan laporan akan terlambat. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Segera memberi tahu atasan, menjelaskan kendalanya, mengajukan waktu tambahan yang pasti, lalu menyelesaikannya sesuai waktu itu.",
+    "weight": 5
+   },
+   {
+    "text": "Menyelesaikan laporan dengan data yang ada dan mencantumkan catatan bahwa data satu divisi menyusul.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu sampai Jumat siang dulu, siapa tahu datanya datang tepat waktu.",
+    "weight": 3
+   },
+   {
+    "text": "Menyerahkan laporan terlambat tanpa penjelasan karena atasan pasti memaklumi.",
+    "weight": 2
+   },
+   {
+    "text": "Meminta rekan membuat laporannya agar tidak perlu terlambat.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-002",
+  "aspek": "amanah",
+  "scenario": "Rekan Anda berjanji membantu menyiapkan bahan rapat, tetapi mendadak sakit. Anda sudah menyanggupi ke atasan bahwa bahan itu siap besok. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengerjakan bagian rekan sebisanya agar janji ke atasan tetap terpenuhi, lalu memberi tahu atasan bagian mana yang masih perlu waktu.",
+    "weight": 5
+   },
+   {
+    "text": "Menyelesaikan bagian sendiri dan meminta rekan lain membantu bagian yang kosong.",
+    "weight": 4
+   },
+   {
+    "text": "Menyelesaikan bagian sendiri saja dan menyerahkan sisanya setelah rekan sembuh.",
+    "weight": 3
+   },
+   {
+    "text": "Menunggu rekan sembuh tanpa memberi kabar apa pun ke atasan.",
+    "weight": 2
+   },
+   {
+    "text": "Menyatakan bahwa kegagalan itu salah rekan yang sakit.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-003",
+  "aspek": "amanah",
+  "scenario": "Anda dijadwalkan menjadi narasumber pelatihan internal hari Senin. Pada Jumat, ada tawaran acara lain yang lebih menarik di hari yang sama. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Tetap hadir sebagai narasumber sesuai janji dan menolak acara lain dengan sopan.",
+    "weight": 5
+   },
+   {
+    "text": "Menanyakan apakah acara lain bisa digeser, sambil tetap siap hadir sebagai narasumber.",
+    "weight": 4
+   },
+   {
+    "text": "Mencari pengganti sendiri lalu memberi tahu panitia sehari sebelumnya.",
+    "weight": 3
+   },
+   {
+    "text": "Memilih acara yang menarik dan mengabari panitia pada pagi hari Senin.",
+    "weight": 2
+   },
+   {
+    "text": "Tidak hadir di keduanya agar tidak perlu memilih.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-004",
+  "aspek": "amanah",
+  "scenario": "Saat memeriksa pekerjaan, Anda menyadari kesalahan input pada dokumen yang Anda kirim minggu lalu dan belum ada yang menemukannya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Segera melapor kepada atasan, memperbaiki dokumen, dan memberi tahu pihak yang sudah memakai dokumen itu.",
+    "weight": 5
+   },
+   {
+    "text": "Memperbaiki dokumen dan mengirim versi baru dengan keterangan perubahan.",
+    "weight": 4
+   },
+   {
+    "text": "Memperbaiki diam-diam di berkas sumber tanpa mengabari siapa pun.",
+    "weight": 3
+   },
+   {
+    "text": "Menunggu sampai ada yang menemukannya.",
+    "weight": 2
+   },
+   {
+    "text": "Menyalahkan sistem sebagai penyebab bila kesalahan itu ditanyakan.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-005",
+  "aspek": "amanah",
+  "scenario": "Proyek yang Anda pimpin gagal mencapai target kuartal ini sebagian karena keputusan Anda memilih vendor yang terlambat mengirim. Dalam evaluasi, Anda ...",
+  "options": [
+   {
+    "text": "Mengakui keputusan itu, memaparkan pelajaran yang diambil, dan mengajukan langkah perbaikan.",
+    "weight": 5
+   },
+   {
+    "text": "Mengakui keputusan itu, tetapi juga menjelaskan faktor di luar kendali.",
+    "weight": 4
+   },
+   {
+    "text": "Menjelaskan semua faktor dan hanya menyebut keputusan vendor sekilas.",
+    "weight": 3
+   },
+   {
+    "text": "Menekankan bahwa vendor yang bersalah, bukan keputusan Anda.",
+    "weight": 2
+   },
+   {
+    "text": "Menghindari pembahasan dan mengalihkan ke masalah tim lain.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-006",
+  "aspek": "amanah",
+  "scenario": "Atasan meminta Anda mengambil keputusan cepat soal pengadaan alat kantor. Anda tahu keputusan itu akan Anda tanggung sendiri bila bermasalah. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengumpulkan informasi singkat, memutuskan, mendokumentasikan alasannya, dan siap menanggung hasilnya.",
+    "weight": 5
+   },
+   {
+    "text": "Memutuskan dengan informasi yang ada dan melapor ke atasan setelahnya.",
+    "weight": 4
+   },
+   {
+    "text": "Meminta tim berpendapat dulu lalu mengikuti suara terbanyak.",
+    "weight": 3
+   },
+   {
+    "text": "Menunda keputusan sampai atasan yang menentukan.",
+    "weight": 2
+   },
+   {
+    "text": "Memutuskan lalu mengatakan bahwa itu atas perintah atasan bila ada masalah.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-007",
+  "aspek": "amanah",
+  "scenario": "Anda melihat bahwa kalibrasi alat yang menjadi tanggung jawab Anda belum dilakukan padahal jadwalnya terlewat dua hari, dan tidak ada yang menyadarinya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Melakukan kalibrasi segera, mencatat keterlambatannya, dan melaporkannya kepada atasan.",
+    "weight": 5
+   },
+   {
+    "text": "Melakukan kalibrasi segera dan mengubah jadwal agar terlihat tepat waktu.",
+    "weight": 4
+   },
+   {
+    "text": "Melakukan kalibrasi segera tanpa mencatat keterlambatan.",
+    "weight": 3
+   },
+   {
+    "text": "Menunggu pengingat berikutnya dari sistem.",
+    "weight": 2
+   },
+   {
+    "text": "Menganggap keterlambatan dua hari tidak berpengaruh.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-008",
+  "aspek": "amanah",
+  "scenario": "Dalam rapat, Anda ditunjuk menindaklanjuti satu keputusan lintas bagian. Setelah rapat tidak ada yang menanyakan lagi. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menjalankan tindak lanjut sesuai tenggat dan melaporkan perkembangannya kepada peserta rapat.",
+    "weight": 5
+   },
+   {
+    "text": "Menjalankan tindak lanjut dan melaporkan hanya bila ditanya.",
+    "weight": 4
+   },
+   {
+    "text": "Menjalankan tindak lanjut bila sempat setelah pekerjaan rutin selesai.",
+    "weight": 3
+   },
+   {
+    "text": "Menunggu ada yang menagih sebelum mengerjakan.",
+    "weight": 2
+   },
+   {
+    "text": "Menganggap tugas itu gugur karena tidak ada yang menanyakan.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-009",
+  "aspek": "amanah",
+  "scenario": "Anda menemukan bahwa vendor menawarkan komisi pribadi jika Anda memilih mereka dalam pengadaan kantor. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menolak tegas, mendokumentasikan penawarannya, dan melaporkannya melalui jalur pelaporan yang berlaku.",
+    "weight": 5
+   },
+   {
+    "text": "Menolak tegas dan menghentikan komunikasi dengan vendor itu.",
+    "weight": 4
+   },
+   {
+    "text": "Menolak secara halus agar hubungan baik tetap terjaga.",
+    "weight": 3
+   },
+   {
+    "text": "Menerima dengan niat melaporkan nanti bila diperlukan.",
+    "weight": 2
+   },
+   {
+    "text": "Menerima karena semua orang juga biasa melakukannya.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-010",
+  "aspek": "amanah",
+  "scenario": "Atasan meminta Anda mengubah angka pada laporan agar target tampak tercapai. Anda tahu angka asli belum memenuhi target. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menolak mengubah angka, menjelaskan alasannya dengan sopan, dan menawarkan penyajian data asli beserta rencana perbaikan.",
+    "weight": 5
+   },
+   {
+    "text": "Menolak mengubah angka dan menyerahkan laporan apa adanya tanpa penjelasan.",
+    "weight": 4
+   },
+   {
+    "text": "Mengubah angka sedikit saja agar tidak terlalu mencolok.",
+    "weight": 3
+   },
+   {
+    "text": "Mengubah angka karena perintah atasan wajib dituruti.",
+    "weight": 2
+   },
+   {
+    "text": "Mengubah angka dan meminta rekan melakukannya agar tidak tercatat atas nama Anda.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "amanah",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-011",
+  "aspek": "kompeten",
+  "scenario": "Perusahaan mulai memakai sistem baru yang belum Anda kuasai dan pelatihan resmi baru ada bulan depan. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempelajari sendiri lewat panduan dan uji coba sekarang, lalu mengikuti pelatihan resmi untuk melengkapinya.",
+    "weight": 5
+   },
+   {
+    "text": "Meminta rekan yang sudah paham mengajari dasar-dasarnya sebelum pelatihan.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu pelatihan resmi bulan depan baru mulai belajar.",
+    "weight": 3
+   },
+   {
+    "text": "Tetap memakai cara lama selama masih bisa.",
+    "weight": 2
+   },
+   {
+    "text": "Meminta rekan mengerjakan bagian yang memerlukan sistem baru.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-012",
+  "aspek": "kompeten",
+  "scenario": "Anda ditugaskan pada pekerjaan yang membutuhkan kemampuan analisis data, sedangkan kemampuan Anda baru dasar. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menyusun rencana belajar, mengambil kursus, dan berlatih langsung pada data pekerjaan sambil meminta umpan balik.",
+    "weight": 5
+   },
+   {
+    "text": "Mengambil kursus singkat dan langsung mengerjakan tugas.",
+    "weight": 4
+   },
+   {
+    "text": "Mengerjakan dengan kemampuan yang ada dan belajar bila terkendala.",
+    "weight": 3
+   },
+   {
+    "text": "Meminta tugas itu diberikan kepada orang lain.",
+    "weight": 2
+   },
+   {
+    "text": "Mengerjakan seadanya tanpa memberi tahu bahwa kemampuan Anda terbatas.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-013",
+  "aspek": "kompeten",
+  "scenario": "Atasan memberi umpan balik bahwa presentasi Anda terlalu panjang dan kurang fokus. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Berterima kasih, mencatat poinnya, memperbaiki presentasi, dan meminta masukan lagi pada versi berikutnya.",
+    "weight": 5
+   },
+   {
+    "text": "Memperbaiki presentasi sesuai masukan tanpa meminta masukan lanjutan.",
+    "weight": 4
+   },
+   {
+    "text": "Memperbaiki sebagian saja yang dirasa sesuai.",
+    "weight": 3
+   },
+   {
+    "text": "Menjelaskan bahwa gaya presentasi Anda memang begitu.",
+    "weight": 2
+   },
+   {
+    "text": "Menganggap umpan balik itu bentuk ketidaksukaan pribadi.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-014",
+  "aspek": "kompeten",
+  "scenario": "Seorang rekan baru kesulitan memahami prosedur kerja yang sudah Anda kuasai. Anda sedang mengejar tenggat sendiri. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Meluangkan waktu singkat menjelaskan inti prosedur, memberi panduan tertulis, lalu melanjutkan pekerjaan Anda.",
+    "weight": 5
+   },
+   {
+    "text": "Mengajak rekan itu berdiskusi setelah tenggat Anda selesai.",
+    "weight": 4
+   },
+   {
+    "text": "Memberi tahu bahwa prosedurnya ada di folder bersama.",
+    "weight": 3
+   },
+   {
+    "text": "Menyuruhnya bertanya kepada atasan.",
+    "weight": 2
+   },
+   {
+    "text": "Mengabaikan karena itu bukan tugas Anda.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-015",
+  "aspek": "kompeten",
+  "scenario": "Anda mendapat tugas yang ternyata sudah pernah dikerjakan tim lain dengan hasil baik, tetapi Anda ragu apakah hasilnya cocok untuk kebutuhan Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempelajari hasil tim lain, menyesuaikannya dengan kebutuhan, dan mendokumentasikan perbedaannya untuk dipakai berikutnya.",
+    "weight": 5
+   },
+   {
+    "text": "Meminta tim lain menjelaskan hasilnya lalu memakainya apa adanya.",
+    "weight": 4
+   },
+   {
+    "text": "Mengerjakan ulang dari awal agar yakin.",
+    "weight": 3
+   },
+   {
+    "text": "Menunda tugas sambil menunggu arahan atasan.",
+    "weight": 2
+   },
+   {
+    "text": "Menyalin hasil itu tanpa memeriksanya.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-016",
+  "aspek": "kompeten",
+  "scenario": "Anda diminta membantu rekan senior belajar aplikasi kolaborasi yang baru. Anda sendiri baru mempelajarinya sebagian. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menjelaskan bagian yang sudah dikuasai, jujur soal bagian yang belum, dan mengajak belajar bersama sisanya.",
+    "weight": 5
+   },
+   {
+    "text": "Menjelaskan semua bagian sebisanya agar terlihat paham.",
+    "weight": 4
+   },
+   {
+    "text": "Menyarankan rekan itu menunggu pelatihan resmi.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak karena Anda belum ahli.",
+    "weight": 2
+   },
+   {
+    "text": "Menjelaskan dengan asal-asalan agar cepat selesai.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-017",
+  "aspek": "kompeten",
+  "scenario": "Dua hari sebelum tenggat, Anda sadar kualitas hasil kerja Anda belum memuaskan, tetapi secara formal sudah memenuhi syarat. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menggunakan sisa waktu untuk memperbaiki sampai kualitasnya baik, lalu menyerahkannya tepat waktu.",
+    "weight": 5
+   },
+   {
+    "text": "Memperbaiki bagian terpenting dan menyerahkannya tepat waktu.",
+    "weight": 4
+   },
+   {
+    "text": "Menyerahkan lebih awal karena sudah memenuhi syarat.",
+    "weight": 3
+   },
+   {
+    "text": "Menyerahkan sesuai syarat minimal tanpa pemeriksaan lagi.",
+    "weight": 2
+   },
+   {
+    "text": "Menunda sampai tenggat sambil berharap tidak ada yang memeriksa terlalu teliti.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-018",
+  "aspek": "kompeten",
+  "scenario": "Anda mendapat kesempatan mengikuti sertifikasi yang relevan dengan pekerjaan, tetapi harus belajar di luar jam kerja. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengambil kesempatan itu, menyusun jadwal belajar, dan menerapkan ilmunya pada pekerjaan.",
+    "weight": 5
+   },
+   {
+    "text": "Mengambil kesempatan itu bila materinya terasa mudah.",
+    "weight": 4
+   },
+   {
+    "text": "Mempertimbangkan dulu sampai ada rekan yang ikut.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak karena merasa pengalaman sudah cukup.",
+    "weight": 2
+   },
+   {
+    "text": "Menyerahkan kesempatan itu kepada rekan tanpa alasan.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-019",
+  "aspek": "kompeten",
+  "scenario": "Saat mengerjakan tugas, Anda menemukan cara kerja yang lebih ringkas, tetapi belum diuji di unit Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengujinya pada skala kecil, memastikan hasilnya sama baik, lalu mengusulkannya kepada atasan.",
+    "weight": 5
+   },
+   {
+    "text": "Menggunakannya sendiri dan menyampaikannya bila ada yang menanyakan.",
+    "weight": 4
+   },
+   {
+    "text": "Menggunakannya langsung untuk seluruh pekerjaan tim.",
+    "weight": 3
+   },
+   {
+    "text": "Tetap memakai cara lama agar aman.",
+    "weight": 2
+   },
+   {
+    "text": "Menyimpannya untuk diri sendiri.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-020",
+  "aspek": "kompeten",
+  "scenario": "Hasil kerja Anda dinilai bagus oleh atasan, tetapi Anda tahu masih ada bagian yang bisa lebih baik. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mencatat bagian yang bisa ditingkatkan dan memperbaikinya pada pekerjaan berikutnya.",
+    "weight": 5
+   },
+   {
+    "text": "Menyampaikan kepada atasan bagian yang masih bisa lebih baik.",
+    "weight": 4
+   },
+   {
+    "text": "Merasa cukup karena atasan sudah puas.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkannya agar tidak menambah beban kerja.",
+    "weight": 2
+   },
+   {
+    "text": "Menyembunyikan bagian yang kurang agar penilaian tetap tinggi.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kompeten",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-021",
+  "aspek": "harmonis",
+  "scenario": "Tim Anda kedatangan rekan baru dari daerah lain yang logat dan kebiasaannya berbeda, dan beberapa rekan mulai menertawakannya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menegur dengan sopan agar berhenti, lalu mengajak rekan baru itu bergabung dalam kegiatan tim.",
+    "weight": 5
+   },
+   {
+    "text": "Mengajak rekan baru itu mengobrol tanpa menegur yang menertawakan.",
+    "weight": 4
+   },
+   {
+    "text": "Diam saja karena hanya bercanda.",
+    "weight": 3
+   },
+   {
+    "text": "Ikut tertawa agar tidak dianggap kaku.",
+    "weight": 2
+   },
+   {
+    "text": "Menghindari rekan baru itu agar tidak terlibat.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-022",
+  "aspek": "harmonis",
+  "scenario": "Seorang rekan memiliki keyakinan berbeda dari Anda dan meminta waktu singkat untuk beribadah di sela rapat panjang. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mendukung permintaan itu dan membantu mengatur jeda rapat agar semua peserta nyaman.",
+    "weight": 5
+   },
+   {
+    "text": "Menyetujui dan melanjutkan rapat tanpa mengubah susunan acara.",
+    "weight": 4
+   },
+   {
+    "text": "Mengatakan bisa dilakukan setelah rapat selesai.",
+    "weight": 3
+   },
+   {
+    "text": "Menyarankan rekan itu izin keluar tanpa mengubah rapat.",
+    "weight": 2
+   },
+   {
+    "text": "Menganggap permintaan itu mengganggu.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-023",
+  "aspek": "harmonis",
+  "scenario": "Rekan sekantor tampak kewalahan dengan pekerjaannya, sementara pekerjaan Anda sendiri sedang sedikit longgar. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menawarkan bantuan secara langsung dan membagi tugas sesuai kemampuan.",
+    "weight": 5
+   },
+   {
+    "text": "Menawarkan bantuan bila ia memintanya.",
+    "weight": 4
+   },
+   {
+    "text": "Memberi semangat tanpa membantu.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkan karena itu bukan pekerjaan Anda.",
+    "weight": 2
+   },
+   {
+    "text": "Mengatakan kepada atasan bahwa rekan itu lambat.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-024",
+  "aspek": "harmonis",
+  "scenario": "Anda melihat petugas kebersihan kesulitan membawa barang berat di lorong kantor. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Langsung membantu membawakan dan menanyakan apakah ada yang lain yang perlu dibantu.",
+    "weight": 5
+   },
+   {
+    "text": "Menawarkan bantuan sambil lewat.",
+    "weight": 4
+   },
+   {
+    "text": "Memanggil rekan lain agar membantu.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkan karena sudah tugasnya.",
+    "weight": 2
+   },
+   {
+    "text": "Menegur bahwa lorong menjadi terhalang.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-025",
+  "aspek": "harmonis",
+  "scenario": "Dua rekan Anda berselisih paham dan suasana ruang kerja menjadi tegang. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menemui masing-masing secara terpisah, mendengarkan, lalu membantu mempertemukan mereka untuk menyelesaikannya.",
+    "weight": 5
+   },
+   {
+    "text": "Mengajak keduanya makan siang bersama agar suasana mencair.",
+    "weight": 4
+   },
+   {
+    "text": "Menyarankan atasan yang menengahi.",
+    "weight": 3
+   },
+   {
+    "text": "Menghindar agar tidak terbawa masalah.",
+    "weight": 2
+   },
+   {
+    "text": "Memihak rekan yang lebih dekat dengan Anda.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-026",
+  "aspek": "harmonis",
+  "scenario": "Hasil survei menunjukkan beberapa rekan merasa dikucilkan dari obrolan tim. Anda termasuk yang sering mengobrol dengan kelompok tertentu. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mulai melibatkan semua rekan dalam obrolan dan kegiatan, serta mengajak kelompok Anda melakukan hal yang sama.",
+    "weight": 5
+   },
+   {
+    "text": "Lebih sering menyapa rekan yang merasa dikucilkan.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu rekan yang merasa dikucilkan mendekat sendiri.",
+    "weight": 3
+   },
+   {
+    "text": "Menganggap itu urusan perasaan pribadi mereka.",
+    "weight": 2
+   },
+   {
+    "text": "Meneruskan kebiasaan karena sudah nyaman.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-027",
+  "aspek": "harmonis",
+  "scenario": "Anda diminta menyusun jadwal piket yang adil, sementara beberapa rekan punya keterbatasan (menyusui, kuliah malam). Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengumpulkan kebutuhan semua rekan lebih dulu, lalu menyusun jadwal yang seadil mungkin dan menjelaskannya terbuka.",
+    "weight": 5
+   },
+   {
+    "text": "Menyusun jadwal sama rata dan menyediakan ruang tukar jadwal.",
+    "weight": 4
+   },
+   {
+    "text": "Menyusun jadwal berdasarkan urutan nama.",
+    "weight": 3
+   },
+   {
+    "text": "Menyusun jadwal yang paling mudah bagi Anda.",
+    "weight": 2
+   },
+   {
+    "text": "Menempatkan rekan yang jarang protes di jam paling berat.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-028",
+  "aspek": "harmonis",
+  "scenario": "Rekan Anda membuat kesalahan kecil di depan banyak orang dan beberapa orang berkomentar sinis. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengalihkan pembicaraan, lalu menemui rekan itu untuk membantu memperbaiki kesalahannya.",
+    "weight": 5
+   },
+   {
+    "text": "Membantu memperbaiki kesalahannya tanpa berkomentar.",
+    "weight": 4
+   },
+   {
+    "text": "Diam dan menunggu keadaan mereda.",
+    "weight": 3
+   },
+   {
+    "text": "Ikut berkomentar ringan agar suasana cair.",
+    "weight": 2
+   },
+   {
+    "text": "Menyebarkan kejadian itu agar jadi pelajaran.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-029",
+  "aspek": "harmonis",
+  "scenario": "Tim Anda sibuk menjelang tenggat dan ruang kerja menjadi berantakan serta bising. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengusulkan kesepakatan sederhana soal kebersihan dan kebisingan, lalu memberi contoh dengan merapikan area sendiri.",
+    "weight": 5
+   },
+   {
+    "text": "Merapikan area sendiri dan mengingatkan rekan dengan ramah.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu tenggat selesai baru membahasnya.",
+    "weight": 3
+   },
+   {
+    "text": "Mengeluh kepada rekan lain tentang kebisingan.",
+    "weight": 2
+   },
+   {
+    "text": "Memakai ruangan lain tanpa memberi tahu siapa pun.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-030",
+  "aspek": "harmonis",
+  "scenario": "Anda mendapati rekan dari divisi lain sering dianggap 'kurang penting' dan jarang diundang ke rapat yang terkait pekerjaannya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengusulkan agar rekan itu diundang, dan memastikan pendapatnya didengar saat rapat.",
+    "weight": 5
+   },
+   {
+    "text": "Mengundang rekan itu pada rapat yang Anda atur sendiri.",
+    "weight": 4
+   },
+   {
+    "text": "Menyampaikan kepada penyelenggara rapat bila ada kesempatan.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkan karena sudah menjadi kebiasaan.",
+    "weight": 2
+   },
+   {
+    "text": "Ikut memandang rendah pekerjaannya.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "harmonis",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-031",
+  "aspek": "loyal",
+  "scenario": "Di sebuah acara, seorang kenalan membicarakan keburukan perusahaan Anda dengan nada merendahkan. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Meluruskan dengan sopan menggunakan fakta, mengakui kekurangan yang memang ada, dan menyampaikan upaya perbaikannya.",
+    "weight": 5
+   },
+   {
+    "text": "Menyampaikan bahwa Anda tidak sependapat dan mengalihkan pembicaraan.",
+    "weight": 4
+   },
+   {
+    "text": "Diam dan menunggu pembicaraan beralih.",
+    "weight": 3
+   },
+   {
+    "text": "Ikut membicarakan kekurangan lain agar terlihat jujur.",
+    "weight": 2
+   },
+   {
+    "text": "Menambahkan cerita buruk dari pengalaman Anda sendiri.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-032",
+  "aspek": "loyal",
+  "scenario": "Anda mengetahui rekan menyebarkan kabar tidak benar tentang atasan di grup percakapan tidak resmi. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Meminta rekan itu menghentikan dan meluruskan kabar tersebut, serta melaporkannya bila terus berlanjut.",
+    "weight": 5
+   },
+   {
+    "text": "Mengingatkan rekan itu secara pribadi agar menghentikannya.",
+    "weight": 4
+   },
+   {
+    "text": "Keluar dari grup itu tanpa berkomentar.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkan karena tidak berkaitan dengan pekerjaan Anda.",
+    "weight": 2
+   },
+   {
+    "text": "Ikut meneruskan kabar itu kepada rekan lain.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-033",
+  "aspek": "loyal",
+  "scenario": "Perusahaan mengalami masa sulit dan meminta karyawan menunda sebagian fasilitas selama beberapa bulan. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Memahami kondisi itu, menerima penundaan, dan membantu menjelaskannya kepada rekan yang keberatan.",
+    "weight": 5
+   },
+   {
+    "text": "Menerima penundaan walaupun merasa kecewa.",
+    "weight": 4
+   },
+   {
+    "text": "Menerima setelah memastikan semua pihak mengalami hal yang sama.",
+    "weight": 3
+   },
+   {
+    "text": "Menuntut fasilitas tetap diberikan penuh.",
+    "weight": 2
+   },
+   {
+    "text": "Mencari pekerjaan lain dan mengajak rekan ikut pergi.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-034",
+  "aspek": "loyal",
+  "scenario": "Untuk menyelesaikan proyek penting, tim diminta bekerja tambahan di akhir pekan selama dua minggu. Anda punya rencana pribadi pada salah satunya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menyesuaikan rencana pribadi bila memungkinkan dan menyatakan kesediaan hadir, sambil menyampaikan keterbatasan Anda secara terbuka.",
+    "weight": 5
+   },
+   {
+    "text": "Hadir pada akhir pekan lainnya dan meminta izin pada salah satu hari.",
+    "weight": 4
+   },
+   {
+    "text": "Hadir tetapi mengeluh kepada rekan.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak karena akhir pekan adalah waktu pribadi.",
+    "weight": 2
+   },
+   {
+    "text": "Berpura-pura sakit pada akhir pekan itu.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-035",
+  "aspek": "loyal",
+  "scenario": "Pimpinan memberi instruksi yang menurut Anda kurang efisien, tetapi tidak melanggar hukum atau etika. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menjalankan instruksi itu, lalu menyampaikan usulan perbaikan dengan data pada kesempatan yang tepat.",
+    "weight": 5
+   },
+   {
+    "text": "Menyampaikan keberatan secara sopan sebelum menjalankannya.",
+    "weight": 4
+   },
+   {
+    "text": "Menjalankan instruksi itu sambil mengeluh kepada rekan.",
+    "weight": 3
+   },
+   {
+    "text": "Menjalankan setengah-setengah sesuai pendapat sendiri.",
+    "weight": 2
+   },
+   {
+    "text": "Mengabaikan instruksi itu.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-036",
+  "aspek": "loyal",
+  "scenario": "Pimpinan meminta Anda menyembunyikan temuan pelanggaran keselamatan kerja dari auditor. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menolak secara sopan, menjelaskan bahwa hal itu bertentangan dengan hukum dan etika, dan menawarkan penyelesaian yang benar.",
+    "weight": 5
+   },
+   {
+    "text": "Menolak dan melaporkannya ke jalur pengaduan yang berlaku.",
+    "weight": 4
+   },
+   {
+    "text": "Mengikuti instruksi karena pimpinan yang bertanggung jawab.",
+    "weight": 3
+   },
+   {
+    "text": "Mengikuti dan menyampaikan keberatan kepada rekan.",
+    "weight": 2
+   },
+   {
+    "text": "Membocorkan masalah itu kepada pihak luar tanpa prosedur.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-037",
+  "aspek": "loyal",
+  "scenario": "Seorang pelanggan memuji layanan perusahaan, tetapi juga mengeluhkan satu hal yang sebenarnya merupakan kesalahan rekan Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Berterima kasih atas pujiannya, meminta maaf atas keluhan itu, dan menyelesaikannya tanpa menyalahkan rekan di depan pelanggan.",
+    "weight": 5
+   },
+   {
+    "text": "Menyelesaikan keluhan dan menyampaikan masalah ke rekan secara pribadi.",
+    "weight": 4
+   },
+   {
+    "text": "Menyampaikan bahwa itu kesalahan rekan Anda.",
+    "weight": 3
+   },
+   {
+    "text": "Mengabaikan keluhan itu karena pelanggan sudah memuji.",
+    "weight": 2
+   },
+   {
+    "text": "Menjelekkan rekan Anda agar pelanggan memahami.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-038",
+  "aspek": "loyal",
+  "scenario": "Ada tawaran kerja dengan gaji lebih tinggi dari pesaing, dan mereka meminta Anda membawa daftar pelanggan perusahaan Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menolak membawa daftar itu karena menyangkut kerahasiaan perusahaan, dan menjelaskan alasannya.",
+    "weight": 5
+   },
+   {
+    "text": "Menolak daftar itu dan menolak tawaran seluruhnya.",
+    "weight": 4
+   },
+   {
+    "text": "Mempertimbangkan tawaran tanpa membawa data apa pun.",
+    "weight": 3
+   },
+   {
+    "text": "Membawa sebagian kecil data saja.",
+    "weight": 2
+   },
+   {
+    "text": "Menyalin seluruh daftar sebagai bekal bernegosiasi.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-039",
+  "aspek": "loyal",
+  "scenario": "Perusahaan sedang dalam peliputan media karena sebuah insiden, dan wartawan menanyai Anda di luar kantor. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menyampaikan dengan sopan bahwa juru bicara resmi yang berwenang, lalu meneruskan permintaan itu ke bagian humas.",
+    "weight": 5
+   },
+   {
+    "text": "Menolak berkomentar dan menghindar.",
+    "weight": 4
+   },
+   {
+    "text": "Memberi pendapat pribadi tanpa menyebut jabatan Anda.",
+    "weight": 3
+   },
+   {
+    "text": "Menceritakan versi Anda soal insiden itu.",
+    "weight": 2
+   },
+   {
+    "text": "Membocorkan dokumen internal sebagai bukti.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-040",
+  "aspek": "loyal",
+  "scenario": "Dalam proyek besar bersama beberapa instansi, Anda diminta mengutamakan kepentingan bersama meskipun unit Anda kehilangan sebagian anggaran. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menerima keputusan itu, membantu memastikan tujuan bersama tercapai, dan menyampaikan dampaknya secara terbuka kepada pimpinan.",
+    "weight": 5
+   },
+   {
+    "text": "Menerima keputusan itu setelah menyampaikan keberatan sekali.",
+    "weight": 4
+   },
+   {
+    "text": "Menerima, tetapi mengurangi kontribusi unit Anda.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak sampai anggaran dikembalikan.",
+    "weight": 2
+   },
+   {
+    "text": "Mencari cara agar unit lain yang menanggung kerugian.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "loyal",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-041",
+  "aspek": "adaptif",
+  "scenario": "Atasan mengumumkan perubahan prosedur kerja yang akan berlaku minggu depan dan mengubah cara Anda bekerja selama bertahun-tahun. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempelajari prosedur baru sejak awal, mencoba pada pekerjaan kecil, dan membantu rekan yang kesulitan.",
+    "weight": 5
+   },
+   {
+    "text": "Mempelajari prosedur baru begitu mulai berlaku.",
+    "weight": 4
+   },
+   {
+    "text": "Mengikuti prosedur baru sambil mengeluh.",
+    "weight": 3
+   },
+   {
+    "text": "Tetap memakai cara lama selama tidak ditegur.",
+    "weight": 2
+   },
+   {
+    "text": "Menolak prosedur baru dan mengajak rekan melakukan hal yang sama.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-042",
+  "aspek": "adaptif",
+  "scenario": "Sebuah aplikasi baru akan menggantikan alat yang Anda gunakan sehari-hari, dan Anda khawatir pekerjaan menjadi lambat di awal. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mencoba aplikasi baru lebih awal, mencatat kendala, dan memberi masukan kepada tim pengembang.",
+    "weight": 5
+   },
+   {
+    "text": "Mengikuti pelatihan dan memakai aplikasi baru sesuai jadwal.",
+    "weight": 4
+   },
+   {
+    "text": "Memakai aplikasi baru hanya untuk pekerjaan yang diwajibkan.",
+    "weight": 3
+   },
+   {
+    "text": "Meminta aplikasi lama dipertahankan.",
+    "weight": 2
+   },
+   {
+    "text": "Menolak mencoba karena yakin akan gagal.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-043",
+  "aspek": "adaptif",
+  "scenario": "Anda dipindahkan ke unit lain yang pekerjaannya sama sekali berbeda dari sebelumnya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempelajari proses dan istilah unit baru dengan cepat, bertanya kepada rekan, lalu mulai berkontribusi.",
+    "weight": 5
+   },
+   {
+    "text": "Mengamati satu minggu pertama baru mulai bekerja.",
+    "weight": 4
+   },
+   {
+    "text": "Mengerjakan hal yang sudah dikuasai dan menunda hal baru.",
+    "weight": 3
+   },
+   {
+    "text": "Mengeluh kepada rekan lama tentang pemindahan itu.",
+    "weight": 2
+   },
+   {
+    "text": "Meminta dikembalikan ke unit lama.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-044",
+  "aspek": "adaptif",
+  "scenario": "Teknologi baru membuat sebagian pekerjaan manual Anda bisa diotomatisasi. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempelajari teknologi itu, mengusulkan otomatisasi pada pekerjaan Anda, dan memakai waktu luang untuk pekerjaan bernilai lebih tinggi.",
+    "weight": 5
+   },
+   {
+    "text": "Mengikuti penerapan otomatisasi saat unit memutuskan.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu rekan lain mencobanya lebih dulu.",
+    "weight": 3
+   },
+   {
+    "text": "Menganggap otomatisasi mengancam pekerjaan dan menghambatnya.",
+    "weight": 2
+   },
+   {
+    "text": "Menyembunyikan proses manual agar tetap diperlukan.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-045",
+  "aspek": "adaptif",
+  "scenario": "Kondisi pasar berubah mendadak dan target tim harus diubah dalam sebulan. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menganalisis perubahan, menyusun strategi baru bersama tim, dan segera menjalankannya sambil memantau hasilnya.",
+    "weight": 5
+   },
+   {
+    "text": "Mengikuti target baru sesuai arahan atasan.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu kondisi pasar kembali normal.",
+    "weight": 3
+   },
+   {
+    "text": "Mempertahankan strategi lama dan menyalahkan keadaan.",
+    "weight": 2
+   },
+   {
+    "text": "Mengurangi usaha karena target dianggap mustahil.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-046",
+  "aspek": "adaptif",
+  "scenario": "Anda menemukan bahwa prosedur laporan yang Anda pakai sering menimbulkan kesalahan, tetapi belum ada yang mengeluhkannya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengidentifikasi penyebab kesalahan, merancang perbaikan, dan mengusulkannya kepada atasan tanpa menunggu diminta.",
+    "weight": 5
+   },
+   {
+    "text": "Memperbaiki sendiri untuk pekerjaan Anda dan membagikannya bila ada yang minta.",
+    "weight": 4
+   },
+   {
+    "text": "Mencatat masalahnya dan menunggu ada yang mengeluh.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkan karena belum ada yang mengeluh.",
+    "weight": 2
+   },
+   {
+    "text": "Menyalahkan pengguna prosedur itu.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-047",
+  "aspek": "adaptif",
+  "scenario": "Pekerjaan mendadak harus dilakukan dari rumah selama sepekan dan Anda belum terbiasa dengan alat kerja jarak jauh. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Segera mempelajari alat yang diperlukan, menyiapkan lingkungan kerja, dan menjaga komunikasi aktif dengan tim.",
+    "weight": 5
+   },
+   {
+    "text": "Mempelajari alat sambil bekerja dan bertanya kepada rekan.",
+    "weight": 4
+   },
+   {
+    "text": "Bekerja seadanya sampai kembali ke kantor.",
+    "weight": 3
+   },
+   {
+    "text": "Menunda pekerjaan sampai alatnya siap.",
+    "weight": 2
+   },
+   {
+    "text": "Menolak bekerja dari rumah karena tidak terbiasa.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-048",
+  "aspek": "adaptif",
+  "scenario": "Atasan baru Anda memiliki gaya kerja yang sangat berbeda dari atasan sebelumnya. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempelajari ekspektasi atasan baru, menyesuaikan cara komunikasi, dan meminta umpan balik secara berkala.",
+    "weight": 5
+   },
+   {
+    "text": "Mengikuti arahan atasan baru tanpa banyak bertanya.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu atasan baru yang menyesuaikan diri.",
+    "weight": 3
+   },
+   {
+    "text": "Membandingkan atasan baru dengan atasan lama di depan rekan.",
+    "weight": 2
+   },
+   {
+    "text": "Mengabaikan arahan yang tidak sesuai kebiasaan lama.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-049",
+  "aspek": "adaptif",
+  "scenario": "Anda mendapat tugas yang belum pernah dilakukan siapa pun di kantor, tanpa panduan. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mencari referensi, menyusun langkah kerja, mencoba, dan mendokumentasikan hasilnya agar bisa dipakai orang lain.",
+    "weight": 5
+   },
+   {
+    "text": "Mencoba sendiri sambil sesekali bertanya kepada atasan.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu atasan memberi panduan lengkap.",
+    "weight": 3
+   },
+   {
+    "text": "Mengerjakan seadanya tanpa dokumentasi.",
+    "weight": 2
+   },
+   {
+    "text": "Menolak karena belum ada panduannya.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-050",
+  "aspek": "adaptif",
+  "scenario": "Perusahaan mengumumkan perubahan jam kerja bergantian demi efisiensi, dan jadwal baru mengganggu kebiasaan Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Menyesuaikan kebiasaan, menjaga produktivitas pada jam baru, dan menyampaikan kendala nyata secara konstruktif.",
+    "weight": 5
+   },
+   {
+    "text": "Menjalani jadwal baru sambil menunggu perubahan berikutnya.",
+    "weight": 4
+   },
+   {
+    "text": "Menjalani jadwal baru dengan sering terlambat.",
+    "weight": 3
+   },
+   {
+    "text": "Mengeluh setiap hari kepada rekan.",
+    "weight": 2
+   },
+   {
+    "text": "Menolak jadwal baru dan bekerja menurut jam sendiri.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "adaptif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-051",
+  "aspek": "kolaboratif",
+  "scenario": "Dalam proyek lintas divisi, seorang rekan dari divisi lain memiliki ide yang berbeda dari rencana Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mendengarkan ide itu, membandingkannya dengan rencana Anda secara terbuka, dan menggabungkan bagian terbaik dari keduanya.",
+    "weight": 5
+   },
+   {
+    "text": "Mendengarkan ide itu dan mempertimbangkannya bila ada waktu.",
+    "weight": 4
+   },
+   {
+    "text": "Mencatat ide itu tetapi tetap pada rencana Anda.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak karena rencana Anda sudah disetujui atasan.",
+    "weight": 2
+   },
+   {
+    "text": "Mengabaikan ide itu dan tidak melibatkannya lagi.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-052",
+  "aspek": "kolaboratif",
+  "scenario": "Dalam rapat, anggota tim yang paling pendiam jarang bersuara padahal bidangnya relevan dengan topik. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengajukan pertanyaan langsung kepadanya dan memberi ruang agar pendapatnya didengar.",
+    "weight": 5
+   },
+   {
+    "text": "Meminta semua peserta bergantian menyampaikan pendapat.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu ia berbicara sendiri.",
+    "weight": 3
+   },
+   {
+    "text": "Melanjutkan rapat tanpa pendapatnya.",
+    "weight": 2
+   },
+   {
+    "text": "Menganggap pendapatnya tidak diperlukan.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-053",
+  "aspek": "kolaboratif",
+  "scenario": "Anda memiliki data penting yang dapat membantu divisi lain menyelesaikan masalahnya, tetapi data itu biasanya hanya dipakai di divisi Anda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Membagikan data itu dengan izin atasan, menjelaskan konteksnya, dan menawarkan diskusi lanjutan.",
+    "weight": 5
+   },
+   {
+    "text": "Membagikan data itu bila divisi lain memintanya.",
+    "weight": 4
+   },
+   {
+    "text": "Menunggu atasan memerintahkan untuk membagikannya.",
+    "weight": 3
+   },
+   {
+    "text": "Membagikan sebagian data saja.",
+    "weight": 2
+   },
+   {
+    "text": "Menyimpan data itu karena itu aset divisi Anda.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-054",
+  "aspek": "kolaboratif",
+  "scenario": "Anda ditugaskan memimpin kelompok kerja yang anggotanya memiliki keahlian berbeda-beda. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Memetakan keahlian tiap anggota, membagi tugas sesuai kekuatannya, dan memastikan semua bisa berkontribusi.",
+    "weight": 5
+   },
+   {
+    "text": "Membagi tugas rata dan meminta anggota saling membantu.",
+    "weight": 4
+   },
+   {
+    "text": "Mengerjakan bagian tersulit sendiri agar cepat.",
+    "weight": 3
+   },
+   {
+    "text": "Menugaskan anggota yang paling senior untuk semua pekerjaan penting.",
+    "weight": 2
+   },
+   {
+    "text": "Menunggu anggota menawarkan diri tanpa membagi tugas.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-055",
+  "aspek": "kolaboratif",
+  "scenario": "Dalam kerja sama dengan mitra eksternal, mitra mengusulkan cara kerja yang membuat Anda harus mengubah sebagian prosedur. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mendiskusikan manfaat dan risikonya bersama, lalu menyepakati penyesuaian yang menguntungkan kedua pihak.",
+    "weight": 5
+   },
+   {
+    "text": "Menerima usulan itu bila tidak menyulitkan unit Anda.",
+    "weight": 4
+   },
+   {
+    "text": "Meminta mitra yang menyesuaikan sepenuhnya.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak usulan agar tidak mengubah prosedur.",
+    "weight": 2
+   },
+   {
+    "text": "Menyetujui di depan lalu tidak melaksanakannya.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-056",
+  "aspek": "kolaboratif",
+  "scenario": "Dua tim di perusahaan Anda mengerjakan pekerjaan yang saling tumpang tindih tanpa saling mengetahui. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mempertemukan kedua tim, memetakan tumpang tindih, dan mengusulkan pembagian kerja yang saling melengkapi.",
+    "weight": 5
+   },
+   {
+    "text": "Memberi tahu atasan tentang tumpang tindih itu.",
+    "weight": 4
+   },
+   {
+    "text": "Memberi tahu salah satu tim saja.",
+    "weight": 3
+   },
+   {
+    "text": "Membiarkan karena bukan tanggung jawab Anda.",
+    "weight": 2
+   },
+   {
+    "text": "Memanfaatkan tumpang tindih itu untuk menonjolkan tim Anda.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-057",
+  "aspek": "kolaboratif",
+  "scenario": "Anda menemukan bahwa anggaran dan peralatan yang tersedia di unit lain tidak terpakai, sedangkan unit Anda kekurangan. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengajukan kerja sama pemanfaatan bersama melalui jalur resmi, dengan manfaat yang jelas bagi kedua unit.",
+    "weight": 5
+   },
+   {
+    "text": "Meminta izin atasan untuk meminjam peralatan itu.",
+    "weight": 4
+   },
+   {
+    "text": "Meminjam peralatan itu secara informal tanpa pencatatan.",
+    "weight": 3
+   },
+   {
+    "text": "Menunggu sampai unit lain menawarkannya.",
+    "weight": 2
+   },
+   {
+    "text": "Mengambil peralatan itu tanpa izin.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "a"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-058",
+  "aspek": "kolaboratif",
+  "scenario": "Dalam sebuah proyek, rekan Anda yang junior menawarkan ide yang menurut Anda kurang matang. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Mengapresiasi idenya, membantu mengembangkannya, dan memberi kesempatan mempresentasikannya kepada tim.",
+    "weight": 5
+   },
+   {
+    "text": "Memberi masukan perbaikan secara pribadi.",
+    "weight": 4
+   },
+   {
+    "text": "Mengatakan idenya akan dipertimbangkan nanti.",
+    "weight": 3
+   },
+   {
+    "text": "Menolak karena kurang matang.",
+    "weight": 2
+   },
+   {
+    "text": "Mengambil idenya dan menyampaikannya sebagai ide Anda.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "b"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-059",
+  "aspek": "kolaboratif",
+  "scenario": "Proyek yang Anda kerjakan berhasil dan atasan memuji Anda secara khusus, padahal pencapaiannya hasil kerja seluruh tim. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Berterima kasih, lalu menyebut kontribusi tiap anggota tim secara spesifik di depan atasan.",
+    "weight": 5
+   },
+   {
+    "text": "Berterima kasih dan menyebut bahwa ini hasil kerja tim.",
+    "weight": 4
+   },
+   {
+    "text": "Berterima kasih saja tanpa menyinggung tim.",
+    "weight": 3
+   },
+   {
+    "text": "Menyampaikan bahwa bagian terbesar adalah hasil kerja Anda.",
+    "weight": 2
+   },
+   {
+    "text": "Menyalahkan anggota lain atas bagian yang kurang.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "c"
+  },
+  "status": "draft"
+ },
+ {
+  "id": "akhlak-b1-060",
+  "aspek": "kolaboratif",
+  "scenario": "Pemangku kepentingan dari berbagai pihak ingin terlibat dalam program yang Anda kelola, tetapi sumber daya terbatas. Sikap Anda ...",
+  "options": [
+   {
+    "text": "Memetakan peran yang memungkinkan, menggerakkan sumber daya bersama, dan memberi kesempatan kepada semua pihak untuk berkontribusi.",
+    "weight": 5
+   },
+   {
+    "text": "Memilih pihak yang paling berpengaruh untuk dilibatkan.",
+    "weight": 4
+   },
+   {
+    "text": "Melibatkan pihak yang paling dulu mendaftar.",
+    "weight": 3
+   },
+   {
+    "text": "Melibatkan sedikit pihak agar lebih mudah dikelola.",
+    "weight": 2
+   },
+   {
+    "text": "Menolak semua pihak agar tidak repot.",
+    "weight": 1
+   }
+  ],
+  "rubric_ref": {
+   "value": "kolaboratif",
+   "butir": "a"
+  },
+  "status": "draft"
+ }
+]

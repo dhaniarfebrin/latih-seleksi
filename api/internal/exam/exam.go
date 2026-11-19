@@ -118,9 +118,12 @@ type Result struct {
 	Partial       bool            `json:"partial"`
 	DurationBasis string          `json:"duration_basis"`
 	Sections      []SectionResult `json:"sections"`
-	Total         int             `json:"total"`
-	MaxTotal      int             `json:"max_total"`
-	SubmittedAt   time.Time       `json:"submitted_at"`
+	// Weighted is the weighted stage score (0-100) of a track with section
+	// weights, set only when every spec section was taken.
+	Weighted    *float64  `json:"weighted,omitempty"`
+	Total       int       `json:"total"`
+	MaxTotal    int       `json:"max_total"`
+	SubmittedAt time.Time `json:"submitted_at"`
 }
 
 type SpecSectionView struct {
@@ -599,6 +602,13 @@ func (l loaded) result() (Result, error) {
 		})
 		res.Total += sr.Score
 		res.MaxTotal += sr.Max
+	}
+	srs := make([]scoring.SectionResult, 0, len(res.Sections))
+	for _, r := range res.Sections {
+		srs = append(srs, scoring.SectionResult{ID: r.ID, Score: r.Score, Max: r.Max})
+	}
+	if w, ok := scoring.Weighted(l.spec, track, srs); ok {
+		res.Weighted = &w
 	}
 	return res, nil
 }

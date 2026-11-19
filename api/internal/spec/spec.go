@@ -59,6 +59,9 @@ type Track struct {
 	Label      string         `json:"label"`
 	Thresholds map[string]int `json:"thresholds,omitempty"`
 	TotalMin   int            `json:"total_min,omitempty"`
+	// Weights gives each section its percent of the weighted stage score (section
+	// id -> percent, summing to 100). Empty when the track has no weighted score.
+	Weights map[string]int `json:"weights,omitempty"`
 }
 
 // MaxScore is the highest score the section can give.

@@ -4,6 +4,7 @@ package scoring
 
 import (
 	"fmt"
+	"math"
 
 	"latihseleksi/api/internal/spec"
 )
@@ -121,4 +122,27 @@ func itemScore(sec spec.Section, r Response) (int, error) {
 		return r.Weight, nil
 	}
 	return 0, fmt.Errorf("section %s: unknown scoring kind %q", sec.ID, sc.Kind)
+}
+
+// Weighted is the stage score of a track with section weights: the sum of
+// weight x score/max over the sections, rounded to 1 decimal (max 100). ok is
+// false when the track has no weights or a spec section is missing from rs, so
+// a partial attempt has no weighted score.
+func Weighted(s spec.Spec, track spec.Track, rs []SectionResult) (score float64, ok bool) {
+	if len(track.Weights) == 0 {
+		return 0, false
+	}
+	byID := make(map[string]SectionResult, len(rs))
+	for _, r := range rs {
+		byID[r.ID] = r
+	}
+	total := 0.0
+	for _, sec := range s.Sections {
+		r, found := byID[sec.ID]
+		if !found || r.Max <= 0 {
+			return 0, false
+		}
+		total += float64(track.Weights[sec.ID]) * float64(r.Score) / float64(r.Max)
+	}
+	return math.Round(total*10) / 10, true
 }

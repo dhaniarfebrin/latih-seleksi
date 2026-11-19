@@ -59,7 +59,7 @@ func newServer(t *testing.T, cfg Config) *httptest.Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), exam.NewGeneratedSourceFor("TKD", catalog.Subset(deretangka.PatternID, silogisme.PatternID, analitis.PatternID, himpunan.PatternID)), bank.WKSource{Bank: items}, items)
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), exam.NewGeneratedSourceFor("TKD", catalog.Subset(deretangka.PatternID, silogisme.PatternID, analitis.PatternID, himpunan.PatternID)), bank.WKSource{Bank: items}, bank.AkhlakSource{Bank: items}, items)
 	reviews := review.New(st, items)
 	drillSvc := drill.New(st, catalog.All(), items, reviews)
 	srv := httptest.NewServer(NewHandler(drillSvc, examSvc, insight.New(st, drillSvc, reviews), export.New(st), reviews, st, cfg))
@@ -1107,6 +1107,10 @@ func TestReviewFlow(t *testing.T) {
 func TestBUMNSimulationCreatesAndScores(t *testing.T) {
 	srv, mint := newAuthServer(t)
 	tok := mint("bumn-sim")
+	// AKHLAK items are all draft, so the section is not offered yet.
+	if code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"rbb-2024","track":"umum","sections":["TKD","AKHLAK","WK"]}`, tok); code != http.StatusBadRequest {
+		t.Fatalf("create with unreviewed AKHLAK = %d %s, want 400", code, out)
+	}
 	code, out, _ := doToken(t, "POST", srv.URL+"/v1/exams", `{"spec_id":"rbb-2024","track":"umum","sections":["TKD","WK"]}`, tok)
 	if code != http.StatusCreated {
 		t.Fatalf("create = %d %s", code, out)

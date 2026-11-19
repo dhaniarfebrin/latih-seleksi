@@ -485,3 +485,100 @@ func TestFakeReport(t *testing.T) {
 		t.Errorf("stored report = %+v", got)
 	}
 }
+
+// newBUMNEnv serves rbb-2024: TKD generated, WK from the bank, AKHLAK from
+// the bank once reviewed items exist (perValue of each value flagged here).
+func newBUMNEnv(t *testing.T, perValue int) *fakeEnv {
+	t.Helper()
+	specs, err := spec.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := bank.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	flagged := map[string]int{}
+	for i := range b.AKHLAK {
+		if e := &b.AKHLAK[i]; flagged[e.Aspek] < perValue {
+			flagged[e.Aspek]++
+			e.Status = bank.StatusReviewed
+			e.ReviewedBy = bank.ReviewerHuman
+		}
+	}
+	f := &fakeEnv{st: newFakeStore(), clock: time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)}
+	f.svc = New(f.st, specs,
+		NewGeneratedSourceFor("TKD", catalog.Subset("TIU.numerik.deret-angka", "TIU.verbal.silogisme")),
+		bank.WKSource{Bank: b}, bank.AkhlakSource{Bank: b}, b)
+	f.svc.now = func() time.Time { return f.clock }
+	return f
+}
+
+func TestFakeBUMN_weightedScoreWhenAllSectionsTaken(t *testing.T) {
+	f := newBUMNEnv(t, bank.AkhlakMinPerValue+1)
+	ctx := context.Background()
+	v, err := f.svc.Create(ctx, "u1", "rbb-2024", "umum", []string{"TKD", "AKHLAK", "WK"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Items) != 130 || v.DurationBasis != BasisSpec || v.DurationSeconds != 90*60 {
+		t.Fatalf("items=%d basis=%s duration=%ds", len(v.Items), v.DurationBasis, v.DurationSeconds)
+	}
+	// TKD 1-100: 80 correct; AKHLAK 101-120: 14 x weight 5 (score 70); WK 121-130: 5 correct (score 50).
+	answer := func(pos int) {
+		t.Helper()
+		key := f.snapshot(t, v.ID, pos).AnswerKey
+		if _, err := f.svc.Answer(ctx, "u1", v.ID, AnswerInput{Pos: pos, Answer: key, Seq: 1}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for pos := 1; pos <= 80; pos++ {
+		answer(pos)
+	}
+	for pos := 101; pos <= 114; pos++ {
+		answer(pos)
+	}
+	for pos := 121; pos <= 125; pos++ {
+		answer(pos)
+	}
+	res, err := f.svc.Submit(ctx, "u1", v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]int{}
+	for _, s := range res.Sections {
+		got[s.ID] = s.Score
+	}
+	if got["TKD"] != 80 || got["AKHLAK"] != 70 || got["WK"] != 50 || res.Total != 200 || res.MaxTotal != 300 || res.Partial {
+		t.Errorf("sections = %v total=%d max=%d partial=%v", got, res.Total, res.MaxTotal, res.Partial)
+	}
+	if res.Weighted == nil || *res.Weighted != 72.0 {
+		t.Errorf("weighted = %v, want 72.0", res.Weighted)
+	}
+}
+
+func TestFakeBUMN_unreviewedAkhlakFallsBackToPartial(t *testing.T) {
+	f := newBUMNEnv(t, 0)
+	ctx := context.Background()
+	for _, sp := range f.svc.Specs() {
+		for _, sec := range sp.Sections {
+			if sp.ID == "rbb-2024" && sec.ID == "AKHLAK" && sec.Available {
+				t.Error("AKHLAK offered with no reviewed items")
+			}
+		}
+	}
+	if _, err := f.svc.Create(ctx, "u1", "rbb-2024", "umum", []string{"TKD", "AKHLAK", "WK"}); !errors.Is(err, ErrInvalid) {
+		t.Errorf("Create with AKHLAK = %v, want ErrInvalid", err)
+	}
+	v, err := f.svc.Create(ctx, "u1", "rbb-2024", "umum", []string{"TKD", "WK"})
+	if err != nil || len(v.Items) != 110 || v.DurationBasis != BasisProrated || v.DurationSeconds != 90*60*110/130 {
+		t.Fatalf("create = %d items, basis %s, %ds, %v", len(v.Items), v.DurationBasis, v.DurationSeconds, err)
+	}
+	res, err := f.svc.Submit(ctx, "u1", v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Partial || res.Weighted != nil || res.MaxTotal != 200 {
+		t.Errorf("partial=%v weighted=%v max=%d, want partial without weighted", res.Partial, res.Weighted, res.MaxTotal)
+	}
+}

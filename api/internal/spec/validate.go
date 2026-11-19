@@ -149,6 +149,25 @@ func validateTrack(s Spec, t Track, add func(string, ...any)) {
 			add("track %s: threshold %s=%d must be in 1..%d", t.ID, id, th, sec.MaxScore())
 		}
 	}
+	wids := make([]string, 0, len(t.Weights))
+	for id := range t.Weights {
+		wids = append(wids, id)
+	}
+	sort.Strings(wids)
+	wsum := 0
+	for _, id := range wids {
+		if _, ok := s.Section(id); !ok {
+			add("track %s: weight for unknown section %q", t.ID, id)
+		}
+		if w := t.Weights[id]; w <= 0 {
+			add("track %s: weight %s=%d must be > 0", t.ID, id, w)
+		} else {
+			wsum += w
+		}
+	}
+	if len(t.Weights) > 0 && wsum != 100 {
+		add("track %s: weights add up to %d, want 100", t.ID, wsum)
+	}
 	if t.TotalMin < 0 || t.TotalMin > s.MaxTotal {
 		add("track %s: total_min %d must be in 1..%d", t.ID, t.TotalMin, s.MaxTotal)
 	}

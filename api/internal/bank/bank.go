@@ -17,13 +17,22 @@ import (
 	"latihseleksi/api/internal/spec"
 )
 
-//go:embed data/twk/*.json data/tkp/*.json data/rubric/*.json data/corpus/*.txt
+//go:embed data/twk/*.json data/tkp/*.json data/rubric/*.json data/akhlak/*.json data/corpus/*.txt
 var dataFS embed.FS
 
 // Section ids, matching the exam spec.
 const (
 	SectionTWK = "TWK"
 	SectionTKP = "TKP"
+	// SectionAKHLAK is the BUMN AKHLAK section, fed by data/akhlak.
+	SectionAKHLAK = "AKHLAK"
+)
+
+// Value counts the rubrics must have: 7 BerAKHLAK values (SE MenPANRB
+// 20/2021) and 6 AKHLAK values (SE-7/MBU/07/2020).
+const (
+	tkpRubricValues    = 7
+	akhlakRubricValues = 6
 )
 
 // specID is the exam spec whose aspect lists the bank must use.
@@ -106,7 +115,11 @@ type Bank struct {
 	TWK    []TWKEntry
 	TKP    []TKPEntry
 	Rubric Rubric
-	Corpus map[string]string
+	// AKHLAK holds the BUMN AKHLAK items; they share the TKP entry shape but
+	// use AkhlakRubric (SE-7/MBU/07/2020) and the value id as aspek.
+	AKHLAK       []TKPEntry
+	AkhlakRubric Rubric
+	Corpus       map[string]string
 }
 
 // Load parses and validates every embedded file against the aspects of the
@@ -158,7 +171,7 @@ func loadFS(fsys fs.FS, twkAspects, tkpAspects []string) (*Bank, error) {
 	if err := readJSON(fsys, rubrics[0], &b.Rubric); err != nil {
 		return nil, err
 	}
-	if err := b.Rubric.validate(); err != nil {
+	if err := b.Rubric.validate(tkpRubricValues); err != nil {
 		return nil, fmt.Errorf("%s: %w", rubrics[0], err)
 	}
 
@@ -202,6 +215,9 @@ func loadFS(fsys fs.FS, twkAspects, tkpAspects []string) (*Bank, error) {
 			seen[e.ID] = name
 			b.TKP = append(b.TKP, e)
 		}
+	}
+	if err := b.loadAkhlak(fsys, seen); err != nil {
+		return nil, err
 	}
 	sort.Slice(b.TWK, func(i, j int) bool { return b.TWK[i].ID < b.TWK[j].ID })
 	sort.Slice(b.TKP, func(i, j int) bool { return b.TKP[i].ID < b.TKP[j].ID })
@@ -252,6 +268,51 @@ func (b *Bank) Coverage(section string) map[string]Coverage {
 		for _, e := range b.TKP {
 			add(e.Aspek, e.Status)
 		}
+	case SectionAKHLAK:
+		for _, e := range b.AKHLAK {
+			add(e.Aspek, e.Status)
+		}
 	}
 	return out
+}
+
+// loadAkhlak reads data/akhlak: one rubric.json and batch-*.json items. An
+// item's aspek is its value id, and its rubric_ref must name the same value.
+func (b *Bank) loadAkhlak(fsys fs.FS, seen map[string]string) error {
+	const rubricFile = "data/akhlak/rubric.json"
+	if err := readJSON(fsys, rubricFile, &b.AkhlakRubric); err != nil {
+		return err
+	}
+	if err := b.AkhlakRubric.validate(akhlakRubricValues); err != nil {
+		return fmt.Errorf("%s: %w", rubricFile, err)
+	}
+	aspects := make([]string, 0, len(b.AkhlakRubric.Values))
+	for _, v := range b.AkhlakRubric.Values {
+		aspects = append(aspects, v.ID)
+	}
+	files, err := fs.Glob(fsys, "data/akhlak/batch-*.json")
+	if err != nil {
+		return err
+	}
+	for _, name := range files {
+		var es []TKPEntry
+		if err := readJSON(fsys, name, &es); err != nil {
+			return err
+		}
+		for _, e := range es {
+			if err := e.Validate(b.AkhlakRubric, aspects); err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+			if e.RubricRef.Value != e.Aspek {
+				return fmt.Errorf("%s: akhlak %q: rubric_ref value %q must equal aspek %q", name, e.ID, e.RubricRef.Value, e.Aspek)
+			}
+			if prev, dup := seen[e.ID]; dup {
+				return fmt.Errorf("%s: duplicate id %q (also in %s)", name, e.ID, prev)
+			}
+			seen[e.ID] = name
+			b.AKHLAK = append(b.AKHLAK, e)
+		}
+	}
+	sort.Slice(b.AKHLAK, func(i, j int) bool { return b.AKHLAK[i].ID < b.AKHLAK[j].ID })
+	return nil
 }

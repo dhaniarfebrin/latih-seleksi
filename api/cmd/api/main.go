@@ -65,7 +65,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), exam.NewGeneratedSourceFor("TKD", catalog.Subset(deretangka.PatternID, silogisme.PatternID, analitis.PatternID, himpunan.PatternID)), bank.WKSource{Bank: items}, items)
+	examSvc := exam.New(st, specs, exam.NewGeneratedSource(catalog.All()), exam.NewGeneratedSourceFor("TKD", catalog.Subset(deretangka.PatternID, silogisme.PatternID, analitis.PatternID, himpunan.PatternID)), bank.WKSource{Bank: items}, bank.AkhlakSource{Bank: items}, items)
 
 	reviews := review.New(st, items)
 	drillSvc := drill.New(st, catalog.All(), items, reviews)

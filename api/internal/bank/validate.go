@@ -187,9 +187,9 @@ func (r Rubric) has(ref RubricRef) bool {
 	return false
 }
 
-func (r Rubric) validate() error {
-	if len(r.Values) != 7 {
-		return fmt.Errorf("rubric: want 7 values, got %d", len(r.Values))
+func (r Rubric) validate(want int) error {
+	if len(r.Values) != want {
+		return fmt.Errorf("rubric: want %d values, got %d", want, len(r.Values))
 	}
 	ids := map[string]bool{}
 	for _, v := range r.Values {

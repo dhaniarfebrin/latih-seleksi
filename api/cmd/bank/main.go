@@ -9,7 +9,7 @@ import (
 	"latihseleksi/api/internal/bank"
 )
 
-const usage = "usage: bank check | bank review | bank sheet | bank sheet-twk"
+const usage = "usage: bank check | bank review | bank sheet | bank sheet-twk | bank sheet-akhlak"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -30,6 +30,8 @@ func main() {
 		sheet(b)
 	case "sheet-twk":
 		sheetTWK(b)
+	case "sheet-akhlak":
+		sheetAkhlak(b)
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
@@ -37,8 +39,8 @@ func main() {
 }
 
 func check(b *bank.Bank) {
-	fmt.Printf("OK: %d TWK, %d TKP, rubric %d values\n", len(b.TWK), len(b.TKP), len(b.Rubric.Values))
-	for _, section := range []string{bank.SectionTWK, bank.SectionTKP} {
+	fmt.Printf("OK: %d TWK, %d TKP, %d AKHLAK, rubric %d values, AKHLAK rubric %d values\n", len(b.TWK), len(b.TKP), len(b.AKHLAK), len(b.Rubric.Values), len(b.AkhlakRubric.Values))
+	for _, section := range []string{bank.SectionTWK, bank.SectionTKP, bank.SectionAKHLAK} {
 		cov := b.Coverage(section)
 		aspects := make([]string, 0, len(cov))
 		for a := range cov {
@@ -58,7 +60,7 @@ func review(b *bank.Bank) {
 			fmt.Printf("[%s] %s (%s)\n  %s\n  kunci: %s | kutipan: %q\n", e.Aspek, e.ID, e.Ref, e.Question, e.Correct, e.Quote)
 		}
 	}
-	for _, e := range b.TKP {
+	for _, e := range append(append([]bank.TKPEntry(nil), b.TKP...), b.AKHLAK...) {
 		if e.Status != bank.StatusDraft {
 			continue
 		}
@@ -72,16 +74,25 @@ func review(b *bank.Bank) {
 // sheet prints a markdown review sheet of every TKP item, for a human to
 // approve the weights item by item.
 func sheet(b *bank.Bank) {
+	printSheet("Lembar tinjau bobot TKP", b.Rubric, b.TKP)
+}
+
+// sheetAkhlak is sheet for the AKHLAK items, with the SE-7/2020 butir text.
+func sheetAkhlak(b *bank.Bank) {
+	printSheet("Lembar tinjau bobot AKHLAK", b.AkhlakRubric, b.AKHLAK)
+}
+
+func printSheet(title string, rubric bank.Rubric, entries []bank.TKPEntry) {
 	butir := map[bank.RubricRef]string{}
 	label := map[string]string{}
-	for _, v := range b.Rubric.Values {
+	for _, v := range rubric.Values {
 		label[v.ID] = v.Label
 		for _, x := range v.Butir {
 			butir[bank.RubricRef{Value: v.ID, Butir: x.ID}] = x.Text
 		}
 	}
-	fmt.Printf("# Lembar tinjau bobot TKP\n\nSumber rubrik: %s. Bobot adalah penilaian penyusun, bukan kunci resmi.\n", b.Rubric.Source)
-	for _, e := range b.TKP {
+	fmt.Printf("# %s\n\nSumber rubrik: %s. Bobot adalah penilaian penyusun, bukan kunci resmi.\n", title, rubric.Source)
+	for _, e := range entries {
 		fmt.Printf("\n## %s\n\n- status: %s\n- aspek: %s\n- butir rubrik: %s/%s (%s): %s\n- skenario: %s\n- opsi:\n",
 			e.ID, e.Status, e.Aspek, e.RubricRef.Value, e.RubricRef.Butir, label[e.RubricRef.Value], butir[e.RubricRef], e.Scenario)
 		for _, o := range e.Options {

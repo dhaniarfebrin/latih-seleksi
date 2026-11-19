@@ -1,0 +1,113 @@
+{
+  "source": "SE Menteri BUMN SE-7/MBU/07/2020 angka E.1",
+  "values": [
+    {
+      "id": "amanah",
+      "label": "Amanah",
+      "butir": [
+        {
+          "id": "a",
+          "text": "Memenuhi janji dan komitmen"
+        },
+        {
+          "id": "b",
+          "text": "Bertanggung jawab atas tugas, keputusan, dan tindakan yang dilakukan"
+        },
+        {
+          "id": "c",
+          "text": "Berpegang teguh kepada nilai moral dan etika"
+        }
+      ]
+    },
+    {
+      "id": "kompeten",
+      "label": "Kompeten",
+      "butir": [
+        {
+          "id": "a",
+          "text": "Meningkatkan kompetensi diri untuk menjawab tantangan yang selalu berubah"
+        },
+        {
+          "id": "b",
+          "text": "Membantu orang lain belajar"
+        },
+        {
+          "id": "c",
+          "text": "Menyelesaikan tugas dengan kualitas terbaik"
+        }
+      ]
+    },
+    {
+      "id": "harmonis",
+      "label": "Harmonis",
+      "butir": [
+        {
+          "id": "a",
+          "text": "Menghargai setiap orang apapun latar belakangnya"
+        },
+        {
+          "id": "b",
+          "text": "Suka menolong orang lain"
+        },
+        {
+          "id": "c",
+          "text": "Membangun lingkungan kerja yang kondusif"
+        }
+      ]
+    },
+    {
+      "id": "loyal",
+      "label": "Loyal",
+      "butir": [
+        {
+          "id": "a",
+          "text": "Menjaga nama baik sesama karyawan, pimpinan, BUMN, dan Negara"
+        },
+        {
+          "id": "b",
+          "text": "Rela berkorban untuk mencapai tujuan yang lebih besar"
+        },
+        {
+          "id": "c",
+          "text": "Patuh kepada pimpinan sepanjang tidak bertentangan dengan hukum dan etika"
+        }
+      ]
+    },
+    {
+      "id": "adaptif",
+      "label": "Adaptif",
+      "butir": [
+        {
+          "id": "a",
+          "text": "Cepat menyesuaikan diri untuk menjadi lebih baik"
+        },
+        {
+          "id": "b",
+          "text": "Terus-menerus melakukan perbaikan mengikuti perkembangan teknologi"
+        },
+        {
+          "id": "c",
+          "text": "Bertindak proaktif"
+        }
+      ]
+    },
+    {
+      "id": "kolaboratif",
+      "label": "Kolaboratif",
+      "butir": [
+        {
+          "id": "a",
+          "text": "Memberi kesempatan kepada berbagai pihak untuk berkontribusi"
+        },
+        {
+          "id": "b",
+          "text": "Terbuka dalam bekerja sama untuk menghasilkan nilai tambah"
+        },
+        {
+          "id": "c",
+          "text": "Menggerakkan pemanfaatan berbagai sumber daya untuk tujuan bersama"
+        }
+      ]
+    }
+  ]
+}

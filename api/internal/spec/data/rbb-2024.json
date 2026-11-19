@@ -1,17 +1,23 @@
 {
   "id": "rbb-2024",
-  "label": "BUMN (profil tidak resmi): TKD numerik dan logika, WK",
-  "source": "Ambang dan skala dari laman resmi rekrutmen BUMN 2024 (arsip 2024-06-02). Jumlah soal dan durasi tidak resmi (angka dari media), hanya untuk latihan.",
+  "label": "BUMN (profil tidak resmi): TKD numerik dan logika, AKHLAK, WK",
+  "source": "Ambang dan skala dari laman resmi rekrutmen BUMN 2024 (arsip 2024-06-02); bobot tahap 40/50/10 untuk D3-S2. Jumlah soal dan durasi tidak resmi (angka dari media, AKHLAK 20 soal / 7 menit prorata adalah rancangan penyusun), hanya untuk latihan.",
   "source_url": "https://web.archive.org/web/20240602/https://rekrutmenbersama2024.fhcibumn.id/",
   "enacted_on": "2024-06-02",
   "scope": "bumn",
-  "duration_min": 83,
+  "duration_min": 90,
   "sections": [
     {
       "id": "TKD",
       "label": "Tes Kemampuan Dasar (numerik dan logika)",
       "items": 100,
       "scoring": { "kind": "right-wrong", "correct": 1 }
+    },
+    {
+      "id": "AKHLAK",
+      "label": "AKHLAK (jumlah soal tidak resmi; bobot penilaian penyusun)",
+      "items": 20,
+      "scoring": { "kind": "weighted", "min": 1, "max": 5 }
     },
     {
       "id": "WK",
@@ -25,8 +31,9 @@
     {
       "id": "umum",
       "label": "Umum",
-      "thresholds": { "TKD": 58, "WK": 50 }
+      "thresholds": { "TKD": 58, "AKHLAK": 65, "WK": 50 },
+      "weights": { "TKD": 40, "AKHLAK": 50, "WK": 10 }
     }
   ],
-  "max_total": 200
+  "max_total": 300
 }
